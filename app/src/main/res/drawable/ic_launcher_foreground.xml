@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Official Residential Life Skills Camp 2026 (LSC 2026) Adaptive Launcher Foreground
+    Scales and positions the prestigious circular medallion into the safe zone (66dp centered).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Scaled and centered to fit perfectly within the circular adaptive icon mask -->
+    <group
+        android:pivotX="100"
+        android:pivotY="100"
+        android:scaleX="0.48"
+        android:scaleY="0.48"
+        android:translateX="6"
+        android:translateY="6">
+
+        <!-- Outer Rim Thick Gold Ring (Medallion Border) -->
+        <path
+            android:fillColor="#F59E0B"
+            android:pathData="M100,6 A94,94 0 1,0 100,194 A94,94 0 1,0 100,6 Z" />
+
+        <!-- Outer Fine Inset Groove Ring (Dark Emerald Outline) -->
+        <path
+            android:fillColor="#062517"
+            android:pathData="M100,10 A90,90 0 1,0 100,190 A90,90 0 1,0 100,10 Z" />
+
+        <!-- Outer Text Ring Ribbon (Deep Emerald / Forest Green) -->
+        <path
+            android:fillColor="#0A3A24"
+            android:pathData="M100,14 A86,86 0 1,0 100,186 A86,86 0 1,0 100,14 Z" />
+
+        <!-- Inner Metallic Gold Ring (Bordering the Central Shield) -->
+        <path
+            android:fillColor="#FBBF24"
+            android:pathData="M100,42 A58,58 0 1,0 100,158 A58,58 0 1,0 100,42 Z" />
+
+        <!-- Inner Sky Background (Deep Teal / Night-to-Dawn Gradient Fill) -->
+        <path
+            android:fillColor="#072216"
+            android:pathData="M100,45 A55,55 0 1,0 100,155 A55,55 0 1,0 100,45 Z" />
+
+        <!-- Rising Sun Behind Mountains (Leadership & Bright Future) -->
+        <path
+            android:fillColor="#FDE047"
+            android:pathData="M100,76 A22,22 0 0,0 78,98 L122,98 A22,22 0 0,0 100,76 Z" />
+
+        <!-- Sunrays Radiating -->
+        <path
+            android:fillColor="#FEF08A"
+            android:pathData="M100,64 L102,74 L98,74 Z" />
+        <path
+            android:fillColor="#FEF08A"
+            android:pathData="M84,68 L92,76 L89,79 Z" />
+        <path
+            android:fillColor="#FEF08A"
+            android:pathData="M116,68 L111,79 L108,76 Z" />
+        <path
+            android:fillColor="#FEF08A"
+            android:pathData="M72,82 L82,86 L80,89 Z" />
+        <path
+            android:fillColor="#FEF08A"
+            android:pathData="M128,82 L120,89 L118,86 Z" />
+
+        <!-- Majestic Mountain Range (Left Peak) -->
+        <path
+            android:fillColor="#155D36"
+            android:pathData="M56,120 L80,78 L98,104 L72,120 Z" />
+
+        <!-- Mountain Left Peak Snow Cap -->
+        <path
+            android:fillColor="#E2F2E9"
+            android:pathData="M80,78 L74,89 L86,89 Z" />
+
+        <!-- Mountain Central/Right Peak (Higher Elevation) -->
+        <path
+            android:fillColor="#1E7545"
+            android:pathData="M82,120 L118,72 L146,120 Z" />
+
+        <!-- Mountain Right Peak Snow Cap -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M118,72 L110,84 L126,84 Z" />
+
+        <!-- Foreground Mountain Shading -->
+        <path
+            android:fillColor="#0D4527"
+            android:pathData="M118,72 L118,120 L146,120 Z" />
+
+        <!-- Pine Forests Left -->
+        <path
+            android:fillColor="#0B3C22"
+            android:pathData="M60,126 L66,110 L72,126 Z" />
+        <path
+            android:fillColor="#0B3C22"
+            android:pathData="M62,116 L66,104 L70,116 Z" />
+        <path
+            android:fillColor="#0F5132"
+            android:pathData="M70,126 L75,114 L80,126 Z" />
+
+        <!-- Pine Forests Right -->
+        <path
+            android:fillColor="#0B3C22"
+            android:pathData="M128,126 L134,110 L140,126 Z" />
+        <path
+            android:fillColor="#0B3C22"
+            android:pathData="M130,116 L134,104 L138,116 Z" />
+        <path
+            android:fillColor="#0F5132"
+            android:pathData="M120,126 L125,114 L130,126 Z" />
+
+        <!-- Camp Ground Foothill -->
+        <path
+            android:fillColor="#09311C"
+            android:pathData="M52,122 Q100,118 148,122 L148,142 Q100,146 52,142 Z" />
+
+        <!-- Central A-Frame Expedition Tent (Canvas Body) -->
+        <path
+            android:fillColor="#D97706"
+            android:pathData="M100,88 L74,132 L126,132 Z" />
+
+        <!-- Tent Left Flap Highlight (Vibrant Amber) -->
+        <path
+            android:fillColor="#FBBF24"
+            android:pathData="M100,88 L74,132 L100,132 Z" />
+
+        <!-- Tent Inner Dark Door Opening -->
+        <path
+            android:fillColor="#111827"
+            android:pathData="M100,105 L87,132 L113,132 Z" />
+
+        <!-- Campfire Wood Logs -->
+        <path
+            android:fillColor="#78350F"
+            android:pathData="M90,146 L110,140 L108,137 L88,143 Z" />
+        <path
+            android:fillColor="#78350F"
+            android:pathData="M110,146 L90,140 L92,137 L112,143 Z" />
+
+        <!-- Campfire Flame (Outer Blazing Crimson/Orange) -->
+        <path
+            android:fillColor="#EA580C"
+            android:pathData="M100,125 C95,130 92,134 92,138 C92,143 96,146 100,146 C104,146 108,143 108,138 C108,134 105,130 100,125 Z" />
+
+        <!-- Campfire Flame (Inner Brilliant Gold Heart) -->
+        <path
+            android:fillColor="#FDE047"
+            android:pathData="M100,132 C97,135 96,137 96,139 C96,142 98,144 100,144 C102,144 104,142 104,139 C104,137 103,135 100,132 Z" />
+
+        <!-- Top North Star (Emblem of Guidance and Faith) -->
+        <path
+            android:fillColor="#FEF08A"
+            android:pathData="M100,18 L103,26 L111,29 L103,32 L100,40 L97,32 L89,29 L97,26 Z" />
+
+        <!-- Star Left Sparkle -->
+        <path
+            android:fillColor="#FDE047"
+            android:pathData="M78,24 L80,28 L84,30 L80,32 L78,36 L76,32 L72,30 L76,28 Z" />
+
+        <!-- Star Right Sparkle -->
+        <path
+            android:fillColor="#FDE047"
+            android:pathData="M122,24 L124,28 L128,30 L124,32 L122,36 L120,32 L116,30 L120,28 Z" />
+
+        <!-- Upper Ring Title English: "LSC" -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M48,32 L51,32 L51,38 L54,38 L54,40 L48,40 Z" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M57,32 L62,32 L62,34 L59,34 L59,35 L62,36 L62,40 L57,40 L57,38 L60,38 L60,37 L57,36 Z" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M64,32 L69,32 L69,34 L66,34 L66,38 L69,38 L69,40 L64,40 Z" />
+
+        <!-- Central Majestic Golden Banner -->
+        <path
+            android:fillColor="#F59E0B"
+            android:pathData="M44,142 Q100,132 156,142 L162,168 Q100,158 38,168 Z" />
+
+        <!-- Ribbon Border -->
+        <path
+            android:fillColor="#FBBF24"
+            android:pathData="M48,145 Q100,136 152,145 L154,150 Q100,141 46,150 Z" />
+
+        <!-- Ribbon Inner Fill -->
+        <path
+            android:fillColor="#062517"
+            android:pathData="M52,151 Q100,143 148,151 L146,162 Q100,154 54,162 Z" />
+
+        <!-- Star Accents on Ribbon -->
+        <path
+            android:fillColor="#FDE047"
+            android:pathData="M58,156.5 L60,154.5 L62,156.5 L60,158.5 Z" />
+        <path
+            android:fillColor="#FDE047"
+            android:pathData="M142,156.5 L140,154.5 L138,156.5 L140,158.5 Z" />
+
+        <!-- 'LSC 2026' text imprint -->
+        <path
+            android:fillColor="#FDE047"
+            android:pathData="M66,153 L70,153 L70,160 L75,160 L75,161 L66,161 Z" />
+        <path
+            android:fillColor="#FDE047"
+            android:pathData="M78,153 L84,153 L84,155 L80,155 L80,156 L84,157 L84,161 L78,161 L78,159 L82,159 L82,158 L78,157 Z" />
+        <path
+            android:fillColor="#FDE047"
+            android:pathData="M87,153 L93,153 L93,155 L89,155 L89,159 L93,159 L93,161 L87,161 Z" />
+
+        <!-- Laurel Leaves -->
+        <path
+            android:fillColor="#10B981"
+            android:pathData="M38,110 C34,102 38,94 42,90 C42,98 40,106 38,110 Z" />
+        <path
+            android:fillColor="#10B981"
+            android:pathData="M34,124 C30,116 32,108 36,104 C38,112 36,120 34,124 Z" />
+        <path
+            android:fillColor="#10B981"
+            android:pathData="M162,110 C166,102 162,94 158,90 C158,98 160,106 162,110 Z" />
+        <path
+            android:fillColor="#10B981"
+            android:pathData="M166,124 C170,116 168,108 164,104 C162,112 164,120 166,124 Z" />
+
+    </group>
+
+</vector>

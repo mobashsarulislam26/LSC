@@ -1,0 +1,6 @@
+{
+  "name": "LSC Companion",
+  "description": "Life Skills Camp Management & Companion app for 600+ residential camp participants, stations, attendance, health, and competitions.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
