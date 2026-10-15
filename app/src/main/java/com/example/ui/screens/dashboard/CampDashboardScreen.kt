@@ -174,7 +174,7 @@ fun CampDashboardScreen(
             }
         }
 
-        // LSC 2025 Core Modules Quick Navigation (From Rationale Document)
+        // LSC 2026 Core Modules Quick Navigation (From Rationale Document)
         item {
             Card(
                 shape = RoundedCornerShape(16.dp),
@@ -199,7 +199,7 @@ fun CampDashboardScreen(
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = if (language == CampLanguage.BANGLA) "ক্যাম্প ২০২৫ কাঠামো ও দিকনির্দেশনা" else "LSC 2025 Camp Blueprint",
+                                text = if (language == CampLanguage.BANGLA) "ক্যাম্প ২০২৬ কাঠামো ও দিকনির্দেশনা" else "LSC 2026 Camp Blueprint",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp,
                                 color = LscSlateDark
@@ -210,7 +210,7 @@ fun CampDashboardScreen(
                             shape = RoundedCornerShape(6.dp)
                         ) {
                             Text(
-                                text = "LSC 2025",
+                                text = "LSC 2026",
                                 color = LscEmeraldPrimary,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,

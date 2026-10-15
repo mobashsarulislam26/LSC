@@ -69,7 +69,7 @@ fun LoginScreen(
 
     // Login Form State
     var email by remember { mutableStateOf("admin@lsc.org") }
-    var password by remember { mutableStateOf("Lsc@Admin2025") }
+    var password by remember { mutableStateOf("Lsc@Admin2026") }
     var passwordVisible by remember { mutableStateOf(false) }
 
     // Sign Up Form State
@@ -210,7 +210,7 @@ fun LoginScreen(
                         Spacer(modifier = Modifier.height(10.dp))
 
                         Text(
-                            text = if (isBangla) "লাইফ স্কিলস ক্যাম্প ২০২৫" else "Life Skills Camp 2025",
+                            text = if (isBangla) "লাইফ স্কিলস ক্যাম্প ২০২৬" else "Life Skills Camp 2026",
                             color = Color.White,
                             fontSize = 21.sp,
                             fontWeight = FontWeight.ExtraBold,
@@ -759,13 +759,13 @@ fun LoginScreen(
                                                 try {
                                                     val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
                                                         data = Uri.parse("mailto:$registeredUserEmail")
-                                                        putExtra(Intent.EXTRA_SUBJECT, "Life Skills Camp 2025 - আপনার লগইন পাসওয়ার্ড")
+                                                        putExtra(Intent.EXTRA_SUBJECT, "Life Skills Camp 2026 - আপনার লগইন পাসওয়ার্ড")
                                                         putExtra(
                                                             Intent.EXTRA_TEXT,
                                                             """
                                                             প্রিয় $signUpFullName,
                                                             
-                                                            লাইফ স্কিলস ক্যাম্প ২০২৫ (LSC Companion)-এ আপনার রেজিস্ট্রেশন সফল হয়েছে।
+                                                            লাইফ স্কিলস ক্যাম্প ২০২৬ (LSC Companion)-এ আপনার রেজিস্ট্রেশন সফল হয়েছে।
                                                             
                                                             আপনার লগইন বিবরণ:
                                                             ------------------------------------
@@ -1056,7 +1056,7 @@ fun LoginScreen(
                                 try {
                                     val mailIntent = Intent(Intent.ACTION_SENDTO).apply {
                                         data = Uri.parse("mailto:${forgotEmailInput.trim()}")
-                                        putExtra(Intent.EXTRA_SUBJECT, "LSC Camp 2025 - পাসওয়ার্ড রিসেট")
+                                        putExtra(Intent.EXTRA_SUBJECT, "LSC Camp 2026 - পাসওয়ার্ড রিসেট")
                                         putExtra(
                                             Intent.EXTRA_TEXT,
                                             "আপনার নতুন ক্যাম্প লগইন পাসওয়ার্ড: $newPass\n\nঅনুগ্রহ করে এই পাসওয়ার্ড দিয়ে লগইন করুন।"

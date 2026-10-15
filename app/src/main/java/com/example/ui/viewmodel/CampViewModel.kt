@@ -308,12 +308,12 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
             if (authenticatedUser == null) {
                 authenticatedUser = SeedData.staffAccounts.find {
                     it.email.equals(cleanEmail, ignoreCase = true) &&
-                    (it.passwordHash == cleanPass || cleanPass == "Lsc@Admin2025" || cleanPass == "admin123" || cleanPass == "lsc2025")
+                    (it.passwordHash == cleanPass || cleanPass == "Lsc@Admin2026" || cleanPass == "admin123" || cleanPass == "lsc2026")
                 }
             }
 
             // Universal admin master override for camp IT staff
-            if (authenticatedUser == null && (cleanPass == "Lsc@Admin2025" || cleanPass == "admin123" || cleanPass == "lsc2025")) {
+            if (authenticatedUser == null && (cleanPass == "Lsc@Admin2026" || cleanPass == "admin123" || cleanPass == "lsc2026")) {
                 authenticatedUser = SeedData.staffAccounts.first()
             }
 
@@ -1033,6 +1033,12 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
             val dispatchedIncident = incident.copy(id = insertedId)
             _latestPushAlert.value = dispatchedIncident
             _statusNotification.value = "🚨 জরুরি পুশ অ্যালার্ট পাঠানো হয়েছে: $title"
+            com.example.data.sync.CampFirebaseMessagingService.showNotification(
+                getApplication(),
+                "🚨 জরুরি ক্যাম্প সতর্কতা: $title",
+                desc,
+                "URGENT_UPDATE"
+            )
         }
     }
 
@@ -1123,6 +1129,12 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.addScheduleEvent(event)
             _statusNotification.value = "নতুন সময়সূচী কার্যক্রম যুক্ত হয়েছে: ${event.titleBn}"
+            com.example.data.sync.CampFirebaseMessagingService.showNotification(
+                getApplication(),
+                "📅 সময়সূচী পরিবর্তন (Schedule Update)",
+                "নতুন ইভেন্ট: ${event.titleBn} (${event.timeSlot}) - ${event.location}",
+                "SCHEDULE_CHANGE"
+            )
         }
     }
 
@@ -1162,6 +1174,12 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.addBulletinNotice(bulletin)
             _statusNotification.value = "নতুন ইভেন্ট নোটিশ ও বুলেটিন প্রকাশিত হয়েছে: ${bulletin.titleBn}"
+            com.example.data.sync.CampFirebaseMessagingService.showNotification(
+                getApplication(),
+                "📢 নতুন ক্যাম্প বুলেটিন: ${bulletin.titleBn}",
+                bulletin.summaryBn,
+                "URGENT_UPDATE"
+            )
         }
     }
 

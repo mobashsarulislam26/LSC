@@ -10,6 +10,8 @@ class CampApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         ensureFirebaseInitialized(this)
+        com.example.data.sync.CampFirebaseMessagingService.createNotificationChannels(this)
+        com.example.data.sync.CampFirebaseMessagingService.subscribeToDefaultTopics()
     }
 
     companion object {

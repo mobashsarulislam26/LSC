@@ -127,14 +127,14 @@ fun CertificateGeneratorDialog(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = "লাইফ স্কিলস ক্যাম্প ২০২৫",
+                            text = "লাইফ স্কিলস ক্যাম্প ২০২৬",
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
                             color = LscEmeraldPrimary
                         )
 
                         Text(
-                            text = "Life Skills Residential Camp 2025",
+                            text = "Life Skills Residential Camp 2026",
                             fontSize = 11.sp,
                             color = Color.Gray,
                             fontWeight = FontWeight.Medium
@@ -353,7 +353,7 @@ fun createCertificateBitmap(p: ParticipantEntity, awardTitle: String): Bitmap {
     paint.textSize = 34f
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     paint.color = AndroidColor.parseColor("#064E3B")
-    canvas.drawText("লাইফ স্কিলস ক্যাম্প ২০২৫ (Life Skills Camp)", width / 2f, 110f, paint)
+    canvas.drawText("লাইফ স্কিলস ক্যাম্প ২০২৬ (Life Skills Camp)", width / 2f, 110f, paint)
 
     paint.textSize = 20f
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
@@ -492,7 +492,7 @@ fun shareCertificateImageIntent(context: Context, p: ParticipantEntity, awardTit
             putExtra(Intent.EXTRA_SUBJECT, "সনদপত্র - ${p.nameBn}")
             putExtra(
                 Intent.EXTRA_TEXT,
-                "🎓 লাইফ স্কিলস ক্যাম্প ২০২৫ - ${p.nameBn} এর অর্জিত সনদপত্র ('$awardTitle')"
+                "🎓 লাইফ স্কিলস ক্যাম্প ২০২৬ - ${p.nameBn} এর অর্জিত সনদপত্র ('$awardTitle')"
             )
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
@@ -525,7 +525,7 @@ private fun printCertificatePdf(context: Context, p: ParticipantEntity, awardTit
                 </style>
             </head>
             <body>
-                <div class="header">লাইফ স্কিলস ক্যাম্প ২০২৫ (Life Skills Camp)</div>
+                <div class="header">লাইফ স্কিলস ক্যাম্প ২০২৬ (Life Skills Camp)</div>
                 <div class="subheader">আবাসিক কওমী তরুণদের চরিত্র গঠন ও দক্ষতা উন্নয়ন কোর্স</div>
                 <div class="title">সনদপত্র (CERTIFICATE OF ACHIEVEMENT)</div>
                 <p>এতদ্বারা সগৌরবে প্রত্যয়ন করা যাচ্ছে যে,</p>
@@ -569,7 +569,7 @@ private fun shareCertificateText(context: Context, p: ParticipantEntity, awardTi
             putExtra(
                 Intent.EXTRA_TEXT,
                 """
-                🎓 লাইফ স্কিলস ক্যাম্প ২০২৫ - শিক্ষার্থী অর্জন সনদপত্র 🏆
+                🎓 লাইফ স্কিলস ক্যাম্প ২০২৬ - শিক্ষার্থী অর্জন সনদপত্র 🏆
                 --------------------------------------------------
                 অংশগ্রহণকারীর নাম: ${p.nameBn} (${p.nameEn})
                 ক্যাম্প আইডি: ${p.campCode}
@@ -577,7 +577,7 @@ private fun shareCertificateText(context: Context, p: ParticipantEntity, awardTi
                 জেলা: ${p.districtBn}
                 অর্জন: $awardTitle
                 --------------------------------------------------
-                লাইফ স্কিলস ক্যাম্প ২০২৫ পরিচালনা পর্ষদ
+                লাইফ স্কিলস ক্যাম্প ২০২৬ পরিচালনা পর্ষদ
                 """.trimIndent()
             )
         }

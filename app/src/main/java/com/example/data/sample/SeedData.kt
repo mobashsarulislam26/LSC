@@ -680,12 +680,12 @@ object SeedData {
     )
 
     val staffAccounts = listOf(
-        UserAccountEntity(email = "admin@lsc.org", fullName = "সুপার অ্যাডমিন (IT ও ডাটা কন্ট্রোল)", role = "SUPER_ADMIN", passwordHash = "Lsc@Admin2025", phone = "01711-000000"),
-        UserAccountEntity(email = "chief@lsc.org", fullName = "ড. এনামুল হক চৌধুরী (ক্যাম্প চিফ)", role = "CAMP_CHIEF", passwordHash = "Lsc@Chief2025", phone = "01711-000111"),
-        UserAccountEntity(email = "reg@lsc.org", fullName = "রেজিস্ট্রেশন ও রোস্টার অফিসার", role = "REGISTRATION", passwordHash = "Lsc@Reg2025", phone = "01811-123456"),
-        UserAccountEntity(email = "medical@lsc.org", fullName = "ডা. তারিকুল ইসলাম (মেডিকেল ইন-চার্জ)", role = "MEDICAL", passwordHash = "Lsc@Med2025", phone = "01819-222333"),
-        UserAccountEntity(email = "judge@lsc.org", fullName = "মাওলানা আব্দুল গাফফার (প্রধান বিচারক)", role = "JUDGE", passwordHash = "Lsc@Judge2025", phone = "01912-456789"),
-        UserAccountEntity(email = "logistics@lsc.org", fullName = "ইঞ্জিনিয়ার রেজওয়ান করিম (লজিস্টিকস লিড)", role = "LOGISTICS", passwordHash = "Lsc@Log2025", phone = "01611-444555")
+        UserAccountEntity(email = "admin@lsc.org", fullName = "সুপার অ্যাডমিন (IT ও ডাটা কন্ট্রোল)", role = "SUPER_ADMIN", passwordHash = "Lsc@Admin2026", phone = "01711-000000"),
+        UserAccountEntity(email = "chief@lsc.org", fullName = "ড. এনামুল হক চৌধুরী (ক্যাম্প চিফ)", role = "CAMP_CHIEF", passwordHash = "Lsc@Chief2026", phone = "01711-000111"),
+        UserAccountEntity(email = "reg@lsc.org", fullName = "রেজিস্ট্রেশন ও রোস্টার অফিসার", role = "REGISTRATION", passwordHash = "Lsc@Reg2026", phone = "01811-123456"),
+        UserAccountEntity(email = "medical@lsc.org", fullName = "ডা. তারিকুল ইসলাম (মেডিকেল ইন-চার্জ)", role = "MEDICAL", passwordHash = "Lsc@Med2026", phone = "01819-222333"),
+        UserAccountEntity(email = "judge@lsc.org", fullName = "মাওলানা আব্দুল গাফফার (প্রধান বিচারক)", role = "JUDGE", passwordHash = "Lsc@Judge2026", phone = "01912-456789"),
+        UserAccountEntity(email = "logistics@lsc.org", fullName = "ইঞ্জিনিয়ার রেজওয়ান করিম (লজিস্টিকস লিড)", role = "LOGISTICS", passwordHash = "Lsc@Log2026", phone = "01611-444555")
     )
 
     fun generateKitDistributions(participants: List<ParticipantEntity>): List<KitDistributionEntity> {

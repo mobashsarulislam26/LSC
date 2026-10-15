@@ -66,6 +66,18 @@ fun LscMainApp(
     LaunchedEffect(firestoreUserRole) {
         campViewModel.setRole(firestoreUserRole)
     }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+        val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+            androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+        ) { isGranted ->
+            android.util.Log.d("MainActivity", "POST_NOTIFICATIONS granted: $isGranted")
+        }
+        LaunchedEffect(Unit) {
+            permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
     val isLoggedIn by campViewModel.isLoggedIn.collectAsStateWithLifecycle()
     val currentUser by campViewModel.currentUserAccount.collectAsStateWithLifecycle()
     val language by campViewModel.language.collectAsStateWithLifecycle()
