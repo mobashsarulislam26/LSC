@@ -28,6 +28,9 @@ interface ParticipantDao {
     @Query("SELECT * FROM participants ORDER BY id ASC")
     fun getAllParticipants(): Flow<List<ParticipantEntity>>
 
+    @Query("SELECT * FROM participants ORDER BY id ASC")
+    suspend fun getAllParticipantsList(): List<ParticipantEntity>
+
     @Query("SELECT * FROM participants WHERE id = :id LIMIT 1")
     suspend fun getParticipantById(id: Long): ParticipantEntity?
 

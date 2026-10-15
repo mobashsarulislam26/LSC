@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.CampLanguage
+import com.example.data.model.UserAccountEntity
 import com.example.data.model.UserRole
 import com.example.ui.theme.*
 
@@ -36,7 +37,9 @@ fun CampTopBar(
     onToggleOffline: () -> Unit,
     onTriggerSync: () -> Unit,
     onOpenScanner: () -> Unit,
-    onOpenSyncManager: () -> Unit = onTriggerSync
+    onOpenSyncManager: () -> Unit = onTriggerSync,
+    currentUser: UserAccountEntity? = null,
+    onLogout: () -> Unit = {}
 ) {
     var showRoleMenu by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
@@ -113,6 +116,36 @@ fun CampTopBar(
 
                 // Action Icons (Language, Admin Lock, QR Scanner, Sync Status, Database Backup)
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Logout Button
+                    Surface(
+                        color = Color(0xFFEF4444).copy(alpha = 0.35f),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier
+                            .testTag("topbar_logout_btn")
+                            .clickable { onLogout() }
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Logout,
+                                contentDescription = "Logout",
+                                tint = Color.White,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(
+                                text = if (language == CampLanguage.BANGLA) "লগআউট" else "Logout",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 10.sp
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
                     // Database Backup Button
                     Surface(
                         color = Color.White.copy(alpha = 0.2f),

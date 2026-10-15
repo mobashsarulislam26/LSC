@@ -24,15 +24,22 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.model.*
 import com.example.ui.components.*
 import com.example.ui.screens.attendance.AttendanceScreen
+import com.example.ui.screens.auth.LoginScreen
 import com.example.ui.screens.bulletin.BulletinScreen
 import com.example.ui.screens.competitions.CompetitionScreen
+import com.example.ui.screens.admin.AdminDashboardScreen
 import com.example.ui.screens.dashboard.CampDashboardScreen
 import com.example.ui.screens.dashboard.RechartsDashboardScreen
+import com.example.ui.screens.dashboard.RoleBasedDashboardWrapper
+import com.example.ui.screens.departments.DepartmentsSopScreen
 import com.example.ui.screens.emergency.EmergencySafeguardingScreen
 import com.example.ui.screens.health.HealthScreen
 import com.example.ui.screens.inventory.InventoryScreen
 import com.example.ui.screens.participants.ParticipantListScreen
+import com.example.ui.screens.rationale.CampRationaleScreen
 import com.example.ui.screens.stations.StationRotationScreen
+import com.example.ui.screens.studytour.StudyTourScreen
+import com.example.ui.screens.subgroups.SubgroupsDirectoryScreen
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.*
 
@@ -49,7 +56,18 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun LscMainApp(campViewModel: CampViewModel = viewModel()) {
+fun LscMainApp(
+    campViewModel: CampViewModel = viewModel(),
+    loginViewModel: LoginViewModel = viewModel()
+) {
+    val authState by loginViewModel.authState.collectAsStateWithLifecycle()
+    val firestoreUserRole by loginViewModel.userRole.collectAsStateWithLifecycle()
+
+    LaunchedEffect(firestoreUserRole) {
+        campViewModel.setRole(firestoreUserRole)
+    }
+    val isLoggedIn by campViewModel.isLoggedIn.collectAsStateWithLifecycle()
+    val currentUser by campViewModel.currentUserAccount.collectAsStateWithLifecycle()
     val language by campViewModel.language.collectAsStateWithLifecycle()
     val currentRole by campViewModel.currentRole.collectAsStateWithLifecycle()
     val isOffline by campViewModel.isOffline.collectAsStateWithLifecycle()
@@ -82,6 +100,8 @@ fun LscMainApp(campViewModel: CampViewModel = viewModel()) {
     val healthStatuses by campViewModel.healthStatuses.collectAsStateWithLifecycle()
     val rooms by campViewModel.rooms.collectAsStateWithLifecycle()
     val mealDistributions by campViewModel.mealDistributions.collectAsStateWithLifecycle()
+    val userAccounts by campViewModel.userAccounts.collectAsStateWithLifecycle()
+    val vehicles by campViewModel.vehicles.collectAsStateWithLifecycle()
 
     var currentTab by remember { mutableIntStateOf(0) }
     var showUniversalScanner by remember { mutableStateOf(false) }
@@ -98,6 +118,27 @@ fun LscMainApp(campViewModel: CampViewModel = viewModel()) {
     var showLowConnectivityDialog by remember { mutableStateOf(false) }
     var selectedMoreModule by remember { mutableStateOf("COMPETITION") } // "COMPETITION", "HEALTH", "INVENTORY", "BULLETIN", "EMERGENCY"
 
+    // Dynamic Options & Control Center State
+    var showAdminControlCenterDialog by remember { mutableStateOf(false) }
+    var showEditStationDialog by remember { mutableStateOf(false) }
+    var stationToEdit by remember { mutableStateOf<StationEntity?>(null) }
+    var showEditScheduleDialog by remember { mutableStateOf(false) }
+    var scheduleToEdit by remember { mutableStateOf<ScheduleEventEntity?>(null) }
+    var showEditRoomDialog by remember { mutableStateOf(false) }
+    var roomToEdit by remember { mutableStateOf<RoomEntity?>(null) }
+    var showCreateNoticeDialog by remember { mutableStateOf(false) }
+    var showLogIncidentDialog by remember { mutableStateOf(false) }
+
+    // Authentication Guard: The app CANNOT be used without login ("login ছাড়া ব্যবহার করা যাবে না")
+    if (!isLoggedIn) {
+        LoginScreen(
+            campViewModel = campViewModel,
+            language = language,
+            onLanguageToggle = { campViewModel.toggleLanguage() }
+        )
+        return
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -107,11 +148,13 @@ fun LscMainApp(campViewModel: CampViewModel = viewModel()) {
                 isOffline = isOffline,
                 pendingSyncCount = pendingSyncCount,
                 isAdminUnlocked = isAdminUnlocked,
+                currentUser = currentUser,
+                onLogout = { campViewModel.logout() },
                 onAdminClick = {
                     if (!isAdminUnlocked) {
                         showAdminAuthDialog = true
                     } else {
-                        campViewModel.lockAdmin()
+                        showAdminControlCenterDialog = true
                     }
                 },
                 onBackupClick = { showBackupDatabaseDialog = true },
@@ -207,6 +250,18 @@ fun LscMainApp(campViewModel: CampViewModel = viewModel()) {
                             } else if (tabIndex == 8) {
                                 currentTab = 4
                                 selectedMoreModule = "CHARTS"
+                            } else if (tabIndex == 9) {
+                                currentTab = 4
+                                selectedMoreModule = "DEPARTMENTS"
+                            } else if (tabIndex == 10) {
+                                currentTab = 4
+                                selectedMoreModule = "SUBGROUPS"
+                            } else if (tabIndex == 11) {
+                                currentTab = 4
+                                selectedMoreModule = "STUDY_TOUR"
+                            } else if (tabIndex == 12) {
+                                currentTab = 4
+                                selectedMoreModule = "RATIONALE"
                             }
                         },
                         onOpenScanner = { showUniversalScanner = true },
@@ -262,6 +317,8 @@ fun LscMainApp(campViewModel: CampViewModel = viewModel()) {
                     AttendanceScreen(
                         language = language,
                         attendanceEvents = attendanceEvents,
+                        attendanceRecords = attendanceRecords,
+                        stations = stations,
                         participants = participants,
                         groups = groups,
                         onMarkAttendance = { evId, p, st ->
@@ -298,7 +355,12 @@ fun LscMainApp(campViewModel: CampViewModel = viewModel()) {
                                 "HEALTH" -> 2
                                 "INVENTORY" -> 3
                                 "BULLETIN" -> 4
-                                else -> 5
+                                "EMERGENCY" -> 5
+                                "DEPARTMENTS" -> 6
+                                "SUBGROUPS" -> 7
+                                "STUDY_TOUR" -> 8
+                                "RATIONALE" -> 9
+                                else -> 0
                             },
                             containerColor = Color.White,
                             contentColor = LscEmeraldPrimary,
@@ -335,6 +397,34 @@ fun LscMainApp(campViewModel: CampViewModel = viewModel()) {
                                 selected = selectedMoreModule == "EMERGENCY",
                                 onClick = { selectedMoreModule = "EMERGENCY" },
                                 text = { Text(if (language == CampLanguage.BANGLA) "জরুরি সেবা" else "Emergency", fontSize = 11.sp) }
+                            )
+                            Tab(
+                                selected = selectedMoreModule == "DEPARTMENTS",
+                                onClick = { selectedMoreModule = "DEPARTMENTS" },
+                                text = { Text(if (language == CampLanguage.BANGLA) "১২টি বিভাগ ও এসওপি" else "12 Depts & SOPs", fontSize = 11.sp, fontWeight = if (selectedMoreModule == "DEPARTMENTS") FontWeight.Bold else FontWeight.Normal) },
+                                icon = { Icon(Icons.Default.CorporateFare, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                                modifier = Modifier.testTag("module_tab_departments")
+                            )
+                            Tab(
+                                selected = selectedMoreModule == "SUBGROUPS",
+                                onClick = { selectedMoreModule = "SUBGROUPS" },
+                                text = { Text(if (language == CampLanguage.BANGLA) "২৪টি সাব-গ্রুপ" else "24 Subgroups", fontSize = 11.sp, fontWeight = if (selectedMoreModule == "SUBGROUPS") FontWeight.Bold else FontWeight.Normal) },
+                                icon = { Icon(Icons.Default.Groups, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                                modifier = Modifier.testTag("module_tab_subgroups")
+                            )
+                            Tab(
+                                selected = selectedMoreModule == "STUDY_TOUR",
+                                onClick = { selectedMoreModule = "STUDY_TOUR" },
+                                text = { Text(if (language == CampLanguage.BANGLA) "শিক্ষা সফর ও বাস" else "Study Tour Fleet", fontSize = 11.sp, fontWeight = if (selectedMoreModule == "STUDY_TOUR") FontWeight.Bold else FontWeight.Normal) },
+                                icon = { Icon(Icons.Default.DirectionsBus, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                                modifier = Modifier.testTag("module_tab_studytour")
+                            )
+                            Tab(
+                                selected = selectedMoreModule == "RATIONALE",
+                                onClick = { selectedMoreModule = "RATIONALE" },
+                                text = { Text(if (language == CampLanguage.BANGLA) "রূপরেখা ও ফলাফল" else "Rationale & Outcomes", fontSize = 11.sp, fontWeight = if (selectedMoreModule == "RATIONALE") FontWeight.Bold else FontWeight.Normal) },
+                                icon = { Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                                modifier = Modifier.testTag("module_tab_rationale")
                             )
                         }
 
@@ -429,6 +519,36 @@ fun LscMainApp(campViewModel: CampViewModel = viewModel()) {
                                     onReportIncident = { title, code, name, sev, loc, desc, act ->
                                         campViewModel.reportIncident(title, code, name, sev, loc, desc, act)
                                     }
+                                )
+                            }
+                            "DEPARTMENTS" -> {
+                                DepartmentsSopScreen(
+                                    language = language,
+                                    onBack = { currentTab = 0 }
+                                )
+                            }
+                            "SUBGROUPS" -> {
+                                val participants by campViewModel.participants.collectAsStateWithLifecycle()
+                                SubgroupsDirectoryScreen(
+                                    language = language,
+                                    groups = groups,
+                                    participants = participants,
+                                    onSelectParticipant = { campViewModel.selectParticipant(it) },
+                                    onBack = { currentTab = 0 }
+                                )
+                            }
+                            "STUDY_TOUR" -> {
+                                StudyTourScreen(
+                                    language = language,
+                                    vehicles = vehicles,
+                                    onUpdateVehicle = { campViewModel.updateVehicle(it) },
+                                    onBack = { currentTab = 0 }
+                                )
+                            }
+                            "RATIONALE" -> {
+                                CampRationaleScreen(
+                                    language = language,
+                                    onBack = { currentTab = 0 }
                                 )
                             }
                         }
@@ -601,10 +721,130 @@ fun LscMainApp(campViewModel: CampViewModel = viewModel()) {
     }
 
     if (showCertificateDialog != null) {
-        CertificateDialog(
+        CertificateGeneratorDialog(
             participant = showCertificateDialog!!,
-            language = language,
+            isBangla = language == CampLanguage.BANGLA,
             onDismiss = { showCertificateDialog = null }
+        )
+    }
+
+    if (showAdminControlCenterDialog) {
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { showAdminControlCenterDialog = false },
+            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            val stationsList by campViewModel.stations.collectAsStateWithLifecycle()
+            val schedulesList by campViewModel.scheduleEvents.collectAsStateWithLifecycle()
+            val roomsList by campViewModel.rooms.collectAsStateWithLifecycle()
+            val usersList by campViewModel.userAccounts.collectAsStateWithLifecycle()
+
+            AdminDashboardScreen(
+                language = language,
+                stations = stationsList,
+                schedules = schedulesList,
+                rooms = roomsList,
+                groups = groups,
+                userAccounts = usersList,
+                onAddStation = { campViewModel.addStation(it) },
+                onUpdateStation = { campViewModel.updateStation(it) },
+                onDeleteStation = { campViewModel.deleteStation(it) },
+                onAddSchedule = { campViewModel.addScheduleEvent(it) },
+                onUpdateSchedule = { campViewModel.updateScheduleEvent(it) },
+                onDeleteSchedule = { campViewModel.deleteScheduleEvent(it) },
+                onAddRoom = { campViewModel.addRoom(it) },
+                onUpdateRoom = { campViewModel.updateRoom(it) },
+                onDeleteRoom = { campViewModel.deleteRoom(it) },
+                onAssignUserRole = { uid, r ->
+                    (authState as? AuthState.Authenticated)?.user?.let { user ->
+                        loginViewModel.assignRoleAndProceed(user, r)
+                    }
+                },
+                onBackToMain = { showAdminControlCenterDialog = false },
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+    }
+
+    if (showEditStationDialog) {
+        EditStationDialog(
+            station = stationToEdit,
+            isBangla = language == CampLanguage.BANGLA,
+            onDismiss = {
+                showEditStationDialog = false
+                stationToEdit = null
+            },
+            onSave = { st ->
+                if (stationToEdit == null) {
+                    campViewModel.addStation(st)
+                } else {
+                    campViewModel.updateStation(st)
+                }
+                showEditStationDialog = false
+                stationToEdit = null
+            }
+        )
+    }
+
+    if (showEditScheduleDialog) {
+        EditScheduleEventDialog(
+            event = scheduleToEdit,
+            isBangla = language == CampLanguage.BANGLA,
+            onDismiss = {
+                showEditScheduleDialog = false
+                scheduleToEdit = null
+            },
+            onSave = { ev ->
+                if (scheduleToEdit == null) {
+                    campViewModel.addScheduleEvent(ev)
+                } else {
+                    campViewModel.updateScheduleEvent(ev)
+                }
+                showEditScheduleDialog = false
+                scheduleToEdit = null
+            }
+        )
+    }
+
+    if (showEditRoomDialog) {
+        EditRoomDialog(
+            room = roomToEdit,
+            groups = groups,
+            isBangla = language == CampLanguage.BANGLA,
+            onDismiss = {
+                showEditRoomDialog = false
+                roomToEdit = null
+            },
+            onSave = { rm ->
+                if (roomToEdit == null) {
+                    campViewModel.addRoom(rm)
+                } else {
+                    campViewModel.updateRoom(rm)
+                }
+                showEditRoomDialog = false
+                roomToEdit = null
+            }
+        )
+    }
+
+    if (showCreateNoticeDialog) {
+        CreateNoticeDialog(
+            isBangla = language == CampLanguage.BANGLA,
+            onDismiss = { showCreateNoticeDialog = false },
+            onPublish = { notice ->
+                campViewModel.addBulletinNotice(notice)
+                showCreateNoticeDialog = false
+            }
+        )
+    }
+
+    if (showLogIncidentDialog) {
+        LogIncidentDialog(
+            isBangla = language == CampLanguage.BANGLA,
+            onDismiss = { showLogIncidentDialog = false },
+            onSubmit = { title, pCode, pName, severity, location, desc, action ->
+                campViewModel.reportIncident(title, pCode, pName, severity, location, desc, action)
+                showLogIncidentDialog = false
+            }
         )
     }
 

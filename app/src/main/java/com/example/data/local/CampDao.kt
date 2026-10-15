@@ -79,11 +79,26 @@ interface CampDao {
     @Query("SELECT * FROM stations ORDER BY id ASC")
     fun getAllStations(): Flow<List<StationEntity>>
 
+    @Query("SELECT * FROM stations ORDER BY id ASC")
+    suspend fun getAllStationsList(): List<StationEntity>
+
+    @Query("SELECT * FROM stations WHERE id = :id LIMIT 1")
+    suspend fun getStationById(id: Int): StationEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertStations(stations: List<StationEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertStation(station: StationEntity): Long
+
     @Update
     suspend fun updateStation(station: StationEntity)
+
+    @Delete
+    suspend fun deleteStation(station: StationEntity)
+
+    @Query("DELETE FROM stations WHERE id = :id")
+    suspend fun deleteStationById(id: Int)
 
     // Schedule
     @Query("SELECT * FROM schedule_events WHERE dayNo = :dayNo ORDER BY id ASC")
@@ -95,8 +110,17 @@ interface CampDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertScheduleEvents(events: List<ScheduleEventEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertScheduleEvent(event: ScheduleEventEntity): Long
+
     @Update
     suspend fun updateScheduleEvent(event: ScheduleEventEntity)
+
+    @Delete
+    suspend fun deleteScheduleEvent(event: ScheduleEventEntity)
+
+    @Query("DELETE FROM schedule_events WHERE id = :id")
+    suspend fun deleteScheduleEventById(id: Long)
 
     // Attendance Events
     @Query("SELECT * FROM attendance_events ORDER BY dayNo ASC, id ASC")
@@ -113,6 +137,9 @@ interface CampDao {
 
     @Update
     suspend fun updateAttendanceEvent(event: AttendanceEventEntity)
+
+    @Delete
+    suspend fun deleteAttendanceEvent(event: AttendanceEventEntity)
 
     // Attendance Records
     @Query("SELECT * FROM attendance_records WHERE eventId = :eventId ORDER BY scannedAt DESC")
@@ -257,6 +284,12 @@ interface CampDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBulletin(bulletin: BulletinEntity): Long
 
+    @Update
+    suspend fun updateBulletin(bulletin: BulletinEntity)
+
+    @Delete
+    suspend fun deleteBulletin(bulletin: BulletinEntity)
+
     // Incidents
     @Query("SELECT * FROM incidents ORDER BY timestamp DESC")
     fun getAllIncidents(): Flow<List<IncidentEntity>>
@@ -266,6 +299,9 @@ interface CampDao {
 
     @Update
     suspend fun updateIncident(incident: IncidentEntity)
+
+    @Delete
+    suspend fun deleteIncident(incident: IncidentEntity)
 
     // Meals
     @Query("SELECT * FROM meal_distributions ORDER BY claimedAt DESC")
@@ -286,6 +322,9 @@ interface CampDao {
     // Accommodation & Rooms
     @Query("SELECT * FROM camp_rooms ORDER BY buildingName ASC, roomNo ASC")
     fun getAllRooms(): Flow<List<RoomEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRoom(room: RoomEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRooms(rooms: List<RoomEntity>)
@@ -458,4 +497,19 @@ interface CampDao {
 
     @Query("UPDATE attendance_records SET isSynced = 1 WHERE isSynced = 0")
     suspend fun markAllAttendanceRecordsSynced(): Int
+
+    @Query("UPDATE attendance_records SET isSynced = 1 WHERE id = :id")
+    suspend fun markAttendanceRecordSynced(id: Long)
+
+    @Query("SELECT * FROM incidents WHERE isSynced = 0 ORDER BY timestamp ASC")
+    suspend fun getUnsyncedIncidents(): List<IncidentEntity>
+
+    @Query("UPDATE incidents SET isSynced = 1 WHERE id = :id")
+    suspend fun markIncidentSynced(id: Long)
+
+    @Query("SELECT * FROM health_records WHERE isSynced = 0 ORDER BY createdAt ASC")
+    suspend fun getUnsyncedHealthRecords(): List<HealthRecordEntity>
+
+    @Query("UPDATE health_records SET isSynced = 1 WHERE id = :id")
+    suspend fun markHealthRecordSynced(id: Long)
 }

@@ -35,13 +35,14 @@ import com.example.data.model.*
         ParticipantHealthStatusEntity::class,
         CachedSyncItemEntity::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 abstract class CampDatabase : RoomDatabase() {
 
     abstract fun campDao(): CampDao
     abstract fun participantDao(): ParticipantDao
+    abstract fun stationDao(): StationDao
     abstract fun participantHealthDao(): ParticipantHealthDao
 
     companion object {

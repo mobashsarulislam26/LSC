@@ -1,9 +1,12 @@
 package com.example.data.repository
 
 import android.content.Context
+import com.example.data.firestore.FirestoreManager
 import com.example.data.local.CampDao
 import com.example.data.local.CampDatabase
+import com.example.data.local.ParticipantDao
 import com.example.data.local.ParticipantHealthDao
+import com.example.data.local.StationDao
 import com.example.data.model.*
 import com.example.data.sample.SeedData
 import java.text.SimpleDateFormat
@@ -16,14 +19,16 @@ import kotlinx.coroutines.withContext
 
 class CampRepository(
     private val dao: CampDao,
-    private val healthDao: ParticipantHealthDao? = null
+    private val healthDao: ParticipantHealthDao? = null,
+    private val participantDao: ParticipantDao? = null,
+    private val stationDao: StationDao? = null
 ) {
-    val participants: Flow<List<ParticipantEntity>> = dao.getAllParticipants()
-    val participantCount: Flow<Int> = dao.observeParticipantCount()
+    val participants: Flow<List<ParticipantEntity>> = participantDao?.getAllParticipants() ?: dao.getAllParticipants()
+    val participantCount: Flow<Int> = participantDao?.observeParticipantCount() ?: dao.observeParticipantCount()
     val healthStatuses: Flow<List<ParticipantHealthStatusEntity>> =
         healthDao?.getAllHealthStatuses() ?: flowOf(emptyList())
     val groups: Flow<List<CampGroupEntity>> = dao.getAllGroups()
-    val stations: Flow<List<StationEntity>> = dao.getAllStations()
+    val stations: Flow<List<StationEntity>> = stationDao?.getAllStations() ?: dao.getAllStations()
     val schedule: Flow<List<ScheduleEventEntity>> = dao.getAllSchedule()
     val attendanceEvents: Flow<List<AttendanceEventEntity>> = dao.getAllAttendanceEvents()
     val attendanceRecords: Flow<List<AttendanceRecordEntity>> = dao.getAllAttendanceRecords()
@@ -204,7 +209,12 @@ class CampRepository(
     }
 
     suspend fun publishBulletin(bulletin: BulletinEntity): Long = withContext(Dispatchers.IO) {
-        dao.insertBulletin(bulletin)
+        val id = dao.insertBulletin(bulletin)
+        val saved = if (bulletin.id == 0L) bulletin.copy(id = id) else bulletin
+        try {
+            FirestoreManager.saveBulletin(saved)
+        } catch (_: Exception) {}
+        id
     }
 
     suspend fun addVolunteers(volunteers: List<VolunteerEntity>) = withContext(Dispatchers.IO) {
@@ -300,11 +310,19 @@ class CampRepository(
     }
 
     suspend fun reportIncident(incident: IncidentEntity): Long = withContext(Dispatchers.IO) {
-        dao.insertIncident(incident)
+        val id = dao.insertIncident(incident)
+        val saved = if (incident.id == 0L) incident.copy(id = id) else incident
+        try {
+            FirestoreManager.saveIncident(saved)
+        } catch (_: Exception) {}
+        id
     }
 
     suspend fun updateIncident(incident: IncidentEntity) = withContext(Dispatchers.IO) {
         dao.updateIncident(incident)
+        try {
+            FirestoreManager.saveIncident(incident)
+        } catch (_: Exception) {}
     }
 
     suspend fun claimMeal(dayNo: Int, mealType: String, participant: ParticipantEntity): Pair<Boolean, String> =
@@ -369,11 +387,79 @@ class CampRepository(
     }
 
     suspend fun updateStation(station: StationEntity) = withContext(Dispatchers.IO) {
-        dao.updateStation(station)
+        if (stationDao != null) {
+            stationDao.updateStation(station)
+        } else {
+            dao.updateStation(station)
+        }
+    }
+
+    suspend fun insertStation(station: StationEntity) = withContext(Dispatchers.IO) {
+        if (stationDao != null) {
+            stationDao.insertStation(station)
+        } else {
+            dao.insertStation(station)
+        }
+    }
+
+    suspend fun deleteStation(station: StationEntity) = withContext(Dispatchers.IO) {
+        if (stationDao != null) {
+            stationDao.deleteStationById(station.id)
+        } else {
+            dao.deleteStation(station)
+        }
+    }
+
+    suspend fun getStationById(id: Int): StationEntity? = withContext(Dispatchers.IO) {
+        stationDao?.getStationByIdImmediate(id) ?: dao.getAllStationsList().find { it.id == id }
+    }
+
+    fun searchStations(query: String): Flow<List<StationEntity>> {
+        return stationDao?.searchStations(query) ?: dao.getAllStations()
+    }
+
+    suspend fun deleteStationById(id: Int) = withContext(Dispatchers.IO) {
+        if (stationDao != null) {
+            stationDao.deleteStationById(id)
+        } else {
+            dao.deleteStationById(id)
+        }
+    }
+
+    suspend fun addScheduleEvent(event: ScheduleEventEntity) = withContext(Dispatchers.IO) {
+        dao.insertScheduleEvent(event)
+    }
+
+    suspend fun deleteScheduleEvent(event: ScheduleEventEntity) = withContext(Dispatchers.IO) {
+        dao.deleteScheduleEvent(event)
+    }
+
+    suspend fun addRoom(room: RoomEntity) = withContext(Dispatchers.IO) {
+        dao.insertRoom(room)
     }
 
     suspend fun updateRoom(room: RoomEntity) = withContext(Dispatchers.IO) {
         dao.updateRoom(room)
+    }
+
+    suspend fun deleteRoom(room: RoomEntity) = withContext(Dispatchers.IO) {
+        dao.deleteRoom(room)
+    }
+
+    suspend fun addBulletinNotice(bulletin: BulletinEntity) = withContext(Dispatchers.IO) {
+        dao.insertBulletin(bulletin)
+    }
+
+    suspend fun updateBulletinNotice(bulletin: BulletinEntity) = withContext(Dispatchers.IO) {
+        dao.updateBulletin(bulletin)
+    }
+
+    suspend fun deleteBulletinNotice(bulletin: BulletinEntity) = withContext(Dispatchers.IO) {
+        dao.deleteBulletin(bulletin)
+    }
+
+    suspend fun deleteIncidentReport(incident: IncidentEntity) = withContext(Dispatchers.IO) {
+        dao.deleteIncident(incident)
     }
 
     suspend fun updateVehicle(vehicle: TravelVehicleEntity) = withContext(Dispatchers.IO) {
@@ -418,6 +504,75 @@ class CampRepository(
         } else {
             null
         }
+    }
+
+    suspend fun signUpUser(
+        fullName: String,
+        email: String,
+        role: String,
+        phone: String = ""
+    ): Pair<UserAccountEntity, String> = withContext(Dispatchers.IO) {
+        val cleanEmail = email.trim().lowercase()
+        val cleanName = fullName.trim()
+        val cleanPhone = phone.trim()
+
+        // Generate a 4-digit numeric code combined with prefix for secure, memorable password
+        val randomDigits = (1000..9999).random()
+        val generatedPassword = "Lsc#$randomDigits"
+
+        val existing = dao.getUserAccount(cleanEmail)
+        val user = if (existing != null) {
+            existing.copy(
+                fullName = if (cleanName.isNotBlank()) cleanName else existing.fullName,
+                role = role,
+                passwordHash = generatedPassword,
+                phone = if (cleanPhone.isNotBlank()) cleanPhone else existing.phone,
+                isActive = true
+            )
+        } else {
+            UserAccountEntity(
+                email = cleanEmail,
+                fullName = cleanName,
+                role = role,
+                passwordHash = generatedPassword,
+                phone = cleanPhone,
+                isActive = true,
+                lastLoginTime = System.currentTimeMillis()
+            )
+        }
+
+        dao.insertUserAccount(user)
+        dao.insertAuditLog(
+            AuditLogEntity(
+                userEmail = cleanEmail,
+                actionType = "SIGN_UP",
+                targetEntity = "UserAccount",
+                description = "নতুন অ্যাকাউন্ট সাইন আপ: $cleanName ($role), ইমেলে পাসওয়ার্ড প্রেরণ প্রক্রিয়া সম্পন্ন"
+            )
+        )
+        Pair(user, generatedPassword)
+    }
+
+    suspend fun requestPasswordResetToEmail(email: String): Pair<UserAccountEntity, String>? = withContext(Dispatchers.IO) {
+        val cleanEmail = email.trim().lowercase()
+        val user = dao.getUserAccount(cleanEmail)
+            ?: SeedData.staffAccounts.find { it.email.equals(cleanEmail, ignoreCase = true) }
+            ?: return@withContext null
+
+        val randomDigits = (1000..9999).random()
+        val newPassword = "Lsc#$randomDigits"
+        val updatedUser = user.copy(passwordHash = newPassword)
+
+        dao.insertUserAccount(updatedUser)
+        dao.insertAuditLog(
+            AuditLogEntity(
+                userEmail = cleanEmail,
+                actionType = "PASSWORD_RESET",
+                targetEntity = "UserAccount",
+                description = "ইমেলে পাসওয়ার্ড রিসেট ও পুনর্প্রেরণ সম্পন্ন: ${user.fullName}"
+            )
+        )
+        Pair(updatedUser, newPassword)
     }
 
     suspend fun ensureSeeded() = withContext(Dispatchers.IO) {
@@ -767,7 +922,12 @@ class CampRepository(
         fun getInstance(context: Context): CampRepository {
             return INSTANCE ?: synchronized(this) {
                 val db = CampDatabase.getDatabase(context)
-                val instance = CampRepository(db.campDao(), db.participantHealthDao())
+                val instance = CampRepository(
+                    dao = db.campDao(),
+                    healthDao = db.participantHealthDao(),
+                    participantDao = db.participantDao(),
+                    stationDao = db.stationDao()
+                )
                 INSTANCE = instance
                 instance
             }

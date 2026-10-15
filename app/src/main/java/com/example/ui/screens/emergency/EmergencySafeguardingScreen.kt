@@ -141,7 +141,7 @@ fun EmergencySafeguardingScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "কোনো অমীমাংসিত জরুরি ঘটনা নেই। সকল অংশগ্রহণকারী নিরাপদে আছেন।",
+                            text = if (language == CampLanguage.BANGLA) "কোনো অমীমাংসিত জরুরি ঘটনা নেই। সকল অংশগ্রহণকারী নিরাপদে আছেন।" else "No unresolved emergency incidents. All participants safe.",
                             fontSize = 11.sp,
                             color = Color(0xFF16A34A),
                             modifier = Modifier.padding(12.dp)
@@ -159,9 +159,35 @@ fun EmergencySafeguardingScreen(
                         Column(modifier = Modifier.padding(12.dp)) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(text = inc.title, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    val catText = when(inc.category) {
+                                        "LOST_AND_FOUND" -> "🔍 হারানো/প্রাপ্তি"
+                                        "MEDICAL" -> "🩺 চিকিৎসা"
+                                        "SAFETY" -> "🛡️ নিরাপত্তা"
+                                        "INFRASTRUCTURE" -> "⛺ বাসস্থান"
+                                        else -> "📌 ঘটনা"
+                                    }
+                                    val catBg = when(inc.category) {
+                                        "LOST_AND_FOUND" -> Color(0xFFFEF3C7)
+                                        "MEDICAL" -> Color(0xFFFEE2E2)
+                                        "SAFETY" -> Color(0xFFFEE2E2)
+                                        else -> Color(0xFFE2E8F0)
+                                    }
+                                    val catColor = when(inc.category) {
+                                        "LOST_AND_FOUND" -> Color(0xFF92400E)
+                                        "MEDICAL" -> Color(0xFF991B1B)
+                                        "SAFETY" -> Color(0xFF991B1B)
+                                        else -> Color(0xFF334155)
+                                    }
+                                    Surface(color = catBg, shape = RoundedCornerShape(4.dp)) {
+                                        Text(text = catText, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = catColor, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
+                                    }
+                                    Text(text = inc.title, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                }
+
                                 Surface(
                                     color = if (inc.status == "RESOLVED") Color(0xFFDCFCE7) else Color(0xFFFEE2E2),
                                     shape = RoundedCornerShape(4.dp)
@@ -175,9 +201,14 @@ fun EmergencySafeguardingScreen(
                                     )
                                 }
                             }
-                            Spacer(modifier = Modifier.height(2.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
+                            if (!inc.participantName.isNull_or_blank()) {
+                                Text(text = "অংশগ্রহণকারী: ${inc.participantName} ${inc.participantCampCode?.let { "($it)" } ?: ""}", fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = LscSlateDark)
+                            }
                             Text(text = "স্থান: ${inc.location} • বর্ণনা: ${inc.description}", fontSize = 10.sp, color = Color.Gray)
-                            Text(text = "গৃহীত পদক্ষেপ: ${inc.actionTaken}", fontSize = 10.sp, color = Color.DarkGray)
+                            if (inc.actionTaken.isNotBlank()) {
+                                Text(text = "গৃহীত পদক্ষেপ: ${inc.actionTaken}", fontSize = 10.sp, color = Color.DarkGray)
+                            }
                         }
                     }
                 }
@@ -196,6 +227,8 @@ fun EmergencySafeguardingScreen(
         )
     }
 }
+
+private fun String?.isNull_or_blank(): Boolean = this.isNullOrBlank()
 
 @Composable
 fun EmergencyContactRow(
@@ -267,6 +300,9 @@ fun ReportIncidentDialog(
     onSubmit: (String, String?, String?, String, String, String, String) -> Unit
 ) {
     var title by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf("MEDICAL") }
+    var participantCode by remember { mutableStateOf("") }
+    var participantName by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var actionTaken by remember { mutableStateOf("") }
@@ -280,28 +316,69 @@ fun ReportIncidentDialog(
         ) {
             Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                 Text(
-                    text = if (language == CampLanguage.BANGLA) "জরুরি ঘটনা / মিসিং চাইল্ড রিপোর্ট" else "Emergency / Missing Alert",
+                    text = if (language == CampLanguage.BANGLA) "ঘটনা ও হারানো-প্রাপ্তি রিপোর্ট" else "Log Incident / Lost & Found",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
+                    fontSize = 15.sp,
                     color = Color(0xFFDC2626)
                 )
 
                 Spacer(modifier = Modifier.height(10.dp))
 
+                // Category selection
+                Text(text = "ক্যাটাগরি নির্বাচন করুন:", fontSize = 11.sp, color = Color.Gray)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    FilterChip(
+                        selected = category == "MEDICAL",
+                        onClick = { category = "MEDICAL" },
+                        label = { Text("🩺 চিকিৎসা", fontSize = 10.sp) }
+                    )
+                    FilterChip(
+                        selected = category == "LOST_AND_FOUND",
+                        onClick = { category = "LOST_AND_FOUND" },
+                        label = { Text("🔍 হারানো/প্রাপ্তি", fontSize = 10.sp) }
+                    )
+                    FilterChip(
+                        selected = category == "SAFETY",
+                        onClick = { category = "SAFETY" },
+                        label = { Text("🛡️ নিরাপত্তা", fontSize = 10.sp) }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    placeholder = { Text("শিরোনাম (যেমন: নামাজের পর রুমে অনুপস্থিত)", fontSize = 11.sp) },
-                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text(if (category == "LOST_AND_FOUND") "যেমন: কালো রঙের ওয়াচ বা মোবাইল হারানো" else "শিরোনাম (যেমন: জ্বর ও শ্বাসকষ্ট)", fontSize = 11.sp) },
+                    modifier = Modifier.fillMaxWidth().testTag("incident_title_input"),
                     singleLine = true
                 )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OutlinedTextField(
+                        value = participantName,
+                        onValueChange = { participantName = it },
+                        placeholder = { Text("নাম (ঐচ্ছিক)", fontSize = 11.sp) },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = participantCode,
+                        onValueChange = { participantCode = it },
+                        placeholder = { Text("কোড (e.g. LSC-001)", fontSize = 11.sp) },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(6.dp))
 
                 OutlinedTextField(
                     value = location,
                     onValueChange = { location = it },
-                    placeholder = { Text("স্থান (যেমন: ব্লক এ ডরমিটরি)", fontSize = 11.sp) },
+                    placeholder = { Text("স্থান (যেমন: ৩ নং স্টেশন / ডাইনিং হল)", fontSize = 11.sp) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
@@ -320,7 +397,7 @@ fun ReportIncidentDialog(
                 OutlinedTextField(
                     value = actionTaken,
                     onValueChange = { actionTaken = it },
-                    placeholder = { Text("তাৎক্ষণিক গৃহীত পদক্ষেপ...", fontSize = 11.sp) },
+                    placeholder = { Text("তাৎক্ষণিক গৃহীত পদক্ষেপ (যদি থাকে)...", fontSize = 11.sp) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
@@ -334,13 +411,13 @@ fun ReportIncidentDialog(
                     Button(
                         onClick = {
                             if (title.isNotBlank()) {
-                                onSubmit(title, null, null, severity, location.ifEmpty { "ক্যাম্প প্রাঙ্গণ" }, description, actionTaken.ifEmpty { "তদন্ত চলছে" })
+                                onSubmit(title, participantCode.ifBlank { null }, participantName.ifBlank { null }, severity, location.ifEmpty { "ক্যাম্প প্রাঙ্গণ" }, description, actionTaken.ifEmpty { "নথিভুক্ত করা হয়েছে" })
                             }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).testTag("submit_incident_btn")
                     ) {
-                        Text("রিপোর্ট দাখিল")
+                        Text("দাখিল করুন")
                     }
                 }
             }

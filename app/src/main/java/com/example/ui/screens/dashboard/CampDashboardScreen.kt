@@ -174,11 +174,158 @@ fun CampDashboardScreen(
             }
         }
 
+        // LSC 2025 Core Modules Quick Navigation (From Rationale Document)
+        item {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .background(LscEmeraldLight, CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.MenuBook, contentDescription = null, tint = LscEmeraldPrimary, modifier = Modifier.size(18.dp))
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (language == CampLanguage.BANGLA) "ক্যাম্প ২০২৫ কাঠামো ও দিকনির্দেশনা" else "LSC 2025 Camp Blueprint",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                color = LscSlateDark
+                            )
+                        }
+                        Surface(
+                            color = LscEmeraldLight,
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text = "LSC 2025",
+                                color = LscEmeraldPrimary,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Surface(
+                            color = Color(0xFFDCFCE7),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { onNavigateToTab(9) }
+                                .padding(vertical = 2.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Icon(Icons.Default.CorporateFare, contentDescription = null, tint = Color(0xFF15803D), modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = if (language == CampLanguage.BANGLA) "১২টি বিভাগ ও এসওপি" else "12 Depts & SOPs",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF166534)
+                                )
+                                Text(text = "দায়িত্ব ও চেকলিস্ট", fontSize = 9.sp, color = Color(0xFF15803D))
+                            }
+                        }
+
+                        Surface(
+                            color = Color(0xFFE0E7FF),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { onNavigateToTab(10) }
+                                .padding(vertical = 2.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Icon(Icons.Default.Groups, contentDescription = null, tint = Color(0xFF4338CA), modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = if (language == CampLanguage.BANGLA) "২৪টি সাব-গ্রুপ" else "24 Subgroups",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF3730A3)
+                                )
+                                Text(text = "মেন্টর ও রুম ডিরেক্টরি", fontSize = 9.sp, color = Color(0xFF4338CA))
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Surface(
+                            color = Color(0xFFFEF3C7),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { onNavigateToTab(11) }
+                                .padding(vertical = 2.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Icon(Icons.Default.DirectionsBus, contentDescription = null, tint = Color(0xFFD97706), modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = if (language == CampLanguage.BANGLA) "শিক্ষা সফর ও বাস" else "Study Tour Fleet",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF92400E)
+                                )
+                                Text(text = "হেডকাউন্ট ও বহর", fontSize = 9.sp, color = Color(0xFFB45309))
+                            }
+                        }
+
+                        Surface(
+                            color = Color(0xFFF1F5F9),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { onNavigateToTab(12) }
+                                .padding(vertical = 2.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = LscEmeraldPrimary, modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = if (language == CampLanguage.BANGLA) "রূপরেখা ও ফলাফল" else "Rationale & Outcomes",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF1E293B)
+                                )
+                                Text(text = "৫ স্তম্ভ ও লক্ষ্যমাত্রা (পৃ. ৩৪)", fontSize = 9.sp, color = Color.Gray)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // Station Check-In Summary View (pulling live check-in counts from Room database)
         item {
             StationCheckInSummaryCard(
                 stations = stations,
                 attendanceRecords = attendanceRecords,
+                participants = participants,
                 scheduleEvents = scheduleEvents,
                 language = language,
                 onOpenScanner = onOpenScanner,

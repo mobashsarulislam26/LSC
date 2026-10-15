@@ -214,7 +214,8 @@ data class HealthRecordEntity(
     val priority: String = "NORMAL", // "HIGH", "NORMAL", "LOW"
     val status: String = "PENDING", // "PENDING", "ATTENDED", "RESOLVED"
     val followUpDate: String? = null,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val isSynced: Boolean = true
 )
 
 @Entity(tableName = "inventory_items")
@@ -265,15 +266,17 @@ data class BulletinEntity(
 data class IncidentEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val title: String,
+    val category: String = "MEDICAL", // "LOST_AND_FOUND", "MEDICAL", "SAFETY", "INFRASTRUCTURE", "GENERAL"
     val participantCampCode: String? = null,
     val participantName: String? = null,
-    val severity: String, // "LOW", "MEDIUM", "HIGH", "CRITICAL"
-    val location: String,
-    val description: String,
-    val actionTaken: String,
-    val reporter: String,
-    val status: String = "RESOLVED", // "OPEN", "IN_PROGRESS", "RESOLVED"
-    val timestamp: Long = System.currentTimeMillis()
+    val severity: String = "MEDIUM", // "LOW", "MEDIUM", "HIGH", "CRITICAL"
+    val location: String = "ক্যাম্প গ্রাউন্ড",
+    val description: String = "",
+    val actionTaken: String = "",
+    val reporter: String = "স্টাফ/অংশগ্রহণকারী",
+    val status: String = "OPEN", // "OPEN", "IN_PROGRESS", "RESOLVED"
+    val timestamp: Long = System.currentTimeMillis(),
+    val isSynced: Boolean = true
 )
 
 @Entity(tableName = "meal_distributions")
@@ -367,6 +370,22 @@ data class UserAccountEntity(
     val isActive: Boolean = true,
     val lastLoginTime: Long = System.currentTimeMillis()
 )
+
+fun UserAccountEntity.toUserRole(): UserRole {
+    return when (role.uppercase()) {
+        "SUPER_ADMIN" -> UserRole.SUPER_ADMIN
+        "CAMP_CHIEF" -> UserRole.CAMP_CHIEF
+        "REGISTRATION", "VOLUNTEER" -> UserRole.VOLUNTEER
+        "MEDICAL", "MEDICAL_TEAM" -> UserRole.MEDICAL_TEAM
+        "JUDGE", "COMPETITION_JUDGE" -> UserRole.COMPETITION_JUDGE
+        "LOGISTICS", "INVENTORY" -> UserRole.INVENTORY_OFFICER
+        "GROUP_LEADER" -> UserRole.GROUP_LEADER
+        "MENTOR" -> UserRole.MENTOR
+        "STATION_MODERATOR" -> UserRole.STATION_MODERATOR
+        "BULLETIN" -> UserRole.BULLETIN_EDITOR
+        else -> UserRole.CAMP_CHIEF
+    }
+}
 
 @Entity(tableName = "audit_logs")
 data class AuditLogEntity(

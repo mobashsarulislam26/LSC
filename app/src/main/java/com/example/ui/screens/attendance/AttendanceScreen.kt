@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.*
+import com.example.ui.components.ExportAttendanceDialog
 import com.example.ui.theme.*
 
 @Composable
@@ -31,11 +32,14 @@ fun AttendanceScreen(
     participants: List<ParticipantEntity>,
     groups: List<CampGroupEntity>,
     onMarkAttendance: (eventId: Long, participant: ParticipantEntity, status: String) -> Unit,
-    onOpenScanner: () -> Unit
+    onOpenScanner: () -> Unit,
+    attendanceRecords: List<AttendanceRecordEntity> = emptyList(),
+    stations: List<StationEntity> = emptyList()
 ) {
     var selectedEventId by remember { mutableStateOf(attendanceEvents.firstOrNull()?.id ?: 2L) }
     var selectedGroupFilter by remember { mutableStateOf<String?>(null) }
     var showOnlyAbsent by remember { mutableStateOf(false) }
+    var showExportAttendanceDialog by remember { mutableStateOf(false) }
 
     val currentEvent = attendanceEvents.find { it.id == selectedEventId } ?: attendanceEvents.firstOrNull()
 
@@ -106,17 +110,40 @@ fun AttendanceScreen(
                              )
                         }
 
-                        // Fast QR scan launcher for this event
-                        Button(
-                            onClick = onOpenScanner,
-                            colors = ButtonDefaults.buttonColors(containerColor = LscGoldSecondary),
-                            shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                            modifier = Modifier.testTag("event_qr_scan_btn")
-                        ) {
-                            Icon(Icons.Default.QrCodeScanner, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(if (language == CampLanguage.BANGLA) "QR স্ক্যান" else "Scan", fontSize = 11.sp)
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            // CSV Export Button
+                            OutlinedButton(
+                                onClick = { showExportAttendanceDialog = true },
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                                modifier = Modifier
+                                    .height(36.dp)
+                                    .testTag("export_attendance_csv_btn")
+                            ) {
+                                Icon(Icons.Default.Download, contentDescription = "Export CSV", modifier = Modifier.size(15.dp), tint = LscEmeraldPrimary)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = if (language == CampLanguage.BANGLA) "CSV" else "CSV",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = LscEmeraldPrimary
+                                )
+                            }
+
+                            // Fast QR scan launcher for this event
+                            Button(
+                                onClick = onOpenScanner,
+                                colors = ButtonDefaults.buttonColors(containerColor = LscGoldSecondary),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                                modifier = Modifier
+                                    .height(36.dp)
+                                    .testTag("event_qr_scan_btn")
+                            ) {
+                                Icon(Icons.Default.QrCodeScanner, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(if (language == CampLanguage.BANGLA) "QR স্ক্যান" else "Scan", fontSize = 11.sp)
+                            }
                         }
                     }
 
@@ -224,6 +251,17 @@ fun AttendanceScreen(
                 )
             }
         }
+    }
+
+    if (showExportAttendanceDialog) {
+        ExportAttendanceDialog(
+            language = language,
+            attendanceRecords = attendanceRecords,
+            attendanceEvents = attendanceEvents,
+            stations = stations,
+            initialEventId = selectedEventId,
+            onDismiss = { showExportAttendanceDialog = false }
+        )
     }
 }
 

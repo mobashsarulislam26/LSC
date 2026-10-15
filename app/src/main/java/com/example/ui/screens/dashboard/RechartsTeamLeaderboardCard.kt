@@ -38,7 +38,7 @@ data class TeamStationScoreSummary(
     val groupId: String,
     val groupNameBn: String,
     val groupNameEn: String,
-    val colorHex: String,
+    val colorHex: Long,
     val s1Score: Double, // Hadith
     val s2Score: Double, // Quran
     val s3Score: Double, // STEM
@@ -71,14 +71,15 @@ fun aggregateTeamStationScores(
         }
 
         // Aggregate by station competition ID (1 to 6)
-        val s1 = groupScores.filter { it.competitionId == 1L }.sumOf { it.totalScore }.let { if (it > 0) it else (grp.totalPoints * 0.18) }
-        val s2 = groupScores.filter { it.competitionId == 2L }.sumOf { it.totalScore }.let { if (it > 0) it else (grp.totalPoints * 0.17) }
-        val s3 = groupScores.filter { it.competitionId == 3L }.sumOf { it.totalScore }.let { if (it > 0) it else (grp.totalPoints * 0.16) }
-        val s4 = groupScores.filter { it.competitionId == 4L }.sumOf { it.totalScore }.let { if (it > 0) it else (grp.totalPoints * 0.16) }
-        val s5 = groupScores.filter { it.competitionId == 5L }.sumOf { it.totalScore }.let { if (it > 0) it else (grp.totalPoints * 0.17) }
-        val s6 = groupScores.filter { it.competitionId == 6L }.sumOf { it.totalScore }.let { if (it > 0) it else (grp.totalPoints * 0.16) }
+        val hasScores = groupScores.isNotEmpty()
+        val s1 = if (hasScores) groupScores.filter { it.competitionId == 1L }.sumOf { it.totalScore } else (grp.totalPoints * 0.18)
+        val s2 = if (hasScores) groupScores.filter { it.competitionId == 2L }.sumOf { it.totalScore } else (grp.totalPoints * 0.17)
+        val s3 = if (hasScores) groupScores.filter { it.competitionId == 3L }.sumOf { it.totalScore } else (grp.totalPoints * 0.16)
+        val s4 = if (hasScores) groupScores.filter { it.competitionId == 4L }.sumOf { it.totalScore } else (grp.totalPoints * 0.16)
+        val s5 = if (hasScores) groupScores.filter { it.competitionId == 5L }.sumOf { it.totalScore } else (grp.totalPoints * 0.17)
+        val s6 = if (hasScores) groupScores.filter { it.competitionId == 6L }.sumOf { it.totalScore } else (grp.totalPoints * 0.16)
 
-        val total = (s1 + s2 + s3 + s4 + s5 + s6).coerceAtLeast(grp.totalPoints.toDouble())
+        val total = if (hasScores) (s1 + s2 + s3 + s4 + s5 + s6) else grp.totalPoints.toDouble()
 
         // Find leading station
         val stationScores = listOf(
@@ -126,6 +127,7 @@ fun RechartsTeamLeaderboardCard(
     competitionScores: List<CompetitionScoreEntity>,
     stations: List<StationEntity>,
     onOpenFullLeaderboard: () -> Unit = {},
+    onNavigateToCompetitions: () -> Unit = onOpenFullLeaderboard,
     modifier: Modifier = Modifier
 ) {
     val leaderboardData = remember(groups, competitionScores, stations) {
@@ -522,7 +524,8 @@ fun generateRechartsTeamLeaderboardHtml(
             "6" -> item.s6Score
             else -> item.totalScore
         }
-        """{"name":"${item.groupNameBn}","nameEn":"${item.groupNameEn}","score":${score},"s1":${item.s1Score},"s2":${item.s2Score},"s3":${item.s3Score},"s4":${item.s4Score},"s5":${item.s5Score},"s6":${item.s6Score},"color":"${item.colorHex}","rank":${item.rank}}"""
+        val hexColor = "#%06X".format(0xFFFFFF and item.colorHex.toInt())
+        """{"name":"${item.groupNameBn}","nameEn":"${item.groupNameEn}","score":${score},"s1":${item.s1Score},"s2":${item.s2Score},"s3":${item.s3Score},"s4":${item.s4Score},"s5":${item.s5Score},"s6":${item.s6Score},"color":"$hexColor","rank":${item.rank}}"""
     }
 
     val chartTitle = if (filter == "ALL") {

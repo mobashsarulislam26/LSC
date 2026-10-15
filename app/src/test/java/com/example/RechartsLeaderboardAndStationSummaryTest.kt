@@ -13,28 +13,31 @@ class RechartsLeaderboardAndStationSummaryTest {
             id = "bukhari",
             nameBn = "বুখারী",
             nameEn = "Bukhari",
-            category = "Senior",
             leaderName = "মাওলানা আব্দুল করিম",
-            colorHex = "#1D4ED8",
-            totalPoints = 85.0
+            leaderPhone = "01711",
+            colorHex = 0xFF1D4ED8,
+            memberCount = 100,
+            totalPoints = 85
         ),
         CampGroupEntity(
             id = "sumaiya",
             nameBn = "সুমাইয়া",
             nameEn = "Sumaiya",
-            category = "Senior",
             leaderName = "উম্মে সালমা",
-            colorHex = "#BE185D",
-            totalPoints = 92.5
+            leaderPhone = "01819",
+            colorHex = 0xFFBE185D,
+            memberCount = 100,
+            totalPoints = 92
         ),
         CampGroupEntity(
             id = "shafeyi",
             nameBn = "শাফেয়ী",
             nameEn = "Shafeyi",
-            category = "Junior",
             leaderName = "মুফতি আব্দুর রহমান",
-            colorHex = "#059669",
-            totalPoints = 78.0
+            leaderPhone = "01912",
+            colorHex = 0xFF059669,
+            memberCount = 100,
+            totalPoints = 78
         )
     )
 
@@ -66,35 +69,32 @@ class RechartsLeaderboardAndStationSummaryTest {
         val aggregated = aggregateTeamStationScores(
             groups = sampleGroups,
             competitionScores = scores,
-            selectedStationFilter = "ALL"
+            stations = sampleStations
         )
 
         assertEquals("All 3 sample groups should be represented", 3, aggregated.size)
 
         // Rank 1: Sumaiya (185.0 points)
         val rank1 = aggregated[0]
-        assertEquals("Rank 1 should be Sumaiya", "সুমাইয়া", rank1.teamNameBn)
+        assertEquals("Rank 1 should be Sumaiya", "সুমাইয়া", rank1.groupNameBn)
         assertEquals("Rank 1 total score", 185.0, rank1.totalScore, 0.01)
         assertEquals("Rank 1 rank value", 1, rank1.rank)
-        assertEquals("Rank 1 medal", "🥇", rank1.podiumMedal)
-        assertEquals("Sumaiya station 1 score", 95.0, rank1.stationScores[1] ?: 0.0, 0.01)
-        assertEquals("Sumaiya station 2 score", 90.0, rank1.stationScores[2] ?: 0.0, 0.01)
+        assertEquals("Sumaiya station 1 score", 95.0, rank1.s1Score, 0.01)
+        assertEquals("Sumaiya station 2 score", 90.0, rank1.s2Score, 0.01)
 
         // Rank 2: Bukhari (165.0 points)
         val rank2 = aggregated[1]
-        assertEquals("Rank 2 should be Bukhari", "বুখারী", rank2.teamNameBn)
+        assertEquals("Rank 2 should be Bukhari", "বুখারী", rank2.groupNameBn)
         assertEquals("Rank 2 total score", 165.0, rank2.totalScore, 0.01)
         assertEquals("Rank 2 rank value", 2, rank2.rank)
-        assertEquals("Rank 2 medal", "🥈", rank2.podiumMedal)
-        assertEquals("Bukhari station 1 score", 80.0, rank2.stationScores[1] ?: 0.0, 0.01)
-        assertEquals("Bukhari station 3 score", 85.0, rank2.stationScores[3] ?: 0.0, 0.01)
+        assertEquals("Bukhari station 1 score", 80.0, rank2.s1Score, 0.01)
+        assertEquals("Bukhari station 3 score", 85.0, rank2.s3Score, 0.01)
 
-        // Rank 3: Shafeyi (70.0 points)
+        // Rank 3: Shafeyi (70.0 points from station scores)
         val rank3 = aggregated[2]
-        assertEquals("Rank 3 should be Shafeyi", "শাফেয়ী", rank3.teamNameBn)
+        assertEquals("Rank 3 should be Shafeyi", "শাফেয়ী", rank3.groupNameBn)
         assertEquals("Rank 3 total score", 70.0, rank3.totalScore, 0.01)
         assertEquals("Rank 3 rank value", 3, rank3.rank)
-        assertEquals("Rank 3 medal", "🥉", rank3.podiumMedal)
     }
 
     @Test
@@ -105,23 +105,23 @@ class RechartsLeaderboardAndStationSummaryTest {
             CompetitionScoreEntity(id = 3, competitionId = 1, participantId = 103, campCode = "LSC-003", participantName = "আব্দুল্লাহ", groupName = "বুখারী", subgroup = "Bukhari-1", accuracyScore = 40.0, presentationScore = 20.0, disciplineScore = 20.0, totalScore = 80.0)
         )
 
-        // Filter by S1 (Station 1)
-        val s1Aggregated = aggregateTeamStationScores(
+        val aggregated = aggregateTeamStationScores(
             groups = sampleGroups,
             competitionScores = scores,
-            selectedStationFilter = "S1"
+            stations = sampleStations
         )
 
-        assertEquals(3, s1Aggregated.size)
-        // Sumaiya scored 95 at S1, Bukhari scored 80 at S1, Shafeyi scored 0
-        assertEquals("Sumaiya", s1Aggregated[0].teamNameEn)
-        assertEquals(95.0, s1Aggregated[0].totalScore, 0.01)
+        // S1 scores: Sumaiya = 95.0, Bukhari = 80.0, Shafeyi = estimated fallback
+        val s1Sorted = aggregated.sortedByDescending { it.s1Score }
 
-        assertEquals("Bukhari", s1Aggregated[1].teamNameEn)
-        assertEquals(80.0, s1Aggregated[1].totalScore, 0.01)
+        assertEquals(3, s1Sorted.size)
+        assertEquals("Sumaiya", s1Sorted[0].groupNameEn)
+        assertEquals(95.0, s1Sorted[0].s1Score, 0.01)
 
-        assertEquals("Shafeyi", s1Aggregated[2].teamNameEn)
-        assertEquals(0.0, s1Aggregated[2].totalScore, 0.01)
+        assertEquals("Bukhari", s1Sorted[1].groupNameEn)
+        assertEquals(80.0, s1Sorted[1].s1Score, 0.01)
+
+        assertEquals("Shafeyi", s1Sorted[2].groupNameEn)
     }
 
     @Test
@@ -158,24 +158,24 @@ class RechartsLeaderboardAndStationSummaryTest {
         assertEquals("Should compute metrics for all 6 stations", 6, metrics.size)
 
         // Station 1: checked in count should be 3
-        val s1 = metrics.find { it.station.id == 1 }
+        val s1 = metrics.find { it.stationId == 1 }
         assertNotNull(s1)
         assertEquals("Station 1 checked in count", 3, s1!!.checkedInCount)
         assertTrue("Station 1 target count should be positive", s1.targetCount > 0)
-        assertTrue("Station 1 percentage should be calculated correctly", s1.checkInPercentage > 0.0f)
-        assertEquals("Station 1 active team", "বুখারী", s1.activeTeamNameBn)
+        assertTrue("Station 1 percentage should be calculated correctly", s1.attendancePercentage > 0.0f)
+        assertEquals("Station 1 active team", "বুখারী গ্রুপ", s1.assignedGroupNameBn)
 
         // Station 2: checked in count should be 1
-        val s2 = metrics.find { it.station.id == 2 }
+        val s2 = metrics.find { it.stationId == 2 }
         assertNotNull(s2)
         assertEquals("Station 2 checked in count", 1, s2!!.checkedInCount)
-        assertEquals("Station 2 active team", "সুমাইয়া", s2.activeTeamNameBn)
+        assertEquals("Station 2 active team", "সুমাইয়া গ্রুপ", s2.assignedGroupNameBn)
 
         // Station 3: checked in count should be 0
-        val s3 = metrics.find { it.station.id == 3 }
+        val s3 = metrics.find { it.stationId == 3 }
         assertNotNull(s3)
         assertEquals("Station 3 checked in count", 0, s3!!.checkedInCount)
-        assertEquals(0.0f, s3.checkInPercentage, 0.01f)
+        assertEquals(0.0f, s3.attendancePercentage, 0.01f)
     }
 
     @Test

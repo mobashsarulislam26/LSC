@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.data.model.*
+import com.example.ui.screens.competitions.MilestoneParticipantPickerDialog
 import com.example.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*

@@ -68,6 +68,14 @@ fun deriveMealHeadcountMetrics(
     val specialDietIds = specialDietParticipants.map { it.id }.toSet()
     val specialDietServedCount = claimedRecords.count { specialDietIds.contains(it.participantId) }
 
+    val remainingBn = remainingCount.toString().map {
+        when (it) {
+            '0' -> '০'; '1' -> '১'; '2' -> '২'; '3' -> '৩'; '4' -> '৪'
+            '5' -> '৫'; '6' -> '৬'; '7' -> '৭'; '8' -> '৮'; '9' -> '৯'
+            else -> it
+        }
+    }.joinToString("")
+
     val (riskLevel, advBn, advEn) = when {
         servingPercentage >= 95f -> Triple(
             "OPTIMAL",
@@ -76,7 +84,7 @@ fun deriveMealHeadcountMetrics(
         )
         remainingCount in 1..80 -> Triple(
             "PREP_CAUTION",
-            "ক্যাটারিং অ্যালার্ট: আর মাত্র $remainingCount জন বাকি আছেন। রান্নাঘরে শেষ ব্যাচের অতিরিক্ত রান্না বন্ধ রাখুন এবং প্রস্তুতকৃত খাবার ধীরে বণ্টন করুন যাতে অপচয় না ঘটে।",
+            "ক্যাটারিং অ্যালার্ট: আর মাত্র $remainingBn জন বাকি আছেন। রান্নাঘরে শেষ ব্যাচের অতিরিক্ত রান্না বন্ধ রাখুন এবং প্রস্তুতকৃত খাবার ধীরে বণ্টন করুন যাতে অপচয় না ঘটে।",
             "Catering Alert: Only $remainingCount participants remaining. Cease surplus batch prep to prevent food wastage."
         )
         else -> Triple(

@@ -870,14 +870,17 @@ fun UniversalScannerDialog(
                                                 )
                                             } catch (_: Exception) {
                                                 // Fallback to back camera if preferred camera fails
-                                                provider.bindToLifecycle(
-                                                    lifecycleOwner,
-                                                    CameraSelector.DEFAULT_BACK_CAMERA,
-                                                    preview,
-                                                    imageAnalysis
-                                                )
-                                                // Update state to reflect actual camera being used
                                                 useBackCamera = true
+                                                try {
+                                                    provider.bindToLifecycle(
+                                                        lifecycleOwner,
+                                                        CameraSelector.DEFAULT_BACK_CAMERA,
+                                                        preview,
+                                                        imageAnalysis
+                                                    )
+                                                } catch (_: Exception) {
+                                                    null
+                                                }
                                             }
                                         } catch (_: Exception) {
                                             // Graceful fallback for devices/emulators without camera hardware

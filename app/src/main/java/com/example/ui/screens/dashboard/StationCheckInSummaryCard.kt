@@ -45,8 +45,8 @@ data class StationCheckInMetric(
 fun deriveStationCheckInMetrics(
     stations: List<StationEntity>,
     attendanceRecords: List<AttendanceRecordEntity>,
-    participants: List<ParticipantEntity>,
-    scheduleEvents: List<ScheduleEventEntity>
+    participants: List<ParticipantEntity> = emptyList(),
+    scheduleEvents: List<ScheduleEventEntity> = emptyList()
 ): List<StationCheckInMetric> {
     if (stations.isEmpty()) return emptyList()
 
@@ -72,12 +72,22 @@ fun deriveStationCheckInMetrics(
         val groupParticipants = participants.filter { it.groupId == assignedGroup }
         val target = if (groupParticipants.isNotEmpty()) groupParticipants.size else 100
 
+        val groupMatches = { gName: String ->
+            gName.contains(assignedGroup, ignoreCase = true) ||
+            (assignedGroup == "bukhari" && gName.contains("বুখারী")) ||
+            (assignedGroup == "sumaiya" && (gName.contains("সুমাইয়া") || gName.contains("সুমাইয়া"))) ||
+            (assignedGroup == "shafeyi" && (gName.contains("শাফেয়ী") || gName.contains("শাফেয়ী"))) ||
+            (assignedGroup == "umm_ayman" && gName.contains("আয়মান")) ||
+            (assignedGroup == "salahuddin" && gName.contains("সালাহউদ্দীন")) ||
+            (assignedGroup == "umm_saad" && gName.contains("সা'দ"))
+        }
+
         // Find attendance records matching this station or station rotation event
         val checkedInRecords = attendanceRecords.filter { record ->
             val isPresent = record.status == "PRESENT" || record.status == "LATE"
             val matchesStation = record.overrideReason?.contains("Station ${st.id}", ignoreCase = true) == true ||
                                  record.overrideReason?.contains(st.nameBn, ignoreCase = true) == true ||
-                                 (currentSession != null && record.eventId == currentSession.id && record.groupName.contains(assignedGroup, ignoreCase = true))
+                                 (currentSession != null && record.eventId == currentSession.id && groupMatches(record.groupName))
             isPresent && matchesStation
         }
 
@@ -88,8 +98,7 @@ fun deriveStationCheckInMetrics(
         val checkedIn = if (recordCount > 0) {
             recordCount
         } else {
-            val groupCheckedIn = groupParticipants.count { it.isCheckedIn }
-            if (groupCheckedIn > 0) groupCheckedIn else ((target * 0.94).toInt().coerceAtLeast(85))
+            groupParticipants.count { it.isCheckedIn }
         }
 
         val pct = if (target > 0) (checkedIn.toFloat() / target * 100f).coerceAtMost(100f) else 0f
@@ -129,10 +138,10 @@ fun StationCheckInSummaryCard(
     language: CampLanguage,
     stations: List<StationEntity>,
     attendanceRecords: List<AttendanceRecordEntity>,
-    participants: List<ParticipantEntity>,
-    scheduleEvents: List<ScheduleEventEntity>,
+    scheduleEvents: List<ScheduleEventEntity> = emptyList(),
     onOpenScanner: () -> Unit,
     onNavigateToStations: () -> Unit,
+    participants: List<ParticipantEntity> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     val stationMetrics = remember(stations, attendanceRecords, participants, scheduleEvents) {
