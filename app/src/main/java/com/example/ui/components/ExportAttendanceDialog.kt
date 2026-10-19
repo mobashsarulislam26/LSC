@@ -362,11 +362,11 @@ fun ExportAttendanceDialog(
                         )
                     }
 
-                    if (saveStatusMessage != null) {
+                    saveStatusMessage?.let { statusMsg ->
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = saveStatusMessage!!,
-                            color = if (saveStatusMessage!!.startsWith("✅")) Color(0xFF16A34A) else Color(0xFFDC2626),
+                            text = statusMsg,
+                            color = if (statusMsg.startsWith("✅")) Color(0xFF16A34A) else Color(0xFFDC2626),
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold
                         )

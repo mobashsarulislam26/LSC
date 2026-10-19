@@ -445,9 +445,9 @@ fun CompetitionScreen(
     }
 
     // Modal Dialog: Edit Existing Judge
-    if (judgeToEdit != null) {
+    judgeToEdit?.let { targetJudge ->
         EditJudgeDialog(
-            judge = judgeToEdit!!,
+            judge = targetJudge,
             language = language,
             onDismiss = { judgeToEdit = null },
             onSave = { updated ->
@@ -915,7 +915,7 @@ fun AddJudgeDialog(
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                     ) {
                         Text(
-                            text = errorMessage!!,
+                            text = errorMessage.orEmpty(),
                             color = Color(0xFFDC2626),
                             fontSize = 12.sp,
                             modifier = Modifier.padding(8.dp)

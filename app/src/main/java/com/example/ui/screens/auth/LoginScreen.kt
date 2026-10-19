@@ -76,6 +76,8 @@ fun LoginScreen(
     var signUpFullName by remember { mutableStateOf("") }
     var signUpEmail by remember { mutableStateOf("") }
     var signUpPhone by remember { mutableStateOf("") }
+    var signUpCustomPassword by remember { mutableStateOf("") }
+    var signUpPasswordVisible by remember { mutableStateOf(false) }
     var signUpRole by remember { mutableStateOf("VOLUNTEER") }
     var isRoleDropdownExpanded by remember { mutableStateOf(false) }
 
@@ -97,10 +99,13 @@ fun LoginScreen(
     val rolesList = listOf(
         "VOLUNTEER" to if (isBangla) "ভলান্টিয়ার / রেজিস্ট্রেশন অফিসার" else "Volunteer / Registration Officer",
         "GROUP_LEADER" to if (isBangla) "গ্রুপ লিডার (দলের দায়িত্বপ্রাপ্ত)" else "Group Leader",
+        "MENTOR" to if (isBangla) "মেন্টর / প্রশিক্ষক" else "Mentor / Instructor",
         "STATION_MODERATOR" to if (isBangla) "স্টেশন মডারেটর (দক্ষতা স্টেশন)" else "Station Moderator",
         "JUDGE" to if (isBangla) "প্রতিযোগিতা বিচারক" else "Competition Judge",
         "MEDICAL" to if (isBangla) "মেডিকেল অফিসার (স্বাস্থ্য দল)" else "Medical Officer",
         "LOGISTICS" to if (isBangla) "লজিস্টিকস ও খাবার কর্মকর্তা" else "Logistics & Food Officer",
+        "BULLETIN_EDITOR" to if (isBangla) "বুলেটিন ও মিডিয়া সম্পাদক" else "Bulletin & Media Editor",
+        "CAMP_CHIEF" to if (isBangla) "ক্যাম্প চিফ / প্রধান সমন্বয়ক" else "Camp Chief",
         "SUPER_ADMIN" to if (isBangla) "ক্যাম্প সুপার অ্যাডমিন / আইটি কন্ট্রোল" else "Camp Super Admin"
     )
 
@@ -737,6 +742,83 @@ fun LoginScreen(
                                         .testTag("signup_phone_input")
                                 )
 
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                // Optional Custom Password (or leave blank for auto-generated Lsc#XXXX password)
+                                OutlinedTextField(
+                                    value = signUpCustomPassword,
+                                    onValueChange = {
+                                        signUpCustomPassword = it
+                                        campViewModel.clearLoginError()
+                                    },
+                                    label = {
+                                        Text(
+                                            if (isBangla) "পাসওয়ার্ড (ঐচ্ছিক — খালি রাখলে অটো তৈরি হবে)"
+                                            else "Password (Optional — leave blank to auto-generate)"
+                                        )
+                                    },
+                                    placeholder = {
+                                        Text(
+                                            if (isBangla) "কমপক্ষে ৪ অক্ষর অথবা খালি রাখুন"
+                                            else "Min 4 chars or leave blank for Lsc#XXXX"
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.VpnKey, contentDescription = null, tint = LscEmeraldPrimary)
+                                    },
+                                    trailingIcon = {
+                                        IconButton(onClick = { signUpPasswordVisible = !signUpPasswordVisible }) {
+                                            Icon(
+                                                imageVector = if (signUpPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                                contentDescription = "Toggle password",
+                                                tint = Color.Gray
+                                            )
+                                        }
+                                    },
+                                    visualTransformation = if (signUpPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = LscEmeraldPrimary,
+                                        focusedLabelColor = LscEmeraldPrimary
+                                    ),
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .testTag("signup_password_input")
+                                )
+
+                                // Error Message Display inside Sign-Up Tab as well
+                                AnimatedVisibility(visible = errorMessage != null) {
+                                    Surface(
+                                        color = Color(0xFFFEF2F2),
+                                        shape = RoundedCornerShape(10.dp),
+                                        border = BorderStroke(1.dp, Color(0xFFFCA5A5)),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(top = 10.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(10.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.ErrorOutline,
+                                                contentDescription = null,
+                                                tint = Color(0xFFDC2626),
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = errorMessage.orEmpty(),
+                                                color = Color(0xFFB91C1C),
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                    }
+                                }
+
                                 Spacer(modifier = Modifier.height(16.dp))
 
                                 // Sign Up Submit Button
@@ -748,7 +830,8 @@ fun LoginScreen(
                                                 fullName = signUpFullName,
                                                 email = signUpEmail,
                                                 role = signUpRole,
-                                                phone = signUpPhone
+                                                phone = signUpPhone,
+                                                customPassword = signUpCustomPassword
                                             )
                                             if (success) {
                                                 generatedPasswordForUser = generatedPass
@@ -800,12 +883,12 @@ fun LoginScreen(
                                             modifier = Modifier.size(20.dp)
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text(if (isBangla) "পাসওয়ার্ড তৈরি হচ্ছে..." else "Generating password...")
+                                        Text(if (isBangla) "অ্যাকাউন্ট তৈরি হচ্ছে..." else "Creating account...")
                                     } else {
                                         Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(18.dp))
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text(
-                                            text = if (isBangla) "সাইন আপ ও ইমেলে পাসওয়ার্ড পাঠান" else "Sign Up & Send Password",
+                                            text = if (isBangla) "সাইন আপ ও পাসওয়ার্ড সংরক্ষণ" else "Sign Up & Save Password",
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 13.sp
                                         )
@@ -854,7 +937,6 @@ fun LoginScreen(
                         isBangla = isBangla,
                         onSelect = {
                             email = account.email
-                            password = account.passwordHash
                             campViewModel.quickLogin(account)
                         }
                     )
@@ -896,7 +978,7 @@ fun LoginScreen(
             },
             title = {
                 Text(
-                    text = if (isBangla) "রেজিস্ট্রেশন সফল ও পাসওয়ার্ড প্রেরিত!" else "Registration Successful!",
+                    text = if (isBangla) "রেজিস্ট্রেশন সফল ও পাসওয়ার্ড প্রস্তুত!" else "Registration Successful!",
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
                     textAlign = TextAlign.Center
@@ -906,9 +988,9 @@ fun LoginScreen(
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
                         text = if (isBangla)
-                            "আপনার অ্যাকাউন্টের জন্য একটি নিরাপত্তা পাসওয়ার্ড তৈরি করে আপনার ইমেলে ($registeredUserEmail) পাঠানো হয়েছে।"
+                            "আপনার অ্যাকাউন্ট ($registeredUserEmail) সফলভাবে তৈরি হয়েছে এবং পাসওয়ার্ডটি নিরাপদভাবে হ্যাশ করে ডেটাবেজে সংরক্ষিত হয়েছে।"
                         else
-                            "A secure password has been generated and dispatched to your email ($registeredUserEmail).",
+                            "Your account ($registeredUserEmail) has been created and your password is securely hashed in the database.",
                         fontSize = 12.sp,
                         color = LscSlateDark
                     )
@@ -921,7 +1003,9 @@ fun LoginScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(
-                            modifier = Modifier.padding(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
@@ -930,13 +1014,40 @@ fun LoginScreen(
                                 color = Color.Gray
                             )
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = generatedPasswordForUser,
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                fontFamily = FontFamily.Monospace,
-                                color = LscEmeraldPrimary
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    text = generatedPasswordForUser,
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = LscEmeraldPrimary
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                IconButton(
+                                    onClick = {
+                                        val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
+                                        clipboard?.setPrimaryClip(
+                                            android.content.ClipData.newPlainText("LSC Password", generatedPasswordForUser)
+                                        )
+                                        Toast.makeText(
+                                            context,
+                                            if (isBangla) "পাসওয়ার্ড কপি করা হয়েছে!" else "Password copied!",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.ContentCopy,
+                                        contentDescription = "Copy Password",
+                                        tint = LscEmeraldPrimary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
                         }
                     }
 
@@ -1031,7 +1142,7 @@ fun LoginScreen(
                     if (resetResultMsg != null) {
                         Spacer(modifier = Modifier.height(10.dp))
                         Text(
-                            text = resetResultMsg!!,
+                            text = resetResultMsg.orEmpty(),
                             color = Color(0xFF16A34A),
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp

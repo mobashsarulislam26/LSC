@@ -129,7 +129,7 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
         val currentAccount = _currentUserAccount.value
         val currentRole = _currentRole.value
 
-        // 1. Authorize if currently authenticated user has an administrative role in Firestore/Session
+        // 1. Authorize if currently authenticated user already has an administrative role
         val isRoleAdmin = currentRole == UserRole.SUPER_ADMIN ||
                 currentRole == UserRole.CAMP_CHIEF ||
                 (currentAccount != null && (
@@ -137,7 +137,7 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
                         currentAccount.role.equals("CAMP_CHIEF", ignoreCase = true)
                 ))
 
-        if (isRoleAdmin) {
+        if (isRoleAdmin && (cleanPass.isEmpty() || currentAccount == null || CampRepository.verifyPassword(cleanPass, currentAccount.passwordHash))) {
             _isAdminUnlocked.value = true
             _statusNotification.value = if (_language.value == CampLanguage.BANGLA)
                 "অ্যাডমিন এডিট মোড সফলভাবে আনলক করা হয়েছে!"
@@ -146,10 +146,20 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
             return true
         }
 
-        // 2. Verify entered password against current account's salted password hash
-        if (currentAccount != null && cleanPass.isNotEmpty()) {
-            val inputHash = CampRepository.hashPasswordWithSalt(cleanPass)
-            if (constantTimeEquals(inputHash, currentAccount.passwordHash)) {
+        // 2. Verify entered password against authorized admin accounts (SUPER_ADMIN / CAMP_CHIEF)
+        if (cleanPass.isNotEmpty()) {
+            val candidateAdminAccounts = (userAccounts.value + SeedData.staffAccounts)
+                .filter {
+                    it.role.equals("SUPER_ADMIN", ignoreCase = true) ||
+                    it.role.equals("CAMP_CHIEF", ignoreCase = true)
+                }
+                .distinctBy { it.email.lowercase() }
+
+            val matchedAdmin = candidateAdminAccounts.any { adminAcc ->
+                CampRepository.verifyPassword(cleanPass, adminAcc.passwordHash)
+            }
+
+            if (matchedAdmin) {
                 _isAdminUnlocked.value = true
                 _statusNotification.value = if (_language.value == CampLanguage.BANGLA)
                     "অ্যাডমিন এডিট মোড আনলক সফল হয়েছে!"
@@ -160,9 +170,9 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         _statusNotification.value = if (_language.value == CampLanguage.BANGLA)
-            "অ্যাডমিন এক্সেস প্রত্যাখ্যান করা হয়েছে! কেবল অনুমোদিত অ্যাডমিন রোলের জন্য।"
+            "অ্যাডমিন এক্সেস প্রত্যাখ্যান করা হয়েছে! সঠিক অ্যাডমিন পাসওয়ার্ড প্রদান করুন।"
         else
-            "Admin access denied! Reserved for authorized admin roles."
+            "Admin access denied! Please enter a valid admin password."
         return false
     }
 
@@ -172,15 +182,6 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
             "অ্যাডমিন মোড লক করা হয়েছে।"
         else
             "Admin mode locked."
-    }
-
-    private companion object {
-        fun constantTimeEquals(a: String, b: String): Boolean {
-            if (a.length != b.length) return false
-            var result = 0
-            for (i in a.indices) result = result or (a[i].code xor b[i].code)
-            return result == 0
-        }
     }
 
     // Repository Flows
@@ -255,6 +256,7 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
+            repository.ensureStaffAccountsSeeded()
             repository.ensureSeeded()
         }
         // Auto-sync listener: automatically syncs when network is restored and low-connectivity mode is inactive
@@ -266,32 +268,6 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
                         triggerSync(isAutomatic = true)
                     }
                 }
-            }
-        }
-
-        // Real-time Firestore Live Bulletin listener
-        viewModelScope.launch {
-            try {
-                FirestoreManager.observeBulletins().collect { remoteList ->
-                    if (remoteList.isNotEmpty()) {
-                        remoteList.forEach { repository.addBulletinNotice(it) }
-                    }
-                }
-            } catch (e: Exception) {
-                android.util.Log.e("CampViewModel", "Error observing Firestore bulletins: ${e.message}")
-            }
-        }
-
-        // Real-time Firestore Incident Reports listener
-        viewModelScope.launch {
-            try {
-                FirestoreManager.observeIncidents().collect { remoteList ->
-                    if (remoteList.isNotEmpty()) {
-                        remoteList.forEach { repository.reportIncident(it) }
-                    }
-                }
-            } catch (e: Exception) {
-                android.util.Log.e("CampViewModel", "Error observing Firestore incidents: ${e.message}")
             }
         }
     }
@@ -321,11 +297,29 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
         _loginErrorMessage.value = null
 
         return try {
+            // 1. Check local Room database salted SHA-256 hash verification first for fast & reliable auth
+            val localAccount = repository.authenticateUser(cleanEmail, cleanPass)
+            if (localAccount != null) {
+                val resolvedRole = localAccount.toUserRole()
+                _currentUserAccount.value = localAccount
+                _currentRole.value = resolvedRole
+                _isLoggedIn.value = true
+                _loginErrorMessage.value = null
+                _isAdminUnlocked.value = (resolvedRole == UserRole.SUPER_ADMIN || resolvedRole == UserRole.CAMP_CHIEF)
+
+                _statusNotification.value = if (_language.value == CampLanguage.BANGLA)
+                    "স্বাগতম, ${localAccount.fullName} (${resolvedRole.titleBn})"
+                else
+                    "Welcome, ${localAccount.fullName} (${resolvedRole.titleEn})"
+
+                return true
+            }
+
+            // 2. Attempt Firebase Authentication token verification for cloud-registered accounts
             val fbAuth = try { com.google.firebase.auth.FirebaseAuth.getInstance() } catch (e: Exception) { null }
             var fbUser: com.google.firebase.auth.FirebaseUser? = null
             var firestoreRole: UserRole? = null
 
-            // 1. Attempt Firebase Authentication token verification
             if (fbAuth != null) {
                 try {
                     val authResult = fbAuth.signInWithEmailAndPassword(cleanEmail, cleanPass).await()
@@ -338,22 +332,25 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
 
-            // 2. If Firebase Auth succeeded, resolve account and role from Firestore document or custom claims
+            // 3. If Firebase Auth succeeded, resolve account and role from Firestore document or custom claims
             if (fbUser != null) {
-                val assignedRole = firestoreRole ?: UserRole.VOLUNTEER
-                val fullName = fbUser.displayName.orEmpty().ifBlank { cleanEmail.substringBefore("@") }
+                val existingSeed = SeedData.staffAccounts.find { it.email.equals(cleanEmail, ignoreCase = true) }
+                val assignedRole = firestoreRole ?: existingSeed?.toUserRole() ?: UserRole.VOLUNTEER
+                val fullName = fbUser.displayName.orEmpty().ifBlank {
+                    existingSeed?.fullName.orEmpty().ifBlank { cleanEmail.substringBefore("@") }
+                }
 
                 val authenticatedUser = UserAccountEntity(
                     email = cleanEmail,
                     fullName = fullName,
                     role = assignedRole.name,
                     passwordHash = CampRepository.hashPasswordWithSalt(cleanPass),
-                    phone = fbUser.phoneNumber.orEmpty(),
+                    phone = fbUser.phoneNumber.orEmpty().ifBlank { existingSeed?.phone.orEmpty() },
                     isActive = true,
                     lastLoginTime = System.currentTimeMillis()
                 )
 
-                // Save or merge Firestore role document
+                // Save or merge Firestore role document and local Room cache
                 FirestoreManager.saveUserRole(fbUser.uid, cleanEmail, assignedRole, fullName)
                 repository.insertUserAccount(authenticatedUser)
 
@@ -371,24 +368,6 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
                 return true
             }
 
-            // 3. Fallback to local Room database salted SHA-256 hash verification
-            val localAccount = repository.authenticateUser(cleanEmail, cleanPass)
-            if (localAccount != null) {
-                _currentUserAccount.value = localAccount
-                _currentRole.value = localAccount.toUserRole()
-                _isLoggedIn.value = true
-                _loginErrorMessage.value = null
-                _isAdminUnlocked.value = (localAccount.role.equals("SUPER_ADMIN", ignoreCase = true) ||
-                        localAccount.role.equals("CAMP_CHIEF", ignoreCase = true))
-
-                _statusNotification.value = if (_language.value == CampLanguage.BANGLA)
-                    "স্বাগতম, ${localAccount.fullName} (${_currentRole.value.titleBn})"
-                else
-                    "Welcome, ${localAccount.fullName} (${_currentRole.value.titleEn})"
-
-                return true
-            }
-
             _loginErrorMessage.value = if (_language.value == CampLanguage.BANGLA)
                 "ভুল ইমেইল বা পাসওয়ার্ড! সঠিক তথ্য দিয়ে পুনরায় চেষ্টা করুন।"
             else
@@ -400,30 +379,42 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun quickLogin(account: UserAccountEntity) {
-        viewModelScope.launch {
-            val fbAuth = try { com.google.firebase.auth.FirebaseAuth.getInstance() } catch (e: Exception) { null }
-            val fbUser = fbAuth?.currentUser
-            val verifiedRole = if (fbUser != null) {
-                FirestoreManager.getVerifiedUserRole(fbUser) ?: account.toUserRole()
-            } else {
-                account.toUserRole()
+        val verifiedRole = account.toUserRole()
+        val now = System.currentTimeMillis()
+        val activeAccount = account.copy(lastLoginTime = now)
+
+        _currentUserAccount.value = activeAccount
+        _currentRole.value = verifiedRole
+        _isLoggedIn.value = true
+        _loginErrorMessage.value = null
+        _isAdminUnlocked.value = (verifiedRole == UserRole.SUPER_ADMIN || verifiedRole == UserRole.CAMP_CHIEF)
+
+        _statusNotification.value = if (_language.value == CampLanguage.BANGLA)
+            "লগইন সফল (${verifiedRole.titleBn}): ${account.fullName}"
+        else
+            "Logged in as (${verifiedRole.titleEn}): ${account.fullName}"
+
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                repository.updateUserLastLogin(account.email, now)
+                repository.insertAuditLog(
+                    actionType = "QUICK_LOGIN",
+                    targetEntity = "UserAccount",
+                    description = "কুইক লগইন সম্পন্ন: ${account.fullName} (${verifiedRole.name})",
+                    userEmail = account.email
+                )
+            } catch (e: Exception) {
+                Log.w("CampViewModel", "Quick login audit note: ${e.message}")
             }
-
-            _currentUserAccount.value = account.copy(role = verifiedRole.name)
-            _currentRole.value = verifiedRole
-            _isLoggedIn.value = true
-            _loginErrorMessage.value = null
-
-            _isAdminUnlocked.value = (verifiedRole == UserRole.SUPER_ADMIN || verifiedRole == UserRole.CAMP_CHIEF)
-
-            _statusNotification.value = if (_language.value == CampLanguage.BANGLA)
-                "লগইন সফল (${verifiedRole.titleBn}): ${account.fullName}"
-            else
-                "Logged in as (${verifiedRole.titleEn}): ${account.fullName}"
         }
     }
 
     fun logout() {
+        try {
+            com.google.firebase.auth.FirebaseAuth.getInstance().signOut()
+        } catch (_: Exception) {
+            // Ignore when Firebase is not initialized in unit tests or offline
+        }
         _currentUserAccount.value = null
         _isLoggedIn.value = false
         _isAdminUnlocked.value = false
@@ -446,10 +437,13 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
         fullName: String,
         email: String,
         role: String,
-        phone: String = ""
+        phone: String = "",
+        customPassword: String = ""
     ): Triple<Boolean, String, String> {
         val cleanEmail = email.trim().lowercase()
         val cleanName = fullName.trim()
+        val cleanPhone = phone.trim()
+        val cleanCustomPass = customPassword.trim()
 
         if (cleanName.isBlank()) {
             val msg = if (_language.value == CampLanguage.BANGLA)
@@ -460,11 +454,21 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
             return Triple(false, "", msg)
         }
 
-        if (!cleanEmail.contains("@") || !cleanEmail.contains(".")) {
+        val emailRegex = Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
+        if (!emailRegex.matches(cleanEmail)) {
             val msg = if (_language.value == CampLanguage.BANGLA)
-                "সঠিক ইমেইল ঠিকানা প্রদান করুন"
+                "সঠিক ইমেইল ঠিকানা প্রদান করুন (যেমন: name@example.com)"
             else
-                "Please enter a valid email address"
+                "Please enter a valid email address (e.g. name@example.com)"
+            _loginErrorMessage.value = msg
+            return Triple(false, "", msg)
+        }
+
+        if (cleanCustomPass.isNotEmpty() && cleanCustomPass.length < 4) {
+            val msg = if (_language.value == CampLanguage.BANGLA)
+                "পাসওয়ার্ড কমপক্ষে ৪ অক্ষরের হতে হবে"
+            else
+                "Password must be at least 4 characters"
             _loginErrorMessage.value = msg
             return Triple(false, "", msg)
         }
@@ -473,13 +477,32 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
         _loginErrorMessage.value = null
 
         return try {
-            val (user, password) = repository.signUpUser(cleanName, cleanEmail, role, phone)
+            val (user, password) = repository.signUpUser(
+                fullName = cleanName,
+                email = cleanEmail,
+                role = role,
+                phone = cleanPhone,
+                customPassword = cleanCustomPass
+            )
             lastRegisteredEmail.value = user.email
             lastGeneratedPassword.value = password
+
+            // Optional cloud sync with Firebase Auth & Firestore if online
+            try {
+                val fbAuth = com.google.firebase.auth.FirebaseAuth.getInstance()
+                val firebasePass = if (password.length >= 6) password else "${password}#26"
+                val authResult = fbAuth.createUserWithEmailAndPassword(cleanEmail, firebasePass).await()
+                authResult.user?.let { fbUser ->
+                    FirestoreManager.saveUserRole(fbUser.uid, cleanEmail, user.toUserRole(), cleanName)
+                }
+            } catch (_: Exception) {
+                // Local Room account is primary and already persisted
+            }
+
             val msg = if (_language.value == CampLanguage.BANGLA)
-                "রেজিস্ট্রেশন সফল হয়েছে! পাসওয়ার্ড আপনার ইমেলে পাঠানো হয়েছে: $password"
+                "রেজিস্ট্রেশন সফল হয়েছে! আপনার লগইন পাসওয়ার্ড: $password"
             else
-                "Registration successful! Password sent to your email: $password"
+                "Registration successful! Your login password: $password"
             signUpSuccessMessage.value = msg
             Triple(true, password, msg)
         } catch (e: Exception) {
@@ -493,7 +516,8 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
 
     suspend fun requestPasswordToEmail(email: String): Pair<Boolean, String> {
         val cleanEmail = email.trim().lowercase()
-        if (!cleanEmail.contains("@")) {
+        val emailRegex = Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
+        if (!emailRegex.matches(cleanEmail)) {
             val msg = if (_language.value == CampLanguage.BANGLA)
                 "সঠিক ইমেইল ঠিকানা প্রদান করুন"
             else
@@ -502,6 +526,7 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
             return Pair(false, msg)
         }
 
+        _loginErrorMessage.value = null
         return try {
             val result = repository.requestPasswordResetToEmail(cleanEmail)
             if (result != null) {

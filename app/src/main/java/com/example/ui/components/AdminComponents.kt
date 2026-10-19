@@ -108,7 +108,7 @@ fun AdminPasswordDialog(
                         modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)
                     ) {
                         Text(
-                            text = errorText!!,
+                            text = errorText.orEmpty(),
                             color = Color(0xFFDC2626),
                             fontSize = 12.sp,
                             modifier = Modifier.padding(8.dp)
@@ -398,7 +398,7 @@ fun BatchImportDialog(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = importResultMsg!!,
+                            text = importResultMsg.orEmpty(),
                             color = if (isSuccess) Color(0xFF15803D) else Color(0xFFDC2626),
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,

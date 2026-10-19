@@ -350,19 +350,20 @@ fun QuickAlertDialog(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(Icons.Default.Person, contentDescription = null, tint = Color(0xFF1D4ED8), modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(8.dp))
+                                    val camper = selectedCamper
                                     Column {
                                         Text(
-                                            text = if (selectedCamper != null)
-                                                "${selectedCamper!!.nameBn} [${selectedCamper!!.campCode}]"
+                                            text = if (camper != null)
+                                                "${camper.nameBn} [${camper.campCode}]"
                                             else
                                                 if (language == CampLanguage.BANGLA) "অংশগ্রহণকারী যুক্ত করুন (ঐচ্ছিক)" else "Link Camper (Optional)",
                                             fontSize = 12.sp,
-                                            fontWeight = if (selectedCamper != null) FontWeight.Bold else FontWeight.Normal,
-                                            color = if (selectedCamper != null) LscSlateDark else Color.Gray
+                                            fontWeight = if (camper != null) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (camper != null) LscSlateDark else Color.Gray
                                         )
-                                        if (selectedCamper != null) {
+                                        if (camper != null) {
                                             Text(
-                                                text = "${selectedCamper!!.groupNameBn} • ${selectedCamper!!.subgroup} • রুম: ${selectedCamper!!.roomNo}",
+                                                text = "${camper.groupNameBn} • ${camper.subgroup} • রুম: ${camper.roomNo}",
                                                 fontSize = 10.sp,
                                                 color = Color.DarkGray
                                             )

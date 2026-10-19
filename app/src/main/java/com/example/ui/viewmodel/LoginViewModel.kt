@@ -31,7 +31,7 @@ import kotlinx.coroutines.tasks.await
 sealed class AuthState {
     object Unauthenticated : AuthState()
     object Authenticating : AuthState()
-    data class Authenticated(val user: FirebaseUser, val role: UserRole) : AuthState()
+    data class Authenticated(val user: FirebaseUser?, val role: UserRole) : AuthState()
     data class RoleSelectionRequired(val user: FirebaseUser) : AuthState()
     data class Error(val message: String) : AuthState()
 }
@@ -126,19 +126,16 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * Signs in using Email & Password via Firebase Auth.
+     * Signs in using Email & Password via Firebase Auth with local Room SHA-256 fallback.
      */
     fun signInWithEmail(email: String, pass: String) {
-        if (email.isBlank() || pass.isBlank()) {
+        val cleanEmail = email.trim().lowercase()
+        val cleanPass = pass.trim()
+        if (cleanEmail.isBlank() || cleanPass.isBlank()) {
             _errorMessage.value = "Email and password cannot be empty."
             return
         }
         val firebaseAuth = auth
-        if (firebaseAuth == null) {
-            _errorMessage.value = "Authentication service unavailable."
-            _authState.value = AuthState.Unauthenticated
-            return
-        }
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             _errorMessage.value = null
@@ -146,7 +143,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 if (firebaseAuth != null) {
                     try {
-                        val result = firebaseAuth.signInWithEmailAndPassword(email, pass).await()
+                        val result = firebaseAuth.signInWithEmailAndPassword(cleanEmail, cleanPass).await()
                         val user = result.user
                         if (user != null) {
                             fetchUserRoleAndSetState(user)
@@ -159,17 +156,12 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
                 // Fallback to local Room database salted SHA-256 hash verification
                 val repo = CampRepository.getInstance(getApplication())
-                val authenticatedUser = repo.authenticateUser(email, pass)
-                val currentFbUser = firebaseAuth?.currentUser
+                val authenticatedUser = repo.authenticateUser(cleanEmail, cleanPass)
+                val currentFbUser = try { firebaseAuth?.currentUser } catch (_: Exception) { null }
                 if (authenticatedUser != null) {
                     val role = authenticatedUser.toUserRole()
                     _userRole.value = role
-                    if (currentFbUser != null) {
-                        _authState.value = AuthState.Authenticated(currentFbUser, role)
-                    } else {
-                        // User verified locally offline
-                        fetchUserRoleAndSetState(currentFbUser ?: return@launch)
-                    }
+                    _authState.value = AuthState.Authenticated(currentFbUser, role)
                 } else {
                     _errorMessage.value = "Invalid email or password."
                     _authState.value = AuthState.Error("Invalid email or password.")
@@ -185,31 +177,39 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * Registers a new user with Email & Password.
+     * Registers a new user with Email & Password in both Room and Firebase Auth.
      */
     fun signUpWithEmail(email: String, pass: String, selectedRole: UserRole) {
-        if (email.isBlank() || pass.isBlank()) {
+        val cleanEmail = email.trim().lowercase()
+        val cleanPass = pass.trim()
+        if (cleanEmail.isBlank() || cleanPass.isBlank()) {
             _errorMessage.value = "Email and password cannot be empty."
             return
         }
         val firebaseAuth = auth
-        if (firebaseAuth == null) {
-            _errorMessage.value = "Authentication service unavailable."
-            _authState.value = AuthState.Unauthenticated
-            return
-        }
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             _errorMessage.value = null
             _authState.value = AuthState.Authenticating
             try {
-                val result = firebaseAuth.createUserWithEmailAndPassword(email, pass).await()
-                val user = result.user
-                if (user != null) {
-                    assignRoleAndProceed(user, selectedRole)
-                } else {
-                    _authState.value = AuthState.Error("Sign-up failed.")
+                val repo = CampRepository.getInstance(getApplication())
+                repo.signUpUser(
+                    fullName = cleanEmail.substringBefore("@"),
+                    email = cleanEmail,
+                    role = selectedRole.name,
+                    customPassword = cleanPass
+                )
+
+                if (firebaseAuth != null) {
+                    val result = firebaseAuth.createUserWithEmailAndPassword(cleanEmail, cleanPass).await()
+                    val user = result.user
+                    if (user != null) {
+                        assignRoleAndProceed(user, selectedRole)
+                        return@launch
+                    }
                 }
+                _userRole.value = selectedRole
+                _authState.value = AuthState.Authenticated(null, selectedRole)
             } catch (e: Exception) {
                 Log.e("LoginViewModel", "Sign up error: ${e.message}")
                 _errorMessage.value = e.localizedMessage ?: "Sign-up failed."

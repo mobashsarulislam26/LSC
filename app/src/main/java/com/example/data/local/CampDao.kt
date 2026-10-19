@@ -407,7 +407,13 @@ interface CampDao {
     @Query("SELECT * FROM user_accounts ORDER BY fullName ASC")
     fun getAllUserAccounts(): Flow<List<UserAccountEntity>>
 
-    @Query("SELECT * FROM user_accounts WHERE email = :email LIMIT 1")
+    @Query("SELECT * FROM user_accounts ORDER BY fullName ASC")
+    suspend fun getAllUserAccountsList(): List<UserAccountEntity>
+
+    @Query("SELECT COUNT(*) FROM user_accounts")
+    suspend fun getUserAccountCount(): Int
+
+    @Query("SELECT * FROM user_accounts WHERE LOWER(TRIM(email)) = LOWER(TRIM(:email)) LIMIT 1")
     suspend fun getUserAccount(email: String): UserAccountEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -415,6 +421,9 @@ interface CampDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUserAccounts(users: List<UserAccountEntity>)
+
+    @Query("UPDATE user_accounts SET lastLoginTime = :lastLoginTime WHERE LOWER(TRIM(email)) = LOWER(TRIM(:email))")
+    suspend fun updateUserLastLogin(email: String, lastLoginTime: Long = System.currentTimeMillis())
 
     // Audit Logs
     @Query("SELECT * FROM audit_logs ORDER BY timestamp DESC")
@@ -445,6 +454,9 @@ interface CampDao {
         meals: List<MealDistributionEntity> = emptyList(),
         volunteerShifts: List<VolunteerShiftEntity> = emptyList()
     ) {
+        if (users.isNotEmpty()) {
+            insertUserAccounts(users)
+        }
         insertGroups(groups)
         insertStations(stations)
         insertParticipants(participants)
@@ -472,9 +484,6 @@ interface CampDao {
         }
         if (goalMetrics.isNotEmpty()) {
             insertGoalMetrics(goalMetrics)
-        }
-        if (users.isNotEmpty()) {
-            insertUserAccounts(users)
         }
         if (meals.isNotEmpty()) {
             insertMealClaims(meals)

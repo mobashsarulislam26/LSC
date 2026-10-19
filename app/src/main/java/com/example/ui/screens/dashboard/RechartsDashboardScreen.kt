@@ -913,8 +913,9 @@ fun ComposeRechartsBarChart(
 
     Column(modifier = modifier) {
         // Tapped tooltip details banner
-        if (selectedIndex != null && selectedIndex!! in trends.indices) {
-            val point = trends[selectedIndex!!]
+        val idx = selectedIndex
+        if (idx != null && idx in trends.indices) {
+            val point = trends[idx]
             Surface(
                 color = LscSlateDark,
                 shape = RoundedCornerShape(8.dp),
@@ -1106,8 +1107,9 @@ fun ComposeRechartsPieChart(
 
             // Center Callout Metric (Total or selected slice details)
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                if (selectedSliceIndex != null && selectedSliceIndex!! in slices.indices) {
-                    val s = slices[selectedSliceIndex!!]
+                val sliceIdx = selectedSliceIndex
+                if (sliceIdx != null && sliceIdx in slices.indices) {
+                    val s = slices[sliceIdx]
                     Text(
                         text = "%.1f%%".format(s.percentage),
                         fontSize = 18.sp,

@@ -65,56 +65,78 @@ fun CampDashboardScreen(
         contentPadding = PaddingValues(top = 12.dp, bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Welcome & Role Context Banner
+        // Welcome & Role Context Hero Banner
         item {
             Card(
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(containerColor = LscEmeraldPrimary),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                 modifier = Modifier.fillMaxWidth().testTag("dashboard_banner")
             ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                colors = listOf(LscEmeraldDark, LscEmeraldPrimary, Color(0xFF15803D))
+                            )
+                        )
                 ) {
-                    CampLogoImage(
-                        size = 54.dp,
-                        elevation = 4.dp,
-                        modifier = Modifier.testTag("dashboard_camp_logo")
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = if (language == CampLanguage.BANGLA) "স্বাগতম, ${currentRole.titleBn}" else "Welcome, ${currentRole.titleEn}",
-                            color = Color.White,
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        val activeDay = currentSession?.dayNo ?: 1
-                        val activeDayBn = activeDay.toString().map {
-                            when (it) {
-                                '0' -> '০'; '1' -> '১'; '2' -> '২'; '3' -> '৩'; '4' -> '৪'
-                                '5' -> '৫'; '6' -> '৬'; '7' -> '৭'; '8' -> '৮'; '9' -> '৯'
-                                else -> it
-                            }
-                        }.joinToString("")
-
-                        Text(
-                            text = if (language == CampLanguage.BANGLA)
-                                "আজকের কার্যক্রম: দিন $activeDayBn | ৪-৫ দিনব্যাপী আবাসিক ক্যাম্প সুন্দর ও সুশৃঙ্খলভাবে পরিচালিত হচ্ছে।"
-                            else
-                                "Day $activeDay Active | 4-Day residential camp operations running smoothly with $participantCount participants.",
-                            color = Color.White.copy(alpha = 0.85f),
-                            fontSize = 12.sp
-                        )
-                    }
-                    IconButton(
-                        onClick = onOpenScanner,
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(LscGoldSecondary)
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.QrCodeScanner, contentDescription = "Scan", tint = Color.White)
+                        CampLogoImage(
+                            size = 54.dp,
+                            elevation = 4.dp,
+                            modifier = Modifier.testTag("dashboard_camp_logo")
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF4ADE80))
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (language == CampLanguage.BANGLA) "স্বাগতম, ${currentRole.titleBn}" else "Welcome, ${currentRole.titleEn}",
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            val activeDay = currentSession?.dayNo ?: 1
+                            val activeDayBn = activeDay.toString().map {
+                                when (it) {
+                                    '0' -> '০'; '1' -> '১'; '2' -> '২'; '3' -> '৩'; '4' -> '৪'
+                                    '5' -> '৫'; '6' -> '৬'; '7' -> '৭'; '8' -> '৮'; '9' -> '৯'
+                                    else -> it
+                                }
+                            }.joinToString("")
+
+                            Text(
+                                text = if (language == CampLanguage.BANGLA)
+                                    "আজকের কার্যক্রম: দিন $activeDayBn | ৪-৫ দিনব্যাপী আবাসিক ক্যাম্প সুন্দর ও সুশৃঙ্খলভাবে পরিচালিত হচ্ছে।"
+                                else
+                                    "Day $activeDay Active | 4-Day residential camp operations running smoothly with $participantCount participants.",
+                                color = Color.White.copy(alpha = 0.88f),
+                                fontSize = 12.sp,
+                                lineHeight = 17.sp
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        IconButton(
+                            onClick = onOpenScanner,
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(LscGoldSecondary)
+                        ) {
+                            Icon(Icons.Default.QrCodeScanner, contentDescription = "Scan", tint = Color.White)
+                        }
                     }
                 }
             }
@@ -131,6 +153,15 @@ fun CampDashboardScreen(
                 onResolveAlert = onResolveAlert,
                 onAttendHealthAlert = onAttendHealthAlert,
                 onResolveHealthAlert = onResolveHealthAlert
+            )
+        }
+
+        // Section Header: Live Executive KPIs
+        item {
+            DashboardSectionHeader(
+                title = if (language == CampLanguage.BANGLA) "সার্বক্ষণিক ক্যাম্প স্ট্যাটাস (Live KPIs)" else "Live Operations Overview",
+                subtitle = if (language == CampLanguage.BANGLA) "অংশগ্রহণকারী, উপস্থিতি, স্টেশন ও স্কোর সামারি" else "Real-time headcount, attendance & station metrics",
+                icon = Icons.Default.Speed
             )
         }
 
@@ -284,7 +315,11 @@ fun CampDashboardScreen(
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF166534)
                                 )
-                                Text(text = "দায়িত্ব ও চেকলিস্ট", fontSize = 9.sp, color = Color(0xFF15803D))
+                                Text(
+                                    text = if (language == CampLanguage.BANGLA) "দায়িত্ব ও চেকলিস্ট" else "Duties & Checklists",
+                                    fontSize = 9.sp,
+                                    color = Color(0xFF15803D)
+                                )
                             }
                         }
 
@@ -305,7 +340,11 @@ fun CampDashboardScreen(
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF3730A3)
                                 )
-                                Text(text = "মেন্টর ও রুম ডিরেক্টরি", fontSize = 9.sp, color = Color(0xFF4338CA))
+                                Text(
+                                    text = if (language == CampLanguage.BANGLA) "মেন্টর ও রুম ডিরেক্টরি" else "Mentor & Room Directory",
+                                    fontSize = 9.sp,
+                                    color = Color(0xFF4338CA)
+                                )
                             }
                         }
                     }
@@ -333,7 +372,11 @@ fun CampDashboardScreen(
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF92400E)
                                 )
-                                Text(text = "হেডকাউন্ট ও বহর", fontSize = 9.sp, color = Color(0xFFB45309))
+                                Text(
+                                    text = if (language == CampLanguage.BANGLA) "হেডকাউন্ট ও বহর" else "Headcount & Buses",
+                                    fontSize = 9.sp,
+                                    color = Color(0xFFB45309)
+                                )
                             }
                         }
 
@@ -354,12 +397,25 @@ fun CampDashboardScreen(
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF1E293B)
                                 )
-                                Text(text = "৫ স্তম্ভ ও লক্ষ্যমাত্রা (পৃ. ৩৪)", fontSize = 9.sp, color = Color.Gray)
+                                Text(
+                                    text = if (language == CampLanguage.BANGLA) "৫ স্তম্ভ ও লক্ষ্যমাত্রা (পৃ. ৩৪)" else "5 Pillars & KPIs (p. 34)",
+                                    fontSize = 9.sp,
+                                    color = Color.Gray
+                                )
                             }
                         }
                     }
                 }
             }
+        }
+
+        // Section Header: Live Station Check-In & Dining Operations
+        item {
+            DashboardSectionHeader(
+                title = if (language == CampLanguage.BANGLA) "স্টেশন হাজিরা ও ডাইনিং কাউন্টার" else "Station Check-In & Dining Control",
+                subtitle = if (language == CampLanguage.BANGLA) "রিয়েল-টাইম স্টেশন চেক-ইন এবং খাবার অপচয় রোধ মনিটরিং" else "Live station check-in counts & meal wastage prevention",
+                icon = Icons.Default.RestaurantMenu
+            )
         }
 
         // Station Check-In Summary View (pulling live check-in counts from Room database)
@@ -381,12 +437,49 @@ fun CampDashboardScreen(
                 participants = participants,
                 mealDistributions = mealDistributions,
                 language = language,
+                selectedDay = currentSession?.dayNo ?: 1,
                 onOpenScanner = onOpenScanner
+            )
+        }
+
+        // Section Header: Visual Analytics & Data Recovery
+        item {
+            DashboardSectionHeader(
+                title = if (language == CampLanguage.BANGLA) "ভিজ্যুয়াল অ্যানালিটিক্স ও ডাটা সুরক্ষা" else "Visual Analytics & Data Recovery",
+                subtitle = if (language == CampLanguage.BANGLA) "রিচার্টস ট্রেন্ড চার্ট এবং অফলাইন ডাটাবেজ ব্যাকআপ" else "Recharts trend insights & SQLite database backup",
+                icon = Icons.Default.Insights
             )
         }
 
         // Recharts Visual Analytics & Trends Card
         item {
+            val totalCap = participantCount.coerceAtLeast(participants.size).coerceAtLeast(1)
+            val avgAttendanceVal = if (participants.isNotEmpty()) {
+                participants.map { it.attendancePercentage.toDouble() }.average()
+            } else {
+                98.7
+            }
+            val careCount = participants.count { !it.medicalFlag.isNullOrBlank() }.coerceAtLeast(pendingHealthAlerts.size)
+            val careRateVal = if (participants.isNotEmpty()) {
+                ((careCount.toDouble() / totalCap.toDouble()) * 100.0).coerceIn(1.0, 35.0)
+            } else {
+                9.1
+            }
+            val normalHealthVal = (100.0 - careRateVal).coerceIn(65.0, 99.0)
+
+            fun formatLocalizedPercent(v: Double): String {
+                val en = String.format(java.util.Locale.US, "%.1f%%", v)
+                return if (language == CampLanguage.BANGLA) {
+                    en.map {
+                        when (it) {
+                            '0' -> '০'; '1' -> '১'; '2' -> '২'; '3' -> '৩'; '4' -> '৪'
+                            '5' -> '৫'; '6' -> '৬'; '7' -> '৭'; '8' -> '৮'; '9' -> '৯'
+                            else -> it
+                        }
+                    }.joinToString("")
+                } else en
+            }
+
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -478,7 +571,7 @@ fun CampDashboardScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.BarChart, contentDescription = null, tint = LscEmeraldPrimary, modifier = Modifier.size(14.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text(text = "৯৮.৭%", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = LscEmeraldPrimary)
+                                Text(text = formatLocalizedPercent(avgAttendanceVal), fontWeight = FontWeight.Bold, fontSize = 13.sp, color = LscEmeraldPrimary)
                             }
                             Text(text = if (language == CampLanguage.BANGLA) "হাজিরা ট্রেন্ড" else "Attendance Rate", fontSize = 10.sp, color = Color.Gray)
                         }
@@ -489,7 +582,7 @@ fun CampDashboardScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.PieChart, contentDescription = null, tint = Color(0xFF3B82F6), modifier = Modifier.size(14.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text(text = "৮১.৯%", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF3B82F6))
+                                Text(text = formatLocalizedPercent(normalHealthVal), fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF3B82F6))
                             }
                             Text(text = if (language == CampLanguage.BANGLA) "সুস্থ (Normal)" else "Normal Health", fontSize = 10.sp, color = Color.Gray)
                         }
@@ -500,7 +593,7 @@ fun CampDashboardScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.HealthAndSafety, contentDescription = null, tint = Color(0xFFF59E0B), modifier = Modifier.size(14.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text(text = "৯.১%", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFFF59E0B))
+                                Text(text = formatLocalizedPercent(careRateVal), fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFFF59E0B))
                             }
                             Text(text = if (language == CampLanguage.BANGLA) "বিশ্রাম/কেয়ার" else "Rest/Care", fontSize = 10.sp, color = Color.Gray)
                         }
@@ -621,6 +714,15 @@ fun CampDashboardScreen(
             }
         }
 
+        // Section Header: Schedule, Competition Leaderboard & Dormitory Matrix
+        item {
+            DashboardSectionHeader(
+                title = if (language == CampLanguage.BANGLA) "দৈনিক রুটিন, লিডারবোর্ড ও আবাসন গ্রিড" else "Schedule, Standings & Dormitory Matrix",
+                subtitle = if (language == CampLanguage.BANGLA) "চলমান সেশন, দলের পয়েন্ট তালিকা এবং রিসোর্ট বেড অকুপেন্সি" else "Active sessions, team competition standings & resort bed layout",
+                icon = Icons.Default.EventNote
+            )
+        }
+
         // Daily Schedule Section (Highlights current camp activities & upcoming session timings based on participant's assigned station)
         item {
             DailyScheduleSection(
@@ -653,7 +755,7 @@ fun CampDashboardScreen(
                 rooms = rooms,
                 participants = participants,
                 language = language,
-                onNavigateToRooms = { onNavigateToTab(4) }
+                onNavigateToRooms = { onNavigateToTab(10) }
             )
         }
 
@@ -718,7 +820,10 @@ fun CampDashboardScreen(
                                         fontSize = 13.sp
                                     )
                                     Text(
-                                        text = "${grp.memberCount} সদস্য • লিডার: ${grp.leaderName.take(20)}...",
+                                        text = if (language == CampLanguage.BANGLA)
+                                            "${grp.memberCount} সদস্য • লিডার: ${grp.leaderName.take(20)}..."
+                                        else
+                                            "${grp.memberCount} Members • Leader: ${grp.leaderName.take(20)}...",
                                         fontSize = 10.sp,
                                         color = Color.Gray
                                     )
@@ -788,7 +893,7 @@ fun CampDashboardScreen(
                                         shape = RoundedCornerShape(4.dp)
                                     ) {
                                         Text(
-                                            text = "৬টি স্টেশন",
+                                            text = if (language == CampLanguage.BANGLA) "৬টি স্টেশন" else "6 Stations",
                                             fontSize = 9.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = Color(0xFF7C3AED),
@@ -830,7 +935,7 @@ fun CampDashboardScreen(
                             color = Color(0xFF6B21A8)
                         )
                         Text(
-                            text = "৬৭%",
+                            text = if (language == CampLanguage.BANGLA) "৬৭%" else "67%",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF7C3AED)
@@ -857,13 +962,13 @@ fun CampDashboardScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         listOf(
-                            Triple("S1", "হাদিস", true),
-                            Triple("S2", "লাইফ স্কিল", true),
-                            Triple("S3", "কুইজ", false),
-                            Triple("S4", "সালাত", true),
-                            Triple("S5", "ক্যালিগ্রাফি", false),
-                            Triple("S6", "ফিটনেস", true)
-                        ).forEach { (stn, title, isDone) ->
+                            Triple("S1", if (language == CampLanguage.BANGLA) "হাদিস" else "Hadith", true),
+                            Triple("S2", if (language == CampLanguage.BANGLA) "লাইফ স্কিল" else "Life Skill", true),
+                            Triple("S3", if (language == CampLanguage.BANGLA) "কুইজ" else "Quiz", false),
+                            Triple("S4", if (language == CampLanguage.BANGLA) "সালাত" else "Salat", true),
+                            Triple("S5", if (language == CampLanguage.BANGLA) "ক্যালিগ্রাফি" else "Calligraphy", false),
+                            Triple("S6", if (language == CampLanguage.BANGLA) "ফিটনেস" else "Fitness", true)
+                        ).forEach { (stn, _, isDone) ->
                             Surface(
                                 color = if (isDone) Color(0xFFDCFCE7) else Color(0xFFF1F5F9),
                                 shape = RoundedCornerShape(8.dp),
@@ -966,6 +1071,50 @@ fun CampDashboardScreen(
 }
 
 @Composable
+fun DashboardSectionHeader(
+    title: String,
+    subtitle: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp, bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .width(4.dp)
+                .height(26.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(LscEmeraldPrimary)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = LscEmeraldPrimary,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Column {
+            Text(
+                text = title,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = LscSlateDark
+            )
+            Text(
+                text = subtitle,
+                fontSize = 10.sp,
+                color = Color(0xFF64748B)
+            )
+        }
+    }
+}
+
+@Composable
 fun KpiCard(
     title: String,
     value: String,
@@ -975,31 +1124,66 @@ fun KpiCard(
     modifier: Modifier = Modifier
 ) {
     Card(
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = modifier
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min)
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .fillMaxHeight()
+                    .background(color)
+            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 12.dp, vertical = 12.dp)
             ) {
-                Text(text = title, fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
-                Box(
-                    modifier = Modifier
-                        .size(28.dp)
-                        .clip(CircleShape)
-                        .background(color.copy(alpha = 0.12f)),
-                    contentAlignment = Alignment.Center
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(imageVector = icon, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
+                    Text(
+                        text = title,
+                        fontSize = 11.sp,
+                        color = Color(0xFF475569),
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(color.copy(alpha = 0.12f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(imageVector = icon, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
+                    }
                 }
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = value,
+                    fontSize = 19.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = LscSlateDark,
+                    maxLines = 1
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = sub,
+                    fontSize = 10.sp,
+                    color = Color(0xFF64748B),
+                    maxLines = 1
+                )
             }
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(text = value, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = LscSlateDark)
-            Text(text = sub, fontSize = 10.sp, color = Color.Gray)
         }
     }
 }

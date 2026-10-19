@@ -75,12 +75,19 @@ object FirestoreManager {
         }
     }
 
+    private fun parseUserRoleSafely(roleStr: String?): UserRole? {
+        val clean = roleStr?.trim()?.uppercase() ?: return null
+        if (clean.isEmpty()) return null
+        return UserRole.entries.find { it.name.equals(clean, ignoreCase = true) }
+            ?: UserAccountEntity(email = "", fullName = "", role = clean, passwordHash = "").toUserRole()
+    }
+
     suspend fun getUserRole(uid: String): UserRole? {
         return try {
             val database = db ?: return null
             val snapshot = database.collection(COLLECTION_USERS).document(uid).get().await()
             val roleStr = snapshot.getString("role")
-            roleStr?.let { UserRole.valueOf(it) }
+            parseUserRoleSafely(roleStr)
         } catch (e: Exception) {
             Log.e(TAG, "Error fetching user role for $uid: ${e.message}", e)
             null
@@ -96,12 +103,10 @@ object FirestoreManager {
         try {
             val tokenResult = user.getIdToken(false).await()
             val customRole = tokenResult.claims["role"] as? String
-            if (!customRole.isNullOrBlank()) {
-                val matched = UserRole.values().find { it.name.equals(customRole, ignoreCase = true) }
-                if (matched != null) {
-                    Log.d(TAG, "User role verified via Firebase Auth custom claims: ${matched.name}")
-                    return matched
-                }
+            val matched = parseUserRoleSafely(customRole)
+            if (matched != null) {
+                Log.d(TAG, "User role verified via Firebase Auth custom claims: ${matched.name}")
+                return matched
             }
         } catch (e: Exception) {
             Log.w(TAG, "Custom claim token check note: ${e.message}")

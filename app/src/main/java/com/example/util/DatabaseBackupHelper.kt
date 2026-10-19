@@ -250,6 +250,58 @@ object DatabaseBackupHelper {
     }
 
     /**
+     * Restores the live Room SQLite database from an existing on-device backup file.
+     */
+    suspend fun restoreDatabaseFromBackup(context: Context, backupFile: File): BackupResult = withContext(Dispatchers.IO) {
+        try {
+            if (!backupFile.exists() || !verifySqliteHeader(backupFile)) {
+                return@withContext BackupResult.Error("ব্যাকআপ ফাইলটি বৈধ SQLite ডাটাবেজ নয় বা পাওয়া যায়নি।")
+            }
+
+            checkpointWal(context)
+
+            val targetDbFile = context.getDatabasePath(DATABASE_NAME)
+            targetDbFile.parentFile?.mkdirs()
+
+            // Remove stale WAL/SHM files before copying restored snapshot
+            val walFile = File(targetDbFile.path + "-wal")
+            val shmFile = File(targetDbFile.path + "-shm")
+
+            FileInputStream(backupFile).use { input ->
+                FileOutputStream(targetDbFile, false).use { output ->
+                    input.copyTo(output)
+                    output.flush()
+                }
+            }
+
+            if (walFile.exists()) walFile.delete()
+            if (shmFile.exists()) shmFile.delete()
+
+            val sizeBytes = targetDbFile.length()
+            BackupResult.Success(
+                file = targetDbFile,
+                fileName = backupFile.name,
+                sizeBytes = sizeBytes,
+                formattedSize = formatFileSize(sizeBytes),
+                destinationPath = targetDbFile.absolutePath
+            )
+        } catch (e: Exception) {
+            BackupResult.Error("ডাটাবেজ রিস্টোর করতে ত্রুটি: ${e.localizedMessage ?: "অজানা ত্রুটি"}")
+        }
+    }
+
+    /**
+     * Deletes an existing backup file from device storage.
+     */
+    fun deleteBackupFile(backupFile: File): Boolean {
+        return try {
+            backupFile.exists() && backupFile.delete()
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /**
      * Gets current live database file statistics.
      */
     fun getLiveDatabaseStats(context: Context): Triple<Long, String, Boolean> {

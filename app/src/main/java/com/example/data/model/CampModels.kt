@@ -398,18 +398,19 @@ data class VolunteerShiftEntity(
 )
 
 fun UserAccountEntity.toUserRole(): UserRole {
-    return when (role.uppercase()) {
-        "SUPER_ADMIN" -> UserRole.SUPER_ADMIN
-        "CAMP_CHIEF" -> UserRole.CAMP_CHIEF
-        "REGISTRATION", "VOLUNTEER" -> UserRole.VOLUNTEER
-        "MEDICAL", "MEDICAL_TEAM" -> UserRole.MEDICAL_TEAM
+    return when (role.trim().uppercase()) {
+        "SUPER_ADMIN", "ADMIN" -> UserRole.SUPER_ADMIN
+        "CAMP_CHIEF", "CHIEF" -> UserRole.CAMP_CHIEF
+        "REGISTRATION", "VOLUNTEER", "CHECK_IN_VOLUNTEER" -> UserRole.VOLUNTEER
+        "MEDICAL", "MEDICAL_TEAM", "DOCTOR" -> UserRole.MEDICAL_TEAM
         "JUDGE", "COMPETITION_JUDGE" -> UserRole.COMPETITION_JUDGE
-        "LOGISTICS", "INVENTORY" -> UserRole.INVENTORY_OFFICER
-        "GROUP_LEADER" -> UserRole.GROUP_LEADER
-        "MENTOR" -> UserRole.MENTOR
-        "STATION_MODERATOR" -> UserRole.STATION_MODERATOR
-        "BULLETIN" -> UserRole.BULLETIN_EDITOR
-        else -> UserRole.CAMP_CHIEF
+        "LOGISTICS", "INVENTORY", "INVENTORY_OFFICER", "FOOD" -> UserRole.INVENTORY_OFFICER
+        "GROUP_LEADER", "LEADER" -> UserRole.GROUP_LEADER
+        "MENTOR", "SUBGROUP_MENTOR" -> UserRole.MENTOR
+        "STATION_MODERATOR", "MODERATOR" -> UserRole.STATION_MODERATOR
+        "BULLETIN", "BULLETIN_EDITOR", "MEDIA" -> UserRole.BULLETIN_EDITOR
+        "PARTICIPANT", "CAMPER" -> UserRole.PARTICIPANT
+        else -> UserRole.VOLUNTEER
     }
 }
 

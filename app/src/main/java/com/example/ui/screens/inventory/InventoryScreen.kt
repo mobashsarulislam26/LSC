@@ -161,13 +161,13 @@ fun InventoryScreen(
         }
     }
 
-    if (showIssueDialog != null) {
+    showIssueDialog?.let { targetItem ->
         IssueItemDialog(
-            item = showIssueDialog!!,
+            item = targetItem,
             language = language,
             onDismiss = { showIssueDialog = null },
             onConfirm = { qty, rec, off ->
-                onIssueItem(showIssueDialog!!.id, qty, rec, off)
+                onIssueItem(targetItem.id, qty, rec, off)
                 showIssueDialog = null
             }
         )
@@ -326,7 +326,7 @@ fun IssueItemDialog(
 
                 if (errorText != null) {
                     Spacer(modifier = Modifier.height(6.dp))
-                    Text(text = errorText!!, fontSize = 11.sp, color = Color(0xFFDC2626))
+                    Text(text = errorText.orEmpty(), fontSize = 11.sp, color = Color(0xFFDC2626))
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))

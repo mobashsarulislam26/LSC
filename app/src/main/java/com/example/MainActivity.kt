@@ -63,8 +63,10 @@ fun LscMainApp(
     val authState by loginViewModel.authState.collectAsStateWithLifecycle()
     val firestoreUserRole by loginViewModel.userRole.collectAsStateWithLifecycle()
 
-    LaunchedEffect(firestoreUserRole) {
-        campViewModel.setRole(firestoreUserRole)
+    LaunchedEffect(authState, firestoreUserRole) {
+        if (authState is AuthState.Authenticated) {
+            campViewModel.setRole(firestoreUserRole)
+        }
     }
 
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -151,6 +153,8 @@ fun LscMainApp(
         return
     }
 
+    val selectedDay by campViewModel.selectedDay.collectAsStateWithLifecycle()
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -159,6 +163,7 @@ fun LscMainApp(
                 currentRole = currentRole,
                 isOffline = isOffline,
                 pendingSyncCount = pendingSyncCount,
+                activeDay = selectedDay,
                 isAdminUnlocked = isAdminUnlocked,
                 currentUser = currentUser,
                 onLogout = { campViewModel.logout() },
@@ -181,51 +186,113 @@ fun LscMainApp(
             )
         },
         bottomBar = {
-            NavigationBar(
-                containerColor = Color.White,
-                tonalElevation = 8.dp,
-                modifier = Modifier.navigationBarsPadding()
-            ) {
-                NavigationBarItem(
-                    selected = currentTab == 0,
-                    onClick = { currentTab = 0 },
-                    icon = { Icon(Icons.Default.Dashboard, contentDescription = "Dashboard") },
-                    label = { Text(if (language == CampLanguage.BANGLA) "ড্যাশবোর্ড" else "Dashboard", fontSize = 10.sp) },
-                    colors = NavigationBarItemDefaults.colors(selectedIconColor = LscEmeraldPrimary, indicatorColor = LscEmeraldLight),
-                    modifier = Modifier.testTag("nav_tab_dashboard")
-                )
-                NavigationBarItem(
-                    selected = currentTab == 1,
-                    onClick = { currentTab = 1 },
-                    icon = { Icon(Icons.Default.PeopleAlt, contentDescription = "Participants") },
-                    label = { Text(if (language == CampLanguage.BANGLA) "অংশগ্রহণকারী" else "Roster", fontSize = 10.sp) },
-                    colors = NavigationBarItemDefaults.colors(selectedIconColor = LscEmeraldPrimary, indicatorColor = LscEmeraldLight),
-                    modifier = Modifier.testTag("nav_tab_participants")
-                )
-                NavigationBarItem(
-                    selected = currentTab == 2,
-                    onClick = { currentTab = 2 },
-                    icon = { Icon(Icons.Default.FactCheck, contentDescription = "Attendance") },
-                    label = { Text(if (language == CampLanguage.BANGLA) "হাজিরা" else "Attendance", fontSize = 10.sp) },
-                    colors = NavigationBarItemDefaults.colors(selectedIconColor = LscEmeraldPrimary, indicatorColor = LscEmeraldLight),
-                    modifier = Modifier.testTag("nav_tab_attendance")
-                )
-                NavigationBarItem(
-                    selected = currentTab == 3,
-                    onClick = { currentTab = 3 },
-                    icon = { Icon(Icons.Default.Autorenew, contentDescription = "Stations") },
-                    label = { Text(if (language == CampLanguage.BANGLA) "স্টেশন" else "Stations", fontSize = 10.sp) },
-                    colors = NavigationBarItemDefaults.colors(selectedIconColor = LscEmeraldPrimary, indicatorColor = LscEmeraldLight),
-                    modifier = Modifier.testTag("nav_tab_stations")
-                )
-                NavigationBarItem(
-                    selected = currentTab == 4,
-                    onClick = { currentTab = 4 },
-                    icon = { Icon(Icons.Default.Category, contentDescription = "Modules") },
-                    label = { Text(if (language == CampLanguage.BANGLA) "মডিউল" else "Modules", fontSize = 10.sp) },
-                    colors = NavigationBarItemDefaults.colors(selectedIconColor = LscEmeraldPrimary, indicatorColor = LscEmeraldLight),
-                    modifier = Modifier.testTag("nav_tab_modules")
-                )
+            Column(modifier = Modifier.navigationBarsPadding()) {
+                HorizontalDivider(color = Color(0xFFE2E8F0), thickness = 1.dp)
+                NavigationBar(
+                    containerColor = Color.White,
+                    tonalElevation = 10.dp
+                ) {
+                    NavigationBarItem(
+                        selected = currentTab == 0,
+                        onClick = { currentTab = 0 },
+                        icon = { Icon(Icons.Default.Dashboard, contentDescription = "Dashboard") },
+                        label = {
+                            Text(
+                                text = if (language == CampLanguage.BANGLA) "ড্যাশবোর্ড" else "Dashboard",
+                                fontSize = 10.sp,
+                                fontWeight = if (currentTab == 0) FontWeight.Bold else FontWeight.Medium
+                            )
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = LscEmeraldPrimary,
+                            selectedTextColor = LscEmeraldPrimary,
+                            unselectedIconColor = Color(0xFF64748B),
+                            unselectedTextColor = Color(0xFF64748B),
+                            indicatorColor = LscEmeraldLight
+                        ),
+                        modifier = Modifier.testTag("nav_tab_dashboard")
+                    )
+                    NavigationBarItem(
+                        selected = currentTab == 1,
+                        onClick = { currentTab = 1 },
+                        icon = { Icon(Icons.Default.PeopleAlt, contentDescription = "Participants") },
+                        label = {
+                            Text(
+                                text = if (language == CampLanguage.BANGLA) "অংশগ্রহণকারী" else "Roster",
+                                fontSize = 10.sp,
+                                fontWeight = if (currentTab == 1) FontWeight.Bold else FontWeight.Medium
+                            )
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = LscEmeraldPrimary,
+                            selectedTextColor = LscEmeraldPrimary,
+                            unselectedIconColor = Color(0xFF64748B),
+                            unselectedTextColor = Color(0xFF64748B),
+                            indicatorColor = LscEmeraldLight
+                        ),
+                        modifier = Modifier.testTag("nav_tab_participants")
+                    )
+                    NavigationBarItem(
+                        selected = currentTab == 2,
+                        onClick = { currentTab = 2 },
+                        icon = { Icon(Icons.Default.FactCheck, contentDescription = "Attendance") },
+                        label = {
+                            Text(
+                                text = if (language == CampLanguage.BANGLA) "হাজিরা" else "Attendance",
+                                fontSize = 10.sp,
+                                fontWeight = if (currentTab == 2) FontWeight.Bold else FontWeight.Medium
+                            )
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = LscEmeraldPrimary,
+                            selectedTextColor = LscEmeraldPrimary,
+                            unselectedIconColor = Color(0xFF64748B),
+                            unselectedTextColor = Color(0xFF64748B),
+                            indicatorColor = LscEmeraldLight
+                        ),
+                        modifier = Modifier.testTag("nav_tab_attendance")
+                    )
+                    NavigationBarItem(
+                        selected = currentTab == 3,
+                        onClick = { currentTab = 3 },
+                        icon = { Icon(Icons.Default.Autorenew, contentDescription = "Stations") },
+                        label = {
+                            Text(
+                                text = if (language == CampLanguage.BANGLA) "স্টেশন" else "Stations",
+                                fontSize = 10.sp,
+                                fontWeight = if (currentTab == 3) FontWeight.Bold else FontWeight.Medium
+                            )
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = LscEmeraldPrimary,
+                            selectedTextColor = LscEmeraldPrimary,
+                            unselectedIconColor = Color(0xFF64748B),
+                            unselectedTextColor = Color(0xFF64748B),
+                            indicatorColor = LscEmeraldLight
+                        ),
+                        modifier = Modifier.testTag("nav_tab_stations")
+                    )
+                    NavigationBarItem(
+                        selected = currentTab == 4,
+                        onClick = { currentTab = 4 },
+                        icon = { Icon(Icons.Default.Category, contentDescription = "Modules") },
+                        label = {
+                            Text(
+                                text = if (language == CampLanguage.BANGLA) "মডিউল" else "Modules",
+                                fontSize = 10.sp,
+                                fontWeight = if (currentTab == 4) FontWeight.Bold else FontWeight.Medium
+                            )
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = LscEmeraldPrimary,
+                            selectedTextColor = LscEmeraldPrimary,
+                            unselectedIconColor = Color(0xFF64748B),
+                            unselectedTextColor = Color(0xFF64748B),
+                            indicatorColor = LscEmeraldLight
+                        ),
+                        modifier = Modifier.testTag("nav_tab_modules")
+                    )
+                }
             }
         }
     ) { innerPadding ->
@@ -265,7 +332,7 @@ fun LscMainApp(
                             } else if (tabIndex == 9) {
                                 currentTab = 4
                                 selectedMoreModule = "DEPARTMENTS"
-                            } else if (tabIndex == 10) {
+                            } else if (tabIndex == 10 || tabIndex == 13) {
                                 currentTab = 4
                                 selectedMoreModule = "SUBGROUPS"
                             } else if (tabIndex == 11) {
@@ -274,9 +341,6 @@ fun LscMainApp(
                             } else if (tabIndex == 12) {
                                 currentTab = 4
                                 selectedMoreModule = "RATIONALE"
-                            } else if (tabIndex == 13) {
-                                currentTab = 4
-                                selectedMoreModule = "ROOMS"
                             }
                         },
                         onOpenScanner = { showUniversalScanner = true },
@@ -343,8 +407,6 @@ fun LscMainApp(
                     )
                 }
                 3 -> {
-                    val selectedDay by campViewModel.selectedDay.collectAsStateWithLifecycle()
-
                     StationRotationScreen(
                         language = language,
                         stations = stations,
@@ -360,9 +422,9 @@ fun LscMainApp(
                     )
                 }
                 4 -> {
-                    // Modules Hub (Competitions, Health, Inventory, Bulletin, Emergency)
+                    // Modules Hub (Competitions, Health, Inventory, Bulletin, Emergency, LSC 2026 Modules)
                     Column(modifier = Modifier.fillMaxSize()) {
-                        // Module switcher bar
+                        // Module switcher bar with uniform icons and indicator mapping
                         ScrollableTabRow(
                             selectedTabIndex = when (selectedMoreModule) {
                                 "CHARTS" -> 0
@@ -375,6 +437,7 @@ fun LscMainApp(
                                 "SUBGROUPS" -> 7
                                 "STUDY_TOUR" -> 8
                                 "RATIONALE" -> 9
+                                "VOLUNTEERS" -> 10
                                 else -> 0
                             },
                             containerColor = Color.White,
@@ -391,27 +454,37 @@ fun LscMainApp(
                             Tab(
                                 selected = selectedMoreModule == "COMPETITION",
                                 onClick = { selectedMoreModule = "COMPETITION" },
-                                text = { Text(if (language == CampLanguage.BANGLA) "প্রতিযোগিতা ও স্কোর" else "Competitions", fontSize = 11.sp) }
+                                text = { Text(if (language == CampLanguage.BANGLA) "প্রতিযোগিতা ও স্কোর" else "Competitions", fontSize = 11.sp, fontWeight = if (selectedMoreModule == "COMPETITION") FontWeight.Bold else FontWeight.Normal) },
+                                icon = { Icon(Icons.Default.EmojiEvents, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                                modifier = Modifier.testTag("module_tab_competition")
                             )
                             Tab(
                                 selected = selectedMoreModule == "HEALTH",
                                 onClick = { selectedMoreModule = "HEALTH" },
-                                text = { Text(if (language == CampLanguage.BANGLA) "মেডিকেল ও স্বাস্থ্য" else "Health & Medical", fontSize = 11.sp) }
+                                text = { Text(if (language == CampLanguage.BANGLA) "মেডিকেল ও স্বাস্থ্য" else "Health & Medical", fontSize = 11.sp, fontWeight = if (selectedMoreModule == "HEALTH") FontWeight.Bold else FontWeight.Normal) },
+                                icon = { Icon(Icons.Default.MedicalServices, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                                modifier = Modifier.testTag("module_tab_health")
                             )
                             Tab(
                                 selected = selectedMoreModule == "INVENTORY",
                                 onClick = { selectedMoreModule = "INVENTORY" },
-                                text = { Text(if (language == CampLanguage.BANGLA) "পুরস্কার ইনভেন্টরি" else "Awards Stock", fontSize = 11.sp) }
+                                text = { Text(if (language == CampLanguage.BANGLA) "পুরস্কার ইনভেন্টরি" else "Awards Stock", fontSize = 11.sp, fontWeight = if (selectedMoreModule == "INVENTORY") FontWeight.Bold else FontWeight.Normal) },
+                                icon = { Icon(Icons.Default.Inventory2, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                                modifier = Modifier.testTag("module_tab_inventory")
                             )
                             Tab(
                                 selected = selectedMoreModule == "BULLETIN",
                                 onClick = { selectedMoreModule = "BULLETIN" },
-                                text = { Text(if (language == CampLanguage.BANGLA) "দেয়াল পত্রিকা" else "Bulletin", fontSize = 11.sp) }
+                                text = { Text(if (language == CampLanguage.BANGLA) "দেয়াল পত্রিকা" else "Bulletin", fontSize = 11.sp, fontWeight = if (selectedMoreModule == "BULLETIN") FontWeight.Bold else FontWeight.Normal) },
+                                icon = { Icon(Icons.Default.Newspaper, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                                modifier = Modifier.testTag("module_tab_bulletin")
                             )
                             Tab(
                                 selected = selectedMoreModule == "EMERGENCY",
                                 onClick = { selectedMoreModule = "EMERGENCY" },
-                                text = { Text(if (language == CampLanguage.BANGLA) "জরুরি সেবা" else "Emergency", fontSize = 11.sp) }
+                                text = { Text(if (language == CampLanguage.BANGLA) "জরুরি সেবা" else "Emergency", fontSize = 11.sp, fontWeight = if (selectedMoreModule == "EMERGENCY") FontWeight.Bold else FontWeight.Normal) },
+                                icon = { Icon(Icons.Default.Emergency, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                                modifier = Modifier.testTag("module_tab_emergency")
                             )
                             Tab(
                                 selected = selectedMoreModule == "DEPARTMENTS",
@@ -610,9 +683,16 @@ fun LscMainApp(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(16.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    containerColor = LscSlateDark,
+                    contentColor = Color.White,
                     action = {
                         TextButton(onClick = { campViewModel.clearStatusNotification() }) {
-                            Text("ঠিক আছে", color = LscGoldLight)
+                            Text(
+                                text = if (language == CampLanguage.BANGLA) "ঠিক আছে" else "OK",
+                                color = LscGoldLight,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 ) {
@@ -648,7 +728,7 @@ fun LscMainApp(
                             onClick = { campViewModel.clearScanFeedback() },
                             colors = ButtonDefaults.buttonColors(containerColor = LscEmeraldPrimary)
                         ) {
-                            Text("ঠিক আছে")
+                            Text(if (language == CampLanguage.BANGLA) "ঠিক আছে" else "OK")
                         }
                     }
                 )

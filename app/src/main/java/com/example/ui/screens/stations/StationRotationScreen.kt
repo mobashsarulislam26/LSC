@@ -290,9 +290,9 @@ fun StationRotationScreen(
     }
 
     // Modal Edit Schedule Dialog
-    if (eventToEdit != null) {
+    eventToEdit?.let { targetEvent ->
         EditScheduleDialog(
-            event = eventToEdit!!,
+            event = targetEvent,
             language = language,
             onDismiss = { eventToEdit = null },
             onSave = { updated ->
@@ -303,9 +303,9 @@ fun StationRotationScreen(
     }
 
     // Modal Edit Group Dialog
-    if (groupToEdit != null) {
+    groupToEdit?.let { targetGroup ->
         EditGroupDialog(
-            group = groupToEdit!!,
+            group = targetGroup,
             language = language,
             onDismiss = { groupToEdit = null },
             onSave = { updated ->

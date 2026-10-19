@@ -207,7 +207,7 @@ fun BackupDatabaseDialog(
                                         shape = RoundedCornerShape(6.dp)
                                     ) {
                                         Text(
-                                            text = "SQLite 3 • Room v6",
+                                            text = "SQLite 3 • Room v9",
                                             fontSize = 10.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = Color(0xFF16A34A),
@@ -294,19 +294,21 @@ fun BackupDatabaseDialog(
                                     Spacer(modifier = Modifier.width(10.dp))
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            text = resultMessage!!,
+                                            text = resultMessage.orEmpty(),
                                             color = if (isSuccess) Color(0xFF14532D) else Color(0xFF7F1D1D),
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.Medium
                                         )
-                                        if (isSuccess && latestBackupFile != null) {
-                                            Text(
-                                                text = "পাথ: ${latestBackupFile!!.absolutePath}",
-                                                color = Color(0xFF15803D),
-                                                fontSize = 10.sp,
-                                                fontFamily = FontFamily.Monospace,
-                                                modifier = Modifier.padding(top = 2.dp)
-                                            )
+                                        latestBackupFile?.let { backupFile ->
+                                            if (isSuccess) {
+                                                Text(
+                                                    text = "পাথ: ${backupFile.absolutePath}",
+                                                    color = Color(0xFF15803D),
+                                                    fontSize = 10.sp,
+                                                    fontFamily = FontFamily.Monospace,
+                                                    modifier = Modifier.padding(top = 2.dp)
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -416,11 +418,11 @@ fun BackupDatabaseDialog(
                                 }
 
                                 // Button 3: Share latest backup if exists
-                                if (latestBackupFile != null) {
+                                latestBackupFile?.let { backupFile ->
                                     Spacer(modifier = Modifier.height(8.dp))
                                     OutlinedButton(
                                         onClick = {
-                                            DatabaseBackupHelper.shareBackupFile(context, latestBackupFile!!)
+                                            DatabaseBackupHelper.shareBackupFile(context, backupFile)
                                         },
                                         shape = RoundedCornerShape(10.dp),
                                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF1D4ED8)),
@@ -560,13 +562,66 @@ fun BackupDatabaseDialog(
                                     }
                                 }
 
-                                IconButton(
-                                    onClick = {
-                                        DatabaseBackupHelper.shareBackupFile(context, backup.file)
-                                    },
-                                    modifier = Modifier.testTag("share_btn_${backup.fileName}")
-                                ) {
-                                    Icon(Icons.Default.Share, contentDescription = "Share", tint = LscEmeraldPrimary)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    IconButton(
+                                        onClick = {
+                                            coroutineScope.launch {
+                                                isProcessing = true
+                                                val res = DatabaseBackupHelper.restoreDatabaseFromBackup(context, backup.file)
+                                                isProcessing = false
+                                                when (res) {
+                                                    is BackupResult.Success -> {
+                                                        isSuccess = true
+                                                        resultMessage = if (language == CampLanguage.BANGLA)
+                                                            "✅ ব্যাকআপ সফলভাবে রিস্টোর করা হয়েছে: ${res.fileName}"
+                                                        else
+                                                            "✅ Backup restored successfully: ${res.fileName}"
+                                                        Toast.makeText(context, resultMessage, Toast.LENGTH_LONG).show()
+                                                    }
+                                                    is BackupResult.Error -> {
+                                                        isSuccess = false
+                                                        resultMessage = res.errorMessage
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier.testTag("restore_btn_${backup.fileName}")
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Restore,
+                                            contentDescription = "Restore",
+                                            tint = Color(0xFF0284C7)
+                                        )
+                                    }
+
+                                    IconButton(
+                                        onClick = {
+                                            DatabaseBackupHelper.shareBackupFile(context, backup.file)
+                                        },
+                                        modifier = Modifier.testTag("share_btn_${backup.fileName}")
+                                    ) {
+                                        Icon(Icons.Default.Share, contentDescription = "Share", tint = LscEmeraldPrimary)
+                                    }
+
+                                    IconButton(
+                                        onClick = {
+                                            if (DatabaseBackupHelper.deleteBackupFile(backup.file)) {
+                                                reloadBackups()
+                                                resultMessage = if (language == CampLanguage.BANGLA)
+                                                    "ব্যাকআপ ফাইল মুছে ফেলা হয়েছে: ${backup.fileName}"
+                                                else
+                                                    "Backup deleted: ${backup.fileName}"
+                                                isSuccess = true
+                                            }
+                                        },
+                                        modifier = Modifier.testTag("delete_btn_${backup.fileName}")
+                                    ) {
+                                        Icon(
+                                            Icons.Default.DeleteOutline,
+                                            contentDescription = "Delete",
+                                            tint = Color(0xFFDC2626)
+                                        )
+                                    }
                                 }
                             }
                         }

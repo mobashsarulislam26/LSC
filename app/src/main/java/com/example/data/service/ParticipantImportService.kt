@@ -275,9 +275,17 @@ object ParticipantImportService {
                 Triple("abu_dawood", "আবু দাউদ", "Abu Dawood")
             lower.contains("tirmidhi") || raw.contains("তিরমিযী") ->
                 Triple("tirmidhi", "তিরমিযী", "Tirmidhi")
+            lower.contains("shafee") || raw.contains("শাফেয়ী") || raw.contains("শাফেয়ী") ->
+                Triple("shafee", "শাফেয়ী", "Shafee")
+            lower.contains("hanafi") || raw.contains("হানাফী") ->
+                Triple("hanafi", "হানাফী", "Hanafi")
+            lower.contains("maliki") || raw.contains("মালিকী") ->
+                Triple("maliki", "মালিকী", "Maliki")
+            lower.contains("ahmad") || raw.contains("আহমাদ") ->
+                Triple("ahmad", "আহমাদ ইবনে হাম্বল", "Ahmad")
             lower.contains("salahuddin") || raw.contains("সালাহউদ্দীন") ->
                 Triple("salahuddin", "সালাহউদ্দীন আইয়ুবী", "Salahuddin Ayyubi")
-            lower.contains("sumaiya") || raw.contains("সুমাইয়া") ->
+            lower.contains("sumaiya") || raw.contains("সুমাইয়া") || raw.contains("সুমাইয়া") ->
                 Triple("sumaiya", "সুমাইয়া", "Sumaiya")
             else ->
                 Triple("bukhari", "বুখারী", "Bukhari")
@@ -286,7 +294,7 @@ object ParticipantImportService {
 
     /**
      * Imports parsed participants directly into the Firestore 'participants' collection
-     * and persists to local Room database for offline resilience.
+     * and persists to local Room database for offline resilience without overwriting unrelated IDs.
      */
     suspend fun importRosterToFirestore(
         jsonContent: String,
@@ -305,12 +313,33 @@ object ParticipantImportService {
             )
         }
 
-        try {
-            // 1. Bulk save directly to Firestore 'participants' collection
-            val savedInFirestore = FirestoreManager.bulkSaveParticipants(parsed)
+        // Resolve proper Room primary keys by matching existing campCode or using 0L for new records
+        val entitiesToPersist = if (campDao != null) {
+            parsed.map { p ->
+                val existing = campDao.getParticipantByCampCode(p.campCode)
+                p.copy(id = existing?.id ?: 0L)
+            }
+        } else {
+            parsed
+        }
 
-            // 2. Persist locally to Room database
-            campDao?.insertParticipants(parsed)
+        try {
+            // 1. Persist locally to Room database first and record Audit Log locally
+            if (campDao != null) {
+                campDao.insertParticipants(entitiesToPersist)
+                campDao.insertAuditLog(
+                    AuditLogEntity(
+                        timestamp = System.currentTimeMillis(),
+                        userEmail = adminEmail,
+                        actionType = "PARTICIPANT_ROSTER_IMPORT",
+                        targetEntity = "Participants",
+                        description = "অংশগ্রহণকারী রোস্টার ইম্পোর্ট: ${entitiesToPersist.size} জন প্রোফাইল সংরক্ষিত হয়েছে"
+                    )
+                )
+            }
+
+            // 2. Bulk save directly to Firestore 'participants' collection
+            FirestoreManager.bulkSaveParticipants(entitiesToPersist)
 
             // 3. Log Audit Trail to Firestore 'audit_logs' collection
             FirestoreManager.saveAuditLog(
@@ -319,29 +348,28 @@ object ParticipantImportService {
                     userEmail = adminEmail,
                     actionType = "PARTICIPANT_ROSTER_IMPORT",
                     targetEntity = "Participants",
-                    description = "অংশগ্রহণকারী রোস্টার ইম্পোর্ট: ${parsed.size} জন প্রোফাইল ফায়ারস্টোর 'participants' কালেকশনে সংরক্ষিত হয়েছে"
+                    description = "অংশগ্রহণকারী রোস্টার ইম্পোর্ট: ${entitiesToPersist.size} জন প্রোফাইল ফায়ারস্টোর 'participants' কালেকশনে সংরক্ষিত হয়েছে"
                 )
             )
 
             ParticipantImportResult(
-                totalParsed = parsed.size,
-                successCount = parsed.size,
+                totalParsed = entitiesToPersist.size,
+                successCount = entitiesToPersist.size,
                 failureCount = 0,
-                participants = parsed,
-                message = "সফলভাবে ${parsed.size} জন অংশগ্রহণকারীর তথ্য ফায়ারস্টোর 'participants' কালেকশনে সংরক্ষিত হয়েছে।"
+                participants = entitiesToPersist,
+                message = "সফলভাবে ${entitiesToPersist.size} জন অংশগ্রহণকারীর তথ্য ডেটাবেজে সংরক্ষিত হয়েছে।"
             )
         } catch (e: Exception) {
             Log.e(TAG, "Error during Firestore participant import: ${e.message}", e)
-            // Even if network/Firestore encounters an error, save to local Room
-            campDao?.insertParticipants(parsed)
+            campDao?.insertParticipants(entitiesToPersist)
 
             ParticipantImportResult(
-                totalParsed = parsed.size,
-                successCount = parsed.size,
+                totalParsed = entitiesToPersist.size,
+                successCount = entitiesToPersist.size,
                 failureCount = 0,
-                participants = parsed,
+                participants = entitiesToPersist,
                 errors = listOf("ফায়ারস্টোর সিঙ্ক বিলম্বিত হয়েছে: ${e.message} (লোকাল ডাটাবেজে সংরক্ষিত)"),
-                message = "${parsed.size} জন অংশগ্রহণকারী সফলভাবে প্রসেস করা হয়েছে (লোকাল সংরক্ষিত, ফায়ারস্টোর রিট্রাই শিডিউলড)"
+                message = "${entitiesToPersist.size} জন অংশগ্রহণকারী সফলভাবে প্রসেস করা হয়েছে (লোকাল সংরক্ষিত, ফায়ারস্টোর রিট্রাই শিডিউলড)"
             )
         }
     }

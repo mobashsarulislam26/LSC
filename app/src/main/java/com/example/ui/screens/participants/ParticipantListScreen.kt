@@ -397,9 +397,9 @@ fun ParticipantListScreen(
         }
     }
 
-    if (qrParticipant != null) {
+    qrParticipant?.let { targetParticipant ->
         ParticipantQrDialog(
-            participant = qrParticipant!!,
+            participant = targetParticipant,
             language = language,
             onDismiss = { qrParticipant = null }
         )

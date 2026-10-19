@@ -44,22 +44,45 @@ data class RoomOccupancySummary(
     val partiallyAvailableRoomsCount: Int
 )
 
+private val banglaDigitMap = mapOf(
+    '০' to '0', '১' to '1', '২' to '2', '৩' to '3', '৪' to '4',
+    '৫' to '5', '৬' to '6', '৭' to '7', '৮' to '8', '৯' to '9'
+)
+
+fun normalizeRoomDigits(raw: String): String =
+    raw.map { banglaDigitMap[it] ?: it }.joinToString("").filter { it.isDigit() }
+
+fun matchParticipantsToRoom(
+    room: RoomEntity,
+    participants: List<ParticipantEntity>
+): List<ParticipantEntity> {
+    val roomDigits = normalizeRoomDigits(room.roomNo)
+    return participants.filter { p ->
+        val pRoomDigits = normalizeRoomDigits(p.roomNo)
+        p.roomNo.equals(room.roomNo, ignoreCase = true) ||
+            (roomDigits.isNotBlank() && pRoomDigits == roomDigits) ||
+            p.roomNo.contains(room.roomNo, ignoreCase = true)
+    }
+}
+
 fun calculateRoomOccupancy(
     rooms: List<RoomEntity>,
     participants: List<ParticipantEntity>
 ): RoomOccupancySummary {
     val totalRooms = rooms.size
     val totalBeds = rooms.sumOf { it.capacity }
-    
-    // Calculate occupied beds based on actual room assignment in participants list
-    val participantsPerRoom = participants.groupBy { it.roomNo }
-    
+
     var occupiedBeds = 0
     var fullRooms = 0
     var availableRooms = 0
 
     rooms.forEach { room ->
-        val assigned = participantsPerRoom[room.roomNo]?.size ?: room.assignedCount
+        val directMatches = matchParticipantsToRoom(room, participants)
+        val assigned = if (directMatches.isNotEmpty() || participants.isNotEmpty()) {
+            directMatches.size
+        } else {
+            room.assignedCount
+        }
         val effectiveAssigned = assigned.coerceAtMost(room.capacity)
         occupiedBeds += effectiveAssigned
         if (effectiveAssigned >= room.capacity) {
@@ -297,10 +320,6 @@ fun VisualRoomOccupancyMatrixCard(
             Spacer(modifier = Modifier.height(10.dp))
 
             // 2-Column Visual Room Grid
-            val participantsByRoom = remember(participants) {
-                participants.groupBy { it.roomNo }
-            }
-
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.testTag("rooms_matrix_grid")
@@ -311,7 +330,14 @@ fun VisualRoomOccupancyMatrixCard(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         roomPair.forEach { room ->
-                            val assignedCount = participantsByRoom[room.roomNo]?.size ?: room.assignedCount
+                            val directMatches = remember(room, participants) {
+                                matchParticipantsToRoom(room, participants)
+                            }
+                            val assignedCount = if (directMatches.isNotEmpty() || participants.isNotEmpty()) {
+                                directMatches.size.coerceAtMost(room.capacity)
+                            } else {
+                                room.assignedCount.coerceAtMost(room.capacity)
+                            }
                             val isFull = assignedCount >= room.capacity
                             val emptyBeds = (room.capacity - assignedCount).coerceAtLeast(0)
 
@@ -335,7 +361,7 @@ fun VisualRoomOccupancyMatrixCard(
                                     ) {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Text(
-                                                text = "রুম ${room.roomNo}",
+                                                text = if (language == CampLanguage.BANGLA) "রুম ${room.roomNo}" else "Room ${room.roomNo}",
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 13.sp,
                                                 color = LscSlateDark
@@ -351,7 +377,7 @@ fun VisualRoomOccupancyMatrixCard(
                                                 text = if (isFull)
                                                     (if (language == CampLanguage.BANGLA) "পূর্ণ" else "FULL")
                                                 else
-                                                    "${emptyBeds} ${if (language == CampLanguage.BANGLA) "খালি" else "free"}",
+                                                    "$emptyBeds ${if (language == CampLanguage.BANGLA) "খালি" else "free"}",
                                                 fontSize = 9.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = if (isFull) Color(0xFFDC2626) else Color(0xFF059669),
@@ -420,15 +446,7 @@ fun VisualRoomOccupancyMatrixCard(
     // Interactive Room Bed Roster Detail Dialog
     selectedRoomForDetail?.let { room ->
         val roomOccupants = remember(room, participants, rooms) {
-            val banglaDigits = mapOf('০' to '0', '১' to '1', '২' to '2', '৩' to '3', '৪' to '4', '৫' to '5', '৬' to '6', '৭' to '7', '৮' to '8', '৯' to '9')
-            val roomDigits = room.roomNo.map { banglaDigits[it] ?: it }.joinToString("").filter { it.isDigit() }
-
-            val directMatches = participants.filter { p ->
-                val pRoomDigits = p.roomNo.map { banglaDigits[it] ?: it }.joinToString("").filter { it.isDigit() }
-                p.roomNo.equals(room.roomNo, ignoreCase = true) ||
-                (roomDigits.isNotBlank() && pRoomDigits == roomDigits) ||
-                p.roomNo.contains(room.roomNo, ignoreCase = true)
-            }
+            val directMatches = matchParticipantsToRoom(room, participants)
 
             if (directMatches.isNotEmpty()) {
                 directMatches.take(room.capacity)
@@ -490,13 +508,16 @@ fun RoomBedRosterDialog(
                             Icon(Icons.Default.Hotel, contentDescription = null, tint = Color(0xFF2563EB), modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "রুম ${room.roomNo} - ${room.buildingName}",
+                                text = if (language == CampLanguage.BANGLA) "রুম ${room.roomNo} - ${room.buildingName}" else "Room ${room.roomNo} - ${room.buildingName}",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                 color = LscSlateDark
                             )
                         }
                         Text(
-                            text = "${room.floor} • ধারণক্ষমতা: ${room.capacity} বেড • বর্তমান: ${occupants.size} জন",
+                            text = if (language == CampLanguage.BANGLA)
+                                "${room.floor} • ধারণক্ষমতা: ${room.capacity} বেড • বর্তমান: ${occupants.size} জন"
+                            else
+                                "${room.floor} • Capacity: ${room.capacity} Beds • Occupied: ${occupants.size}",
                             fontSize = 11.sp,
                             color = Color.Gray
                         )
@@ -544,8 +565,12 @@ fun RoomBedRosterDialog(
                             if (room.inChargePhone.isNotBlank()) {
                                 IconButton(
                                     onClick = {
-                                        val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${room.inChargePhone}"))
-                                        context.startActivity(intent)
+                                        try {
+                                            val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${room.inChargePhone}"))
+                                            context.startActivity(intent)
+                                        } catch (e: Exception) {
+                                            android.util.Log.w("RoomBedRosterDialog", "Unable to launch dialer: ${e.message}")
+                                        }
                                     },
                                     modifier = Modifier
                                         .size(36.dp)
@@ -608,13 +633,16 @@ fun RoomBedRosterDialog(
                                     if (occupant != null) {
                                         Column {
                                             Text(
-                                                text = occupant.nameBn,
+                                                text = if (language == CampLanguage.BANGLA) occupant.nameBn else occupant.nameEn.ifBlank { occupant.nameBn },
                                                 fontSize = 12.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = LscSlateDark
                                             )
                                             Text(
-                                                text = "${occupant.campCode} • ${occupant.groupNameBn} (${occupant.subgroup})",
+                                                text = if (language == CampLanguage.BANGLA)
+                                                    "${occupant.campCode} • ${occupant.groupNameBn} (${occupant.subgroup})"
+                                                else
+                                                    "${occupant.campCode} • ${occupant.groupNameEn.ifBlank { occupant.groupNameBn }} (${occupant.subgroup})",
                                                 fontSize = 10.sp,
                                                 color = Color.Gray
                                             )
@@ -635,7 +663,10 @@ fun RoomBedRosterDialog(
                                         shape = RoundedCornerShape(4.dp)
                                     ) {
                                         Text(
-                                            text = if (occupant.isCheckedIn) "✓ উপস্থিত" else "পেন্ডিং",
+                                            text = if (occupant.isCheckedIn)
+                                                (if (language == CampLanguage.BANGLA) "✓ উপস্থিত" else "✓ Checked-In")
+                                            else
+                                                (if (language == CampLanguage.BANGLA) "পেন্ডিং" else "Pending"),
                                             fontSize = 9.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = if (occupant.isCheckedIn) Color(0xFF059669) else Color(0xFFD97706),

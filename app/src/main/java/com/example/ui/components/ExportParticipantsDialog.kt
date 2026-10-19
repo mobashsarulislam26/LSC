@@ -357,10 +357,10 @@ fun ExportParticipantsDialog(
                     )
                 }
 
-                if (saveStatusMessage != null) {
+                saveStatusMessage?.let { statusMsg ->
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = saveStatusMessage!!,
+                        text = statusMsg,
                         color = Color(0xFF16A34A),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold
