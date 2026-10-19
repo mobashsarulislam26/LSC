@@ -28,6 +28,9 @@ object FirestoreManager {
     const val COLLECTION_BULLETINS = "bulletins"
     const val COLLECTION_INCIDENTS = "incidents"
     const val COLLECTION_COMPETITIONS = "competitions"
+    const val COLLECTION_AUDIT_TRAIL = "audit_trail"
+    const val COLLECTION_AUDIT_LOGS = "audit_trail"
+    const val COLLECTION_PARTICIPANTS = "participants"
 
     private var dbInstance: FirebaseFirestore? = null
 
@@ -82,6 +85,30 @@ object FirestoreManager {
             Log.e(TAG, "Error fetching user role for $uid: ${e.message}", e)
             null
         }
+    }
+
+    /**
+     * Exclusively verifies the user role via Firebase Authentication custom claims
+     * or a verified role document fetched from Firestore ('users' collection).
+     */
+    suspend fun getVerifiedUserRole(user: com.google.firebase.auth.FirebaseUser): UserRole? {
+        // 1. Check secure Firebase Auth custom claims
+        try {
+            val tokenResult = user.getIdToken(false).await()
+            val customRole = tokenResult.claims["role"] as? String
+            if (!customRole.isNullOrBlank()) {
+                val matched = UserRole.values().find { it.name.equals(customRole, ignoreCase = true) }
+                if (matched != null) {
+                    Log.d(TAG, "User role verified via Firebase Auth custom claims: ${matched.name}")
+                    return matched
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Custom claim token check note: ${e.message}")
+        }
+
+        // 2. Fetch verified role document from Firestore 'users/{uid}'
+        return getUserRole(user.uid)
     }
 
     // ==================== Dynamic Stations ====================
@@ -363,8 +390,8 @@ object FirestoreManager {
     }
 
     suspend fun saveIncident(incident: IncidentEntity) {
+        val database = db ?: throw IllegalStateException("Firestore database is unavailable")
         try {
-            val database = db ?: return
             val data = hashMapOf(
                 "id" to incident.id,
                 "title" to incident.title,
@@ -382,8 +409,10 @@ object FirestoreManager {
             database.collection(COLLECTION_INCIDENTS).document(incident.id.toString())
                 .set(data, SetOptions.merge())
                 .await()
+            Log.d(TAG, "Incident saved successfully to Firestore: ${incident.id}")
         } catch (e: Exception) {
             Log.e(TAG, "Error saving incident ${incident.title}: ${e.message}", e)
+            throw e
         }
     }
 
@@ -520,8 +549,8 @@ object FirestoreManager {
     }
 
     suspend fun saveHealthRecord(record: HealthRecordEntity) {
+        val database = db ?: throw IllegalStateException("Firestore database is unavailable")
         try {
-            val database = db ?: return
             val data = hashMapOf(
                 "id" to record.id,
                 "participantId" to record.participantId,
@@ -538,10 +567,246 @@ object FirestoreManager {
                 "status" to record.status,
                 "createdAt" to record.createdAt
             )
-            database.collection("health_reports").document(record.id.toString()).set(data).await()
+            database.collection("health_reports").document(record.id.toString()).set(data, SetOptions.merge()).await()
             Log.d(TAG, "Health report saved successfully to Firestore: ${record.id}")
         } catch (e: Exception) {
             Log.e(TAG, "Error saving health report ${record.id}: ${e.message}", e)
+            throw e
         }
+    }
+
+    // ==================== Real-time Audit Logs ====================
+
+    fun observeAuditLogs(): Flow<List<AuditLogEntity>> = callbackFlow {
+        val database = db
+        if (database == null) {
+            trySend(emptyList())
+            close()
+            return@callbackFlow
+        }
+
+        val listener = database.collection(COLLECTION_AUDIT_TRAIL)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.w(TAG, "Audit logs snapshot error: ${error.message}")
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                val list = snapshot?.documents?.mapNotNull { doc ->
+                    try {
+                        AuditLogEntity(
+                            id = doc.getLong("id") ?: doc.id.hashCode().toLong(),
+                            timestamp = doc.getLong("timestamp") ?: System.currentTimeMillis(),
+                            adminId = doc.getString("adminId") ?: doc.getString("uid") ?: "",
+                            userEmail = doc.getString("userEmail") ?: doc.getString("adminEmail") ?: "admin@lsc.org",
+                            actionType = doc.getString("actionType") ?: "UPDATE",
+                            targetEntity = doc.getString("targetEntity") ?: "System",
+                            description = doc.getString("description") ?: "",
+                            modifiedRecordDetails = doc.getString("modifiedRecordDetails") ?: ""
+                        )
+                    } catch (e: Exception) {
+                        null
+                    }
+                }?.sortedByDescending { it.timestamp } ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    suspend fun saveAuditLog(log: AuditLogEntity) {
+        val database = db ?: return
+        try {
+            val docId = if (log.id != 0L) log.id.toString() else "${log.timestamp}_${log.userEmail.hashCode()}"
+            val data = hashMapOf(
+                "id" to log.id,
+                "timestamp" to log.timestamp,
+                "adminId" to log.adminId,
+                "userEmail" to log.userEmail,
+                "actionType" to log.actionType,
+                "targetEntity" to log.targetEntity,
+                "description" to log.description,
+                "modifiedRecordDetails" to log.modifiedRecordDetails
+            )
+            database.collection(COLLECTION_AUDIT_TRAIL).document(docId)
+                .set(data, SetOptions.merge())
+                .await()
+            Log.d(TAG, "Audit log saved successfully to Firestore dedicated 'audit_trail' collection: $docId")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error saving audit log to Firestore 'audit_trail': ${e.message}", e)
+        }
+    }
+
+    // ==================== Dynamic Participants & Roster ====================
+
+    fun observeParticipants(): Flow<List<ParticipantEntity>> = callbackFlow {
+        val database = db ?: run {
+            trySend(emptyList())
+            close()
+            return@callbackFlow
+        }
+        val listener = database.collection(COLLECTION_PARTICIPANTS)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.w(TAG, "Participants snapshot error: ${error.message}")
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                val list = snapshot?.documents?.mapNotNull { doc ->
+                    try {
+                        ParticipantEntity(
+                            id = doc.getLong("id") ?: doc.id.hashCode().toLong(),
+                            campCode = doc.getString("campCode") ?: doc.id,
+                            fileNo = doc.getString("fileNo") ?: "",
+                            nameBn = doc.getString("nameBn") ?: "",
+                            nameEn = doc.getString("nameEn") ?: "",
+                            districtBn = doc.getString("districtBn") ?: "ঢাকা",
+                            districtEn = doc.getString("districtEn") ?: "Dhaka",
+                            gender = doc.getString("gender") ?: "Male",
+                            age = doc.getLong("age")?.toInt() ?: 15,
+                            groupId = doc.getString("groupId") ?: "bukhari",
+                            groupNameBn = doc.getString("groupNameBn") ?: "বুখারী",
+                            groupNameEn = doc.getString("groupNameEn") ?: "Bukhari",
+                            subgroup = doc.getString("subgroup") ?: "বুখারী ১",
+                            roomNo = doc.getString("roomNo") ?: "১০১",
+                            bedNo = doc.getString("bedNo") ?: "১",
+                            mealPref = doc.getString("mealPref") ?: "নিয়মিত",
+                            guardianName = doc.getString("guardianName") ?: "",
+                            guardianPhone = doc.getString("guardianPhone") ?: "",
+                            isCheckedIn = doc.getBoolean("isCheckedIn") ?: true,
+                            checkInTime = doc.getLong("checkInTime") ?: System.currentTimeMillis(),
+                            medicalFlag = doc.getString("medicalFlag"),
+                            totalScore = doc.getDouble("totalScore") ?: 0.0,
+                            attendancePercentage = doc.getDouble("attendancePercentage")?.toFloat() ?: 95.0f,
+                            photoAvatarSeed = doc.getLong("photoAvatarSeed")?.toInt() ?: 1
+                        )
+                    } catch (e: Exception) {
+                        null
+                    }
+                } ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    suspend fun saveParticipant(participant: ParticipantEntity) {
+        val database = db ?: return
+        try {
+            val docId = participant.campCode.ifBlank { participant.id.toString() }
+            val data = hashMapOf(
+                "id" to participant.id,
+                "campCode" to participant.campCode,
+                "fileNo" to participant.fileNo,
+                "nameBn" to participant.nameBn,
+                "nameEn" to participant.nameEn,
+                "districtBn" to participant.districtBn,
+                "districtEn" to participant.districtEn,
+                "gender" to participant.gender,
+                "age" to participant.age,
+                "groupId" to participant.groupId,
+                "groupNameBn" to participant.groupNameBn,
+                "groupNameEn" to participant.groupNameEn,
+                "subgroup" to participant.subgroup,
+                "roomNo" to participant.roomNo,
+                "bedNo" to participant.bedNo,
+                "mealPref" to participant.mealPref,
+                "guardianName" to participant.guardianName,
+                "guardianPhone" to participant.guardianPhone,
+                "isCheckedIn" to participant.isCheckedIn,
+                "checkInTime" to participant.checkInTime,
+                "medicalFlag" to participant.medicalFlag,
+                "totalScore" to participant.totalScore,
+                "attendancePercentage" to participant.attendancePercentage,
+                "photoAvatarSeed" to participant.photoAvatarSeed,
+                "updatedAt" to System.currentTimeMillis()
+            )
+            database.collection(COLLECTION_PARTICIPANTS).document(docId)
+                .set(data, SetOptions.merge())
+                .await()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error saving participant ${participant.campCode}: ${e.message}", e)
+            throw e
+        }
+    }
+
+    suspend fun bulkSaveParticipants(participants: List<ParticipantEntity>): Int {
+        val database = db ?: return 0
+        var savedCount = 0
+        try {
+            participants.chunked(400).forEach { chunk ->
+                val batch = database.batch()
+                chunk.forEach { p ->
+                    val docId = p.campCode.ifBlank { p.id.toString() }
+                    val docRef = database.collection(COLLECTION_PARTICIPANTS).document(docId)
+                    val data = hashMapOf(
+                        "id" to p.id,
+                        "campCode" to p.campCode,
+                        "fileNo" to p.fileNo,
+                        "nameBn" to p.nameBn,
+                        "nameEn" to p.nameEn,
+                        "districtBn" to p.districtBn,
+                        "districtEn" to p.districtEn,
+                        "gender" to p.gender,
+                        "age" to p.age,
+                        "groupId" to p.groupId,
+                        "groupNameBn" to p.groupNameBn,
+                        "groupNameEn" to p.groupNameEn,
+                        "subgroup" to p.subgroup,
+                        "roomNo" to p.roomNo,
+                        "bedNo" to p.bedNo,
+                        "mealPref" to p.mealPref,
+                        "guardianName" to p.guardianName,
+                        "guardianPhone" to p.guardianPhone,
+                        "isCheckedIn" to p.isCheckedIn,
+                        "checkInTime" to p.checkInTime,
+                        "medicalFlag" to p.medicalFlag,
+                        "totalScore" to p.totalScore,
+                        "attendancePercentage" to p.attendancePercentage,
+                        "photoAvatarSeed" to p.photoAvatarSeed,
+                        "updatedAt" to System.currentTimeMillis()
+                    )
+                    batch.set(docRef, data, SetOptions.merge())
+                }
+                batch.commit().await()
+                savedCount += chunk.size
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in bulkSaveParticipants: ${e.message}", e)
+            throw e
+        }
+        return savedCount
+    }
+
+    suspend fun bulkSaveSchedules(schedules: List<ScheduleEventEntity>): Int {
+        val database = db ?: return 0
+        var savedCount = 0
+        try {
+            schedules.chunked(400).forEach { chunk ->
+                val batch = database.batch()
+                chunk.forEach { ev ->
+                    val docRef = database.collection(COLLECTION_SCHEDULE).document(ev.id.toString())
+                    val data = hashMapOf(
+                        "id" to ev.id,
+                        "dayNo" to ev.dayNo,
+                        "timeSlot" to ev.timeSlot,
+                        "titleBn" to ev.titleBn,
+                        "titleEn" to ev.titleEn,
+                        "category" to ev.category,
+                        "stationId" to ev.stationId,
+                        "location" to ev.location,
+                        "isCurrent" to ev.isCurrent,
+                        "isCompleted" to ev.isCompleted,
+                        "rotationJson" to ev.rotationJson,
+                        "updatedAt" to System.currentTimeMillis()
+                    )
+                    batch.set(docRef, data, SetOptions.merge())
+                }
+                batch.commit().await()
+                savedCount += chunk.size
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in bulkSaveSchedules: ${e.message}", e)
+            throw e
+        }
+        return savedCount
     }
 }

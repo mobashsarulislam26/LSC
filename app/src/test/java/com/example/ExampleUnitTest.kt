@@ -19,11 +19,11 @@ class ExampleUnitTest {
         assertEquals(6, SeedData.groups.size)
         val groupIds = SeedData.groups.map { it.id }.toSet()
         assertTrue(groupIds.contains("bukhari"))
-        assertTrue(groupIds.contains("sumaiya"))
-        assertTrue(groupIds.contains("shafeyi"))
-        assertTrue(groupIds.contains("umm_ayman"))
+        assertTrue(groupIds.contains("muslim"))
+        assertTrue(groupIds.contains("abu_dawood"))
+        assertTrue(groupIds.contains("tirmidhi"))
         assertTrue(groupIds.contains("salahuddin"))
-        assertTrue(groupIds.contains("umm_saad"))
+        assertTrue(groupIds.contains("sumaiya"))
     }
 
     @Test

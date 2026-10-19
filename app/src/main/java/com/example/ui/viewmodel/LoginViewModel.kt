@@ -9,6 +9,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.firestore.FirestoreManager
 import com.example.data.model.UserRole
+import com.example.data.model.toUserRole
+import com.example.data.repository.CampRepository
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.Firebase
@@ -84,7 +86,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             try {
-                val fetchedRole = FirestoreManager.getUserRole(user.uid)
+                val fetchedRole = FirestoreManager.getVerifiedUserRole(user)
                 if (fetchedRole != null) {
                     _userRole.value = fetchedRole
                     _authState.value = AuthState.Authenticated(user, fetchedRole)
@@ -142,17 +144,40 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
             _errorMessage.value = null
             _authState.value = AuthState.Authenticating
             try {
-                val result = firebaseAuth.signInWithEmailAndPassword(email, pass).await()
-                val user = result.user
-                if (user != null) {
-                    fetchUserRoleAndSetState(user)
+                if (firebaseAuth != null) {
+                    try {
+                        val result = firebaseAuth.signInWithEmailAndPassword(email, pass).await()
+                        val user = result.user
+                        if (user != null) {
+                            fetchUserRoleAndSetState(user)
+                            return@launch
+                        }
+                    } catch (e: Exception) {
+                        Log.w("LoginViewModel", "Firebase Auth sign-in failed or offline: ${e.message}")
+                    }
+                }
+
+                // Fallback to local Room database salted SHA-256 hash verification
+                val repo = CampRepository.getInstance(getApplication())
+                val authenticatedUser = repo.authenticateUser(email, pass)
+                val currentFbUser = firebaseAuth?.currentUser
+                if (authenticatedUser != null) {
+                    val role = authenticatedUser.toUserRole()
+                    _userRole.value = role
+                    if (currentFbUser != null) {
+                        _authState.value = AuthState.Authenticated(currentFbUser, role)
+                    } else {
+                        // User verified locally offline
+                        fetchUserRoleAndSetState(currentFbUser ?: return@launch)
+                    }
                 } else {
-                    _authState.value = AuthState.Error("Sign-in failed. No user object received.")
+                    _errorMessage.value = "Invalid email or password."
+                    _authState.value = AuthState.Error("Invalid email or password.")
                 }
             } catch (e: Exception) {
                 Log.e("LoginViewModel", "Sign in error: ${e.message}")
-                _errorMessage.value = e.localizedMessage ?: "Authentication failed."
-                _authState.value = AuthState.Error(e.localizedMessage ?: "Authentication failed.")
+                _errorMessage.value = e.localizedMessage ?: "Invalid email or password."
+                _authState.value = AuthState.Error(e.localizedMessage ?: "Invalid email or password.")
             } finally {
                 _isLoading.value = false
             }

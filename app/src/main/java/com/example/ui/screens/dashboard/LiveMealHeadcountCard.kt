@@ -132,7 +132,17 @@ fun LiveMealHeadcountCard(
     modifier: Modifier = Modifier,
     selectedDay: Int = 1
 ) {
-    var selectedMealType by remember { mutableStateOf("LUNCH") }
+    val defaultMealType = remember {
+        val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+        when (hour) {
+            in 6..10 -> "BREAKFAST"
+            in 11..15 -> "LUNCH"
+            in 16..18 -> "SNACKS"
+            in 19..23 -> "DINNER"
+            else -> "BREAKFAST"
+        }
+    }
+    var selectedMealType by remember { mutableStateOf(defaultMealType) }
     val timeFormat = remember { SimpleDateFormat("hh:mm a", Locale.getDefault()) }
 
     val metrics = remember(selectedMealType, selectedDay, participants, mealDistributions) {
@@ -426,7 +436,7 @@ fun LiveMealHeadcountCard(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "${metrics.mealTitleBn} পরিবেশন অগ্রগতি",
+                        text = if (language == CampLanguage.BANGLA) "${metrics.mealTitleBn} পরিবেশন অগ্রগতি" else "${metrics.mealTitleEn} Progress",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = LscSlateDark
@@ -515,7 +525,7 @@ fun LiveMealHeadcountCard(
                         color = Color.Gray
                     )
                     Text(
-                        text = "${metrics.servedCount} জন নিবন্ধিত",
+                        text = if (language == CampLanguage.BANGLA) "${metrics.servedCount} জন নিবন্ধিত" else "${metrics.servedCount} Registered",
                         fontSize = 10.sp,
                         color = Color.Gray
                     )

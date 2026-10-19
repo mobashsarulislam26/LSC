@@ -89,11 +89,20 @@ fun CampDashboardScreen(
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                         )
                         Spacer(modifier = Modifier.height(4.dp))
+                        val activeDay = currentSession?.dayNo ?: 1
+                        val activeDayBn = activeDay.toString().map {
+                            when (it) {
+                                '0' -> '০'; '1' -> '১'; '2' -> '২'; '3' -> '৩'; '4' -> '৪'
+                                '5' -> '৫'; '6' -> '৬'; '7' -> '৭'; '8' -> '৮'; '9' -> '৯'
+                                else -> it
+                            }
+                        }.joinToString("")
+
                         Text(
                             text = if (language == CampLanguage.BANGLA)
-                                "আজকের কার্যক্রম: দিন ১ | ৪-৫ দিনব্যাপী আবাসিক ক্যাম্প সুন্দর ও সুশৃঙ্খলভাবে পরিচালিত হচ্ছে।"
+                                "আজকের কার্যক্রম: দিন $activeDayBn | ৪-৫ দিনব্যাপী আবাসিক ক্যাম্প সুন্দর ও সুশৃঙ্খলভাবে পরিচালিত হচ্ছে।"
                             else
-                                "Day 1 Active | 4-Day residential camp operations running smoothly with 603+ participants.",
+                                "Day $activeDay Active | 4-Day residential camp operations running smoothly with $participantCount participants.",
                             color = Color.White.copy(alpha = 0.85f),
                             fontSize = 12.sp
                         )
@@ -127,6 +136,25 @@ fun CampDashboardScreen(
 
         // Executive Operational KPIs
         item {
+            val presentCount = attendanceRecords.map { it.participantId }.distinct().size
+            val presentPercentage = if (participantCount > 0) {
+                (presentCount.toDouble() / participantCount.toDouble()) * 100.0
+            } else {
+                0.0
+            }
+            val presentRateDisplay = if (language == CampLanguage.BANGLA) {
+                val enStr = String.format(java.util.Locale.US, "%.1f%%", presentPercentage)
+                enStr.map {
+                    when (it) {
+                        '0' -> '০'; '1' -> '১'; '2' -> '২'; '3' -> '৩'; '4' -> '৪'
+                        '5' -> '৫'; '6' -> '৬'; '7' -> '৭'; '8' -> '৮'; '9' -> '৯'
+                        else -> it
+                    }
+                }.joinToString("")
+            } else {
+                String.format(java.util.Locale.US, "%.1f%%", presentPercentage)
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -134,15 +162,15 @@ fun CampDashboardScreen(
                 KpiCard(
                     title = if (language == CampLanguage.BANGLA) "মোট অংশগ্রহণকারী" else "Total Registered",
                     value = "$participantCount",
-                    sub = if (language == CampLanguage.BANGLA) "৬টি গ্রুপে বিভক্ত" else "6 Active Groups",
+                    sub = if (language == CampLanguage.BANGLA) "${groups.size}টি গ্রুপে বিভক্ত" else "${groups.size} Active Groups",
                     icon = Icons.Default.Groups,
                     color = Color(0xFF1D4ED8),
                     modifier = Modifier.weight(1f).clickable { onNavigateToTab(1) }
                 )
                 KpiCard(
                     title = if (language == CampLanguage.BANGLA) "আজকের উপস্থিতি" else "Present Rate",
-                    value = "৯৮.৭%",
-                    sub = if (language == CampLanguage.BANGLA) "লক্ষ্যমাত্রা ≥৯০%" else "Target ≥90%",
+                    value = presentRateDisplay,
+                    sub = if (language == CampLanguage.BANGLA) "উপস্থিত $presentCount জন" else "$presentCount Attended",
                     icon = Icons.Default.CheckCircle,
                     color = Color(0xFF10B981),
                     modifier = Modifier.weight(1f).clickable { onNavigateToTab(2) }
@@ -151,25 +179,39 @@ fun CampDashboardScreen(
         }
 
         item {
+            val currentSessionTitle = if (language == CampLanguage.BANGLA) {
+                currentSession?.titleBn?.take(10) ?: "সেশন ১"
+            } else {
+                currentSession?.titleEn?.take(10) ?: "Session 1"
+            }
+            val totalScores = competitionScores.size
+            val totalScoresBn = totalScores.toString().map {
+                when (it) {
+                    '0' -> '০'; '1' -> '১'; '2' -> '২'; '3' -> '৩'; '4' -> '৪'
+                    '5' -> '৫'; '6' -> '৬'; '7' -> '৭'; '8' -> '৮'; '9' -> '৯'
+                    else -> it
+                }
+            }.joinToString("")
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 KpiCard(
                     title = if (language == CampLanguage.BANGLA) "স্টেশন রোটেশন" else "Active Station",
-                    value = "সেশন ১",
-                    sub = if (language == CampLanguage.BANGLA) "৬টি স্টেশনে চলমান" else "6 Stations Busy",
+                    value = currentSessionTitle,
+                    sub = if (language == CampLanguage.BANGLA) "${stations.size}টি স্টেশনে চলমান" else "${stations.size} Active Stations",
                     icon = Icons.Default.SyncAlt,
                     color = LscGoldSecondary,
                     modifier = Modifier.weight(1f).clickable { onNavigateToTab(3) }
                 )
                 KpiCard(
-                    title = if (language == CampLanguage.BANGLA) "পুরস্কার ইনভেন্টরি" else "Awards Stock",
-                    value = "৭৯৯",
-                    sub = if (language == CampLanguage.BANGLA) "২৮ ধরনের আইটেম" else "28 Item Masters",
+                    title = if (language == CampLanguage.BANGLA) "প্রতিযোগিতা রেকর্ড" else "Score Records",
+                    value = if (language == CampLanguage.BANGLA) totalScoresBn else "$totalScores",
+                    sub = if (language == CampLanguage.BANGLA) "ইভেন্ট পয়েন্ট এন্ট্রি" else "Scored Entries",
                     icon = Icons.Default.EmojiEvents,
                     color = Color(0xFF9333EA),
-                    modifier = Modifier.weight(1f).clickable { onNavigateToTab(6) }
+                    modifier = Modifier.weight(1f).clickable { onNavigateToTab(4) }
                 )
             }
         }

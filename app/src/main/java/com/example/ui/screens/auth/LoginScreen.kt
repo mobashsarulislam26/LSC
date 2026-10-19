@@ -69,7 +69,7 @@ fun LoginScreen(
 
     // Login Form State
     var email by remember { mutableStateOf("admin@lsc.org") }
-    var password by remember { mutableStateOf("Lsc@Admin2026") }
+    var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
 
     // Sign Up Form State

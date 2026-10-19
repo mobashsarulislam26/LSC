@@ -5,6 +5,7 @@ import com.example.data.firestore.FirestoreManager
 import com.example.data.local.CampDao
 import com.example.data.model.*
 import com.example.data.repository.CampRepository
+import com.example.data.util.MoshiJsonUtils
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.tasks.await
@@ -172,27 +173,35 @@ class DataSyncManager private constructor(
                     status = "PRESENT",
                     scannedAt = System.currentTimeMillis(),
                     method = "QR_SCAN",
-                    isSynced = true
+                    isSynced = false
                 )
                 dao.insertAttendanceRecord(record)
 
-                // Push to Firestore attendance collection if available
-                val firestoreDb = FirestoreManager.db
-                if (firestoreDb != null) {
+                // Push to Firestore attendance collection and verify server write acknowledgement
+                try {
+                    val firestoreDb = FirestoreManager.db ?: throw IllegalStateException("Firestore unavailable")
                     val data = hashMapOf(
                         "id" to record.id,
                         "stationId" to stationId,
                         "campCode" to participantCampCode,
                         "participantName" to record.participantName,
+                        "groupName" to record.groupName,
+                        "subgroup" to record.subgroup,
                         "timestamp" to record.scannedAt,
                         "status" to record.status,
                         "scannedBy" to scannerId
                     )
                     firestoreDb.collection("attendance").document(record.id.toString())
-                        .set(data)
+                        .set(data, com.google.firebase.firestore.SetOptions.merge())
+                        .await()
+
+                    // ONLY mark as synced AFTER server write acknowledgement succeeds
+                    dao.markAttendanceRecordSynced(record.id)
+                    _lastSyncTime.value = System.currentTimeMillis()
+                } catch (e: Exception) {
+                    Log.w(TAG, "Station check-in stored locally offline (will flush when connected): ${e.message}")
                 }
 
-                _lastSyncTime.value = System.currentTimeMillis()
                 true
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to sync station check-in: ${e.message}")
@@ -217,10 +226,25 @@ class DataSyncManager private constructor(
 
                 try {
                     FirestoreManager.saveIncident(localIncident.copy(isSynced = true))
+                    // Server-side write acknowledged
                     dao.markIncidentSynced(localIncident.id)
                     _lastSyncTime.value = System.currentTimeMillis()
                 } catch (e: Exception) {
                     Log.w(TAG, "Offline mode: Incident report queued locally for sync: ${e.message}")
+                    val payloadMap = mapOf(
+                        "id" to localIncident.id,
+                        "title" to localIncident.title,
+                        "category" to localIncident.category,
+                        "participantCampCode" to (localIncident.participantCampCode ?: ""),
+                        "participantName" to (localIncident.participantName ?: ""),
+                        "severity" to localIncident.severity,
+                        "location" to localIncident.location,
+                        "description" to localIncident.description,
+                        "actionTaken" to localIncident.actionTaken,
+                        "reporter" to localIncident.reporter,
+                        "status" to localIncident.status,
+                        "timestamp" to localIncident.timestamp
+                    )
                     dao.insertCachedSyncItem(
                         CachedSyncItemEntity(
                             itemType = "INCIDENT_REPORT",
@@ -228,7 +252,7 @@ class DataSyncManager private constructor(
                             campCode = localIncident.participantCampCode ?: "",
                             participantName = localIncident.participantName ?: "ইনসিডেন্স রিপোর্ট",
                             summary = "ঘটনা রিপোর্ট: ${localIncident.title} (${localIncident.severity})",
-                            payloadJson = """{"id":${localIncident.id},"title":"${localIncident.title}"}""",
+                            payloadJson = MoshiJsonUtils.toJson(payloadMap),
                             status = CachedSyncItemEntity.STATUS_PENDING
                         )
                     )
@@ -274,10 +298,27 @@ class DataSyncManager private constructor(
 
                 try {
                     FirestoreManager.saveHealthRecord(localRecord.copy(isSynced = true))
+                    // Server-side write acknowledged
                     dao.markHealthRecordSynced(localRecord.id)
                     _lastSyncTime.value = System.currentTimeMillis()
                 } catch (e: Exception) {
                     Log.w(TAG, "Offline mode: Health report queued locally for sync: ${e.message}")
+                    val payloadMap = mapOf(
+                        "id" to localRecord.id,
+                        "participantId" to localRecord.participantId,
+                        "campCode" to localRecord.campCode,
+                        "participantName" to localRecord.participantName,
+                        "groupName" to localRecord.groupName,
+                        "checkupType" to localRecord.checkupType,
+                        "doctorName" to localRecord.doctorName,
+                        "vitals" to localRecord.vitals,
+                        "diagnosis" to localRecord.diagnosis,
+                        "adviceAndMeds" to localRecord.adviceAndMeds,
+                        "isEmergencyFlag" to localRecord.isEmergencyFlag,
+                        "priority" to localRecord.priority,
+                        "status" to localRecord.status,
+                        "createdAt" to localRecord.createdAt
+                    )
                     dao.insertCachedSyncItem(
                         CachedSyncItemEntity(
                             itemType = CachedSyncItemEntity.TYPE_HEALTH_CHECKUP,
@@ -285,7 +326,7 @@ class DataSyncManager private constructor(
                             campCode = localRecord.campCode,
                             participantName = localRecord.participantName,
                             summary = "স্বাস্থ্য স্ক্রিনিং: ${localRecord.checkupType} (${localRecord.doctorName})",
-                            payloadJson = """{"id":${localRecord.id},"type":"${localRecord.checkupType}"}""",
+                            payloadJson = MoshiJsonUtils.toJson(payloadMap),
                             status = CachedSyncItemEntity.STATUS_PENDING
                         )
                     )
@@ -347,7 +388,10 @@ class DataSyncManager private constructor(
                                 "timestamp" to att.scannedAt,
                                 "status" to att.status
                             )
-                            firestoreDb.collection("attendance").document(att.id.toString()).set(data).await()
+                            firestoreDb.collection("attendance").document(att.id.toString())
+                                .set(data, com.google.firebase.firestore.SetOptions.merge())
+                                .await()
+
                             dao.markAttendanceRecordSynced(att.id)
                         } catch (e: Exception) {
                             Log.w(TAG, "Failed to flush offline attendance ${att.id}: ${e.message}")
@@ -355,17 +399,41 @@ class DataSyncManager private constructor(
                     }
                 }
 
-                // 4. Mark pending cached sync items synced
+                // 4. Pending cached sync items with Moshi deserialization & Firestore write acknowledgement
                 val pendingCached = dao.getPendingCachedSyncItems()
-                for (cached in pendingCached) {
-                    try {
-                        dao.markCachedItemSynced(cached.id)
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Failed to mark cached item ${cached.id} synced: ${e.message}")
+                if (firestoreDb != null) {
+                    for (cached in pendingCached) {
+                        try {
+                            val payloadMap = MoshiJsonUtils.jsonToMap(cached.payloadJson)
+                            if (payloadMap.isNotEmpty()) {
+                                val targetCollection = when (cached.itemType) {
+                                    CachedSyncItemEntity.TYPE_HEALTH_CHECKUP,
+                                    CachedSyncItemEntity.TYPE_HEALTH_LOG -> "health_reports"
+                                    "INCIDENT_REPORT" -> "incidents"
+                                    CachedSyncItemEntity.TYPE_ATTENDANCE -> "attendance"
+                                    else -> "cached_sync"
+                                }
+                                val rawId = payloadMap["id"]
+                                val docId = when (rawId) {
+                                    is Number -> rawId.toLong().toString()
+                                    is String -> rawId
+                                    else -> cached.id.toString()
+                                }
+
+                                firestoreDb.collection(targetCollection).document(docId)
+                                    .set(payloadMap, com.google.firebase.firestore.SetOptions.merge())
+                                    .await()
+
+                                // ONLY mark as synced AFTER server write acknowledgement (.await()) succeeds
+                                dao.markCachedItemSynced(cached.id)
+                            }
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Failed to flush pending cached item ${cached.id}: ${e.message}")
+                        }
                     }
                 }
 
-                if (syncedIncidents > 0 || syncedHealth > 0 || unsyncedAttendance.isNotEmpty()) {
+                if (syncedIncidents > 0 || syncedHealth > 0 || unsyncedAttendance.isNotEmpty() || pendingCached.isNotEmpty()) {
                     _lastSyncTime.value = System.currentTimeMillis()
                     _syncMessage.value = "অফলাইন ডেটা সিঙ্ক সম্পন্ন ($syncedIncidents ইনসিডেন্স, $syncedHealth স্বাস্থ্য রেকর্ড)"
                 }

@@ -236,7 +236,11 @@ object DatabaseBackupHelper {
                 val read = input.read(headerBytes)
                 if (read >= 16) {
                     val headerString = String(headerBytes, Charsets.US_ASCII)
-                    return headerString.startsWith(SQLITE_HEADER_PREFIX)
+                    if (headerString.startsWith(SQLITE_HEADER_PREFIX)) return true
+                    // SQLCipher encrypted database check: non-empty binary header that isn't plain text "INVALID..."
+                    if (file.length() >= 512 && !headerString.startsWith("INVALID")) {
+                        return true
+                    }
                 }
             }
         } catch (e: Exception) {

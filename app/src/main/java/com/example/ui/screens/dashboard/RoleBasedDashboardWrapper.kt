@@ -55,6 +55,7 @@ fun RoleBasedDashboardWrapper(
     val participants by campViewModel.participants.collectAsStateWithLifecycle()
     val healthRecords by campViewModel.healthRecords.collectAsStateWithLifecycle()
     val bulletins by campViewModel.bulletins.collectAsStateWithLifecycle()
+    val auditLogs by campViewModel.auditLogs.collectAsStateWithLifecycle()
 
     var activeRoleOverride by remember { mutableStateOf<UserRole?>(null) }
     val effectiveRole = activeRoleOverride ?: userRole
@@ -135,6 +136,7 @@ fun RoleBasedDashboardWrapper(
                             rooms = rooms,
                             groups = groups,
                             userAccounts = userAccounts,
+                            auditLogs = auditLogs,
                             onAddStation = { campViewModel.addStation(it) },
                             onUpdateStation = { campViewModel.updateStation(it) },
                             onDeleteStation = { campViewModel.deleteStation(it) },
@@ -147,8 +149,18 @@ fun RoleBasedDashboardWrapper(
                             onAssignUserRole = { uid, r ->
                                 (authState as? AuthState.Authenticated)?.user?.let { user ->
                                     loginViewModel.assignRoleAndProceed(user, r)
+                                    campViewModel.logAdminAuditTrail(
+                                        actionType = "USER_ROLE_UPDATE",
+                                        targetEntity = "UserRole",
+                                        description = "ব্যবহারকারী রোল পরিবর্তন: $uid -> ${r.titleBn} (${r.name})",
+                                        adminId = user.uid,
+                                        adminEmail = user.email ?: "admin@lsc.org",
+                                        modifiedRecordDetails = """{"targetUid": "$uid", "newRole": "${r.name}", "newRoleTitleBn": "${r.titleBn}"}"""
+                                    )
                                 }
-                            }
+                            },
+                            onBulkUploadSchedules = { campViewModel.bulkUploadSchedules(it) },
+                            onImportParticipantsCsvJson = { campViewModel.importParticipantsCsvJson(it) }
                         )
                     }
 

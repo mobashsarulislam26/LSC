@@ -279,7 +279,12 @@ data class IncidentEntity(
     val isSynced: Boolean = true
 )
 
-@Entity(tableName = "meal_distributions")
+@Entity(
+    tableName = "meal_distributions",
+    indices = [
+        Index(value = ["dayNo", "mealType", "participantId"], unique = true)
+    ]
+)
 data class MealDistributionEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val dayNo: Int,
@@ -371,6 +376,27 @@ data class UserAccountEntity(
     val lastLoginTime: Long = System.currentTimeMillis()
 )
 
+@Entity(tableName = "volunteer_shifts")
+data class VolunteerShiftEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val volunteerId: Long = 0,
+    val volunteerName: String,
+    val volunteerRole: String = "ক্যাম্প ভলান্টিয়ার",
+    val taskTitleBn: String,
+    val taskTitleEn: String = "",
+    val departmentOrLocation: String,
+    val dayNo: Int = 1,
+    val startTime: String,
+    val endTime: String,
+    val startTimeMillis: Long = System.currentTimeMillis(),
+    val endTimeMillis: Long = System.currentTimeMillis() + 4 * 3600 * 1000L,
+    val taskDescription: String = "",
+    val status: String = "SCHEDULED", // "SCHEDULED", "CONFIRMED", "CHECKED_IN", "COMPLETED", "ABSENT"
+    val confirmedAt: Long? = null,
+    val checkedInAt: Long? = null,
+    val notes: String = ""
+)
+
 fun UserAccountEntity.toUserRole(): UserRole {
     return when (role.uppercase()) {
         "SUPER_ADMIN" -> UserRole.SUPER_ADMIN
@@ -391,10 +417,12 @@ fun UserAccountEntity.toUserRole(): UserRole {
 data class AuditLogEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val timestamp: Long = System.currentTimeMillis(),
+    val adminId: String = "",
     val userEmail: String,
-    val actionType: String, // "UPDATE", "INSERT", "DELETE", "SCORE_CHANGE", "CHECK_IN"
+    val actionType: String, // "USER_ROLE_UPDATE", "ROOM_ASSIGNMENT", "MEAL_SCHEDULE_EDIT", "STATION_UPDATE", etc.
     val targetEntity: String,
-    val description: String
+    val description: String,
+    val modifiedRecordDetails: String = ""
 )
 
 data class EmergencyContact(

@@ -8,9 +8,11 @@ import com.example.data.model.*
 import com.example.data.repository.CampRepository
 import com.example.data.sample.SeedData
 import com.example.util.NetworkConnectivityMonitor
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 sealed class ScanResult {
     data class Success(val title: String, val message: String, val participant: ParticipantEntity) : ScanResult()
@@ -118,45 +120,61 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
     private val _statusNotification = MutableStateFlow<String?>(null)
     val statusNotification: StateFlow<String?> = _statusNotification.asStateFlow()
 
-    // Admin Access Protection (লগইন পাসওয়ার্ড এর মাধ্যমে এডিট সুবিধা)
+    // Admin Access Protection (Firebase Auth & Firestore role verification)
     private val _isAdminUnlocked = MutableStateFlow(false)
     val isAdminUnlocked: StateFlow<Boolean> = _isAdminUnlocked.asStateFlow()
 
-    // Only a salted hash of the admin passcode is kept in memory, never the plaintext.
-    private val _adminPasswordHash = MutableStateFlow(hashPasscode(DEFAULT_ADMIN_PASSCODE, ADMIN_PASSCODE_SALT))
-
     fun unlockAdmin(pass: String): Boolean {
-        val candidate = hashPasscode(pass.trim(), ADMIN_PASSCODE_SALT)
-        val isValid = constantTimeEquals(candidate, _adminPasswordHash.value)
-        if (isValid) {
+        val cleanPass = pass.trim()
+        val currentAccount = _currentUserAccount.value
+        val currentRole = _currentRole.value
+
+        // 1. Authorize if currently authenticated user has an administrative role in Firestore/Session
+        val isRoleAdmin = currentRole == UserRole.SUPER_ADMIN ||
+                currentRole == UserRole.CAMP_CHIEF ||
+                (currentAccount != null && (
+                        currentAccount.role.equals("SUPER_ADMIN", ignoreCase = true) ||
+                        currentAccount.role.equals("CAMP_CHIEF", ignoreCase = true)
+                ))
+
+        if (isRoleAdmin) {
             _isAdminUnlocked.value = true
-            _statusNotification.value = "অ্যাডমিন এডিট মোড আনলক সফল হয়েছে!"
+            _statusNotification.value = if (_language.value == CampLanguage.BANGLA)
+                "অ্যাডমিন এডিট মোড সফলভাবে আনলক করা হয়েছে!"
+            else
+                "Admin edit mode unlocked successfully!"
+            return true
         }
-        return isValid
+
+        // 2. Verify entered password against current account's salted password hash
+        if (currentAccount != null && cleanPass.isNotEmpty()) {
+            val inputHash = CampRepository.hashPasswordWithSalt(cleanPass)
+            if (constantTimeEquals(inputHash, currentAccount.passwordHash)) {
+                _isAdminUnlocked.value = true
+                _statusNotification.value = if (_language.value == CampLanguage.BANGLA)
+                    "অ্যাডমিন এডিট মোড আনলক সফল হয়েছে!"
+                else
+                    "Admin edit mode unlocked!"
+                return true
+            }
+        }
+
+        _statusNotification.value = if (_language.value == CampLanguage.BANGLA)
+            "অ্যাডমিন এক্সেস প্রত্যাখ্যান করা হয়েছে! কেবল অনুমোদিত অ্যাডমিন রোলের জন্য।"
+        else
+            "Admin access denied! Reserved for authorized admin roles."
+        return false
     }
 
     fun lockAdmin() {
         _isAdminUnlocked.value = false
-        _statusNotification.value = "অ্যাডমিন মোড লক করা হয়েছে।"
-    }
-
-    fun setAdminPassword(newPass: String) {
-        if (newPass.isNotBlank()) {
-            _adminPasswordHash.value = hashPasscode(newPass.trim(), ADMIN_PASSCODE_SALT)
-            _statusNotification.value = "অ্যাডমিন পাসওয়ার্ড সফলভাবে আপডেট হয়েছে।"
-        }
+        _statusNotification.value = if (_language.value == CampLanguage.BANGLA)
+            "অ্যাডমিন মোড লক করা হয়েছে।"
+        else
+            "Admin mode locked."
     }
 
     private companion object {
-        const val ADMIN_PASSCODE_SALT = "lsc-camp-companion-v1"
-        const val DEFAULT_ADMIN_PASSCODE = "Lsc@Admin2026"
-
-        fun hashPasscode(passcode: String, salt: String): String {
-            val digest = java.security.MessageDigest.getInstance("SHA-256")
-            return digest.digest((salt + passcode).toByteArray(Charsets.UTF_8))
-                .joinToString("") { "%02x".format(it) }
-        }
-
         fun constantTimeEquals(a: String, b: String): Boolean {
             if (a.length != b.length) return false
             var result = 0
@@ -188,7 +206,9 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
     val userAccounts = repository.userAccounts.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     val vehicles = repository.vehicles.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     val dutyRosters = repository.dutyRosters.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    val volunteerShifts = repository.volunteerShifts.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     val goalMetrics = repository.goalMetrics.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    val auditLogs = repository.auditLogs.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     // Active quick alerts (unresolved incidents: OPEN or IN_PROGRESS)
     val activeQuickAlerts: StateFlow<List<IncidentEntity>> = repository.incidents
@@ -301,66 +321,106 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
         _loginErrorMessage.value = null
 
         return try {
-            // Check repository / DB authentication first
-            var authenticatedUser = repository.authenticateUser(cleanEmail, cleanPass)
+            val fbAuth = try { com.google.firebase.auth.FirebaseAuth.getInstance() } catch (e: Exception) { null }
+            var fbUser: com.google.firebase.auth.FirebaseUser? = null
+            var firestoreRole: UserRole? = null
 
-            // Fallback to SeedData.staffAccounts if initial seed is ongoing or matches seed password
-            if (authenticatedUser == null) {
-                authenticatedUser = SeedData.staffAccounts.find {
-                    it.email.equals(cleanEmail, ignoreCase = true) &&
-                    (it.passwordHash == cleanPass || cleanPass == "Lsc@Admin2026" || cleanPass == "admin123" || cleanPass == "lsc2026")
+            // 1. Attempt Firebase Authentication token verification
+            if (fbAuth != null) {
+                try {
+                    val authResult = fbAuth.signInWithEmailAndPassword(cleanEmail, cleanPass).await()
+                    fbUser = authResult.user
+                    if (fbUser != null) {
+                        firestoreRole = FirestoreManager.getVerifiedUserRole(fbUser)
+                    }
+                } catch (e: Exception) {
+                    Log.w("CampViewModel", "Firebase Auth sign-in offline/failed: ${e.message}")
                 }
             }
 
-            // Universal admin master override for camp IT staff
-            if (authenticatedUser == null && (cleanPass == "Lsc@Admin2026" || cleanPass == "admin123" || cleanPass == "lsc2026")) {
-                authenticatedUser = SeedData.staffAccounts.first()
-            }
+            // 2. If Firebase Auth succeeded, resolve account and role from Firestore document or custom claims
+            if (fbUser != null) {
+                val assignedRole = firestoreRole ?: UserRole.VOLUNTEER
+                val fullName = fbUser.displayName.orEmpty().ifBlank { cleanEmail.substringBefore("@") }
 
-            if (authenticatedUser != null) {
+                val authenticatedUser = UserAccountEntity(
+                    email = cleanEmail,
+                    fullName = fullName,
+                    role = assignedRole.name,
+                    passwordHash = CampRepository.hashPasswordWithSalt(cleanPass),
+                    phone = fbUser.phoneNumber.orEmpty(),
+                    isActive = true,
+                    lastLoginTime = System.currentTimeMillis()
+                )
+
+                // Save or merge Firestore role document
+                FirestoreManager.saveUserRole(fbUser.uid, cleanEmail, assignedRole, fullName)
+                repository.insertUserAccount(authenticatedUser)
+
                 _currentUserAccount.value = authenticatedUser
-                _currentRole.value = authenticatedUser.toUserRole()
+                _currentRole.value = assignedRole
                 _isLoggedIn.value = true
                 _loginErrorMessage.value = null
-
-                if (authenticatedUser.role.equals("SUPER_ADMIN", ignoreCase = true) ||
-                    authenticatedUser.role.equals("CAMP_CHIEF", ignoreCase = true)) {
-                    _isAdminUnlocked.value = true
-                }
+                _isAdminUnlocked.value = (assignedRole == UserRole.SUPER_ADMIN || assignedRole == UserRole.CAMP_CHIEF)
 
                 _statusNotification.value = if (_language.value == CampLanguage.BANGLA)
                     "স্বাগতম, ${authenticatedUser.fullName} (${_currentRole.value.titleBn})"
                 else
                     "Welcome, ${authenticatedUser.fullName} (${_currentRole.value.titleEn})"
 
-                true
-            } else {
-                _loginErrorMessage.value = if (_language.value == CampLanguage.BANGLA)
-                    "ভুল ইমেইল বা পাসওয়ার্ড! সঠিক তথ্য দিয়ে পুনরায় চেষ্টা করুন।"
-                else
-                    "Invalid email or password! Please check credentials and try again."
-                false
+                return true
             }
+
+            // 3. Fallback to local Room database salted SHA-256 hash verification
+            val localAccount = repository.authenticateUser(cleanEmail, cleanPass)
+            if (localAccount != null) {
+                _currentUserAccount.value = localAccount
+                _currentRole.value = localAccount.toUserRole()
+                _isLoggedIn.value = true
+                _loginErrorMessage.value = null
+                _isAdminUnlocked.value = (localAccount.role.equals("SUPER_ADMIN", ignoreCase = true) ||
+                        localAccount.role.equals("CAMP_CHIEF", ignoreCase = true))
+
+                _statusNotification.value = if (_language.value == CampLanguage.BANGLA)
+                    "স্বাগতম, ${localAccount.fullName} (${_currentRole.value.titleBn})"
+                else
+                    "Welcome, ${localAccount.fullName} (${_currentRole.value.titleEn})"
+
+                return true
+            }
+
+            _loginErrorMessage.value = if (_language.value == CampLanguage.BANGLA)
+                "ভুল ইমেইল বা পাসওয়ার্ড! সঠিক তথ্য দিয়ে পুনরায় চেষ্টা করুন।"
+            else
+                "Invalid email or password! Please check credentials and try again."
+            false
         } finally {
             _isAuthenticating.value = false
         }
     }
 
     fun quickLogin(account: UserAccountEntity) {
-        _currentUserAccount.value = account
-        _currentRole.value = account.toUserRole()
-        _isLoggedIn.value = true
-        _loginErrorMessage.value = null
+        viewModelScope.launch {
+            val fbAuth = try { com.google.firebase.auth.FirebaseAuth.getInstance() } catch (e: Exception) { null }
+            val fbUser = fbAuth?.currentUser
+            val verifiedRole = if (fbUser != null) {
+                FirestoreManager.getVerifiedUserRole(fbUser) ?: account.toUserRole()
+            } else {
+                account.toUserRole()
+            }
 
-        if (account.role.equals("SUPER_ADMIN", ignoreCase = true) ||
-            account.role.equals("CAMP_CHIEF", ignoreCase = true)) {
-            _isAdminUnlocked.value = true
+            _currentUserAccount.value = account.copy(role = verifiedRole.name)
+            _currentRole.value = verifiedRole
+            _isLoggedIn.value = true
+            _loginErrorMessage.value = null
+
+            _isAdminUnlocked.value = (verifiedRole == UserRole.SUPER_ADMIN || verifiedRole == UserRole.CAMP_CHIEF)
+
+            _statusNotification.value = if (_language.value == CampLanguage.BANGLA)
+                "লগইন সফল (${verifiedRole.titleBn}): ${account.fullName}"
+            else
+                "Logged in as (${verifiedRole.titleEn}): ${account.fullName}"
         }
-
-        _statusNotification.value = if (_language.value == CampLanguage.BANGLA)
-            "লগইন সফল: ${account.fullName}"
-        else
-            "Logged in as: ${account.fullName}"
     }
 
     fun logout() {
@@ -746,6 +806,16 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.updateScheduleEvent(event)
             _statusNotification.value = "সময়সূচি ও সেশন আপডেট সম্পন্ন: ${event.titleBn}"
+            val isMeal = event.category.contains("Meal", ignoreCase = true) ||
+                    event.titleBn.contains("খাবার") ||
+                    event.titleBn.contains("নাস্তা")
+            val actionType = if (isMeal) "MEAL_SCHEDULE_EDIT" else "SCHEDULE_UPDATE"
+            logAdminAuditTrail(
+                actionType = actionType,
+                targetEntity = if (isMeal) "MealSchedule" else "Schedule",
+                description = "সময়সূচী/খাবার সময় আপডেট: ${event.titleBn} (${event.timeSlot}) - ${event.location}",
+                modifiedRecordDetails = """{"id": ${event.id}, "dayNo": ${event.dayNo}, "timeSlot": "${event.timeSlot}", "titleBn": "${event.titleBn}", "location": "${event.location}", "category": "${event.category}"}"""
+            )
         }
     }
 
@@ -1078,9 +1148,22 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun importCsv(csvContent: String) {
+        importParticipantsCsvJson(csvContent)
+    }
+
+    fun importParticipantsCsvJson(jsonContent: String) {
         viewModelScope.launch {
-            val count = repository.importParticipantsFromCsv(csvContent)
-            _statusNotification.value = "সফলভাবে $count জন নতুন অংশগ্রহণকারী ইমপোর্ট সম্পন্ন হয়েছে!"
+            val adminEmail = _currentUserAccount.value?.email ?: "admin@lsc.org"
+            val result = repository.importParticipantsFromCsvJson(jsonContent, adminEmail)
+            _statusNotification.value = result.message
+        }
+    }
+
+    fun bulkUploadSchedules(events: List<ScheduleEventEntity>) {
+        viewModelScope.launch {
+            val adminEmail = _currentUserAccount.value?.email ?: "admin@lsc.org"
+            val result = repository.bulkUploadSchedules(events, adminEmail)
+            _statusNotification.value = result.message
         }
     }
 
@@ -1101,11 +1184,40 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun logAdminAuditTrail(
+        actionType: String,
+        targetEntity: String,
+        description: String,
+        adminId: String? = null,
+        adminEmail: String? = null,
+        modifiedRecordDetails: String = ""
+    ) {
+        viewModelScope.launch {
+            val user = _currentUserAccount.value
+            val email = adminEmail ?: user?.email ?: "admin@lsc.org"
+            val id = adminId ?: user?.email ?: "ADMIN-01"
+            repository.insertAuditLog(
+                actionType = actionType,
+                targetEntity = targetEntity,
+                description = description,
+                userEmail = email,
+                adminId = id,
+                modifiedRecordDetails = modifiedRecordDetails
+            )
+        }
+    }
+
     // Dynamic Station CRUD
     fun addStation(station: StationEntity) {
         viewModelScope.launch {
             repository.insertStation(station)
             _statusNotification.value = "নতুন দক্ষতা স্টেশন যুক্ত হয়েছে: ${station.nameBn}"
+            logAdminAuditTrail(
+                actionType = "STATION_ADD",
+                targetEntity = "Station",
+                description = "নতুন স্টেশন যোগ: ${station.nameBn} (${station.location})",
+                modifiedRecordDetails = """{"stationId": ${station.id}, "nameBn": "${station.nameBn}", "moderator": "${station.moderatorName}", "location": "${station.location}"}"""
+            )
         }
     }
 
@@ -1113,6 +1225,12 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.updateStation(station)
             _statusNotification.value = "স্টেশনের তথ্য আপডেট সম্পন্ন: ${station.nameBn}"
+            logAdminAuditTrail(
+                actionType = "STATION_UPDATE",
+                targetEntity = "Station",
+                description = "স্টেশন আপডেট: ${station.nameBn} - ইন-চার্জ: ${station.moderatorName}",
+                modifiedRecordDetails = """{"stationId": ${station.id}, "nameBn": "${station.nameBn}", "moderator": "${station.moderatorName}", "location": "${station.location}"}"""
+            )
         }
     }
 
@@ -1121,6 +1239,12 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
             repository.deleteStation(station)
             FirestoreManager.deleteStation(station.id)
             _statusNotification.value = "স্টেশন মুছে ফেলা হয়েছে: ${station.nameBn}"
+            logAdminAuditTrail(
+                actionType = "STATION_DELETE",
+                targetEntity = "Station",
+                description = "স্টেশন ডিলিট: ${station.nameBn}",
+                modifiedRecordDetails = """{"stationId": ${station.id}, "nameBn": "${station.nameBn}"}"""
+            )
         }
     }
 
@@ -1129,6 +1253,15 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.addScheduleEvent(event)
             _statusNotification.value = "নতুন সময়সূচী কার্যক্রম যুক্ত হয়েছে: ${event.titleBn}"
+            val isMeal = event.category.contains("Meal", ignoreCase = true) ||
+                    event.titleBn.contains("খাবার") ||
+                    event.titleBn.contains("নাস্তা")
+            logAdminAuditTrail(
+                actionType = if (isMeal) "MEAL_SCHEDULE_EDIT" else "SCHEDULE_ADD",
+                targetEntity = if (isMeal) "MealSchedule" else "Schedule",
+                description = "সময়সূচী/খাবার সময় যুক্ত: ${event.titleBn} (${event.timeSlot}) - স্থান: ${event.location}",
+                modifiedRecordDetails = """{"dayNo": ${event.dayNo}, "timeSlot": "${event.timeSlot}", "titleBn": "${event.titleBn}", "location": "${event.location}", "category": "${event.category}"}"""
+            )
             com.example.data.sync.CampFirebaseMessagingService.showNotification(
                 getApplication(),
                 "📅 সময়সূচী পরিবর্তন (Schedule Update)",
@@ -1143,6 +1276,15 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
             repository.deleteScheduleEvent(event)
             FirestoreManager.deleteScheduleEvent(event.id)
             _statusNotification.value = "সময়সূচী কার্যক্রম মুছে ফেলা হয়েছে: ${event.titleBn}"
+            val isMeal = event.category.contains("Meal", ignoreCase = true) ||
+                    event.titleBn.contains("খাবার") ||
+                    event.titleBn.contains("নাস্তা")
+            logAdminAuditTrail(
+                actionType = if (isMeal) "MEAL_SCHEDULE_EDIT" else "SCHEDULE_DELETE",
+                targetEntity = if (isMeal) "MealSchedule" else "Schedule",
+                description = "সময়সূচী মুছে ফেলা হয়েছে: ${event.titleBn}",
+                modifiedRecordDetails = """{"eventId": ${event.id}, "titleBn": "${event.titleBn}", "timeSlot": "${event.timeSlot}"}"""
+            )
         }
     }
 
@@ -1151,6 +1293,12 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.addRoom(room)
             _statusNotification.value = "নতুন রুম যুক্ত হয়েছে: ${room.buildingName} - ${room.roomNo}"
+            logAdminAuditTrail(
+                actionType = "ROOM_ASSIGNMENT",
+                targetEntity = "Room",
+                description = "নতুন রুম যোগ ও আসন বরাদ্দ: ${room.buildingName} ${room.roomNo} -> দল: ${room.assignedGroupId} (ক্যাপাসিটি: ${room.capacity})",
+                modifiedRecordDetails = """{"roomId": ${room.id}, "buildingName": "${room.buildingName}", "roomNo": "${room.roomNo}", "capacity": ${room.capacity}, "assignedGroupId": "${room.assignedGroupId}", "inCharge": "${room.inChargeName}"}"""
+            )
         }
     }
 
@@ -1158,6 +1306,12 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.updateRoom(room)
             _statusNotification.value = "রুমের তথ্য আপডেট সম্পন্ন: ${room.buildingName} - ${room.roomNo}"
+            logAdminAuditTrail(
+                actionType = "ROOM_ASSIGNMENT",
+                targetEntity = "Room",
+                description = "রুম বরাদ্দ আপডেট: ${room.buildingName} ${room.roomNo} -> দল: ${room.assignedGroupId} (ক্যাপাসিটি: ${room.capacity})",
+                modifiedRecordDetails = """{"roomId": ${room.id}, "buildingName": "${room.buildingName}", "roomNo": "${room.roomNo}", "capacity": ${room.capacity}, "assignedGroupId": "${room.assignedGroupId}", "inCharge": "${room.inChargeName}"}"""
+            )
         }
     }
 
@@ -1166,6 +1320,7 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
             repository.deleteRoom(room)
             FirestoreManager.deleteRoom(room.id)
             _statusNotification.value = "রুম মুছে ফেলা হয়েছে: ${room.buildingName} - ${room.roomNo}"
+            logAdminAuditTrail("ROOM_DELETE", "Room", "রুম মুছে ফেলা হয়েছে: ${room.buildingName} - ${room.roomNo}")
         }
     }
 
@@ -1216,6 +1371,28 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             repository.updateDutyRoster(roster)
             _statusNotification.value = "রোস্টারের তথ্য আপডেট হয়েছে"
+        }
+    }
+
+    // Volunteer Shifts Operations
+    fun confirmShiftAttendance(shiftId: Long) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.confirmShiftAttendance(shiftId)
+            _statusNotification.value = "✅ শিফট উপস্থিতি সফলভাবে নিশ্চিত করা হয়েছে!"
+        }
+    }
+
+    fun checkInShift(shiftId: Long) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.checkInShift(shiftId)
+            _statusNotification.value = "⏱️ শিফট ডিউটি শুরু (চেক-ইন) সম্পন্ন হয়েছে!"
+        }
+    }
+
+    fun addVolunteerShift(shift: VolunteerShiftEntity) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.addVolunteerShift(shift)
+            _statusNotification.value = "➕ নতুন ভলান্টিয়ার শিফট অ্যাসাইন করা হয়েছে: ${shift.taskTitleBn}"
         }
     }
 

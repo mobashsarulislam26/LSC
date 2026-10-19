@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -29,9 +30,11 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.data.firestore.FirestoreManager
 import com.example.data.model.*
+import com.example.ui.components.BulkScheduleUploadDialog
 import com.example.ui.components.EditRoomDialog
 import com.example.ui.components.EditScheduleEventDialog
 import com.example.ui.components.EditStationDialog
+import com.example.ui.components.ParticipantRosterImportDialog
 import com.example.ui.screens.departments.DepartmentsSopScreen
 import com.example.ui.screens.subgroups.SubgroupsDirectoryScreen
 import com.example.ui.theme.*
@@ -48,6 +51,7 @@ object AdminRoutes {
     const val DEPARTMENTS = "admin_departments"
     const val SUBGROUPS = "admin_subgroups"
     const val USERS = "admin_users"
+    const val AUDIT_TRAIL = "admin_audit_trail"
 }
 
 /**
@@ -74,6 +78,9 @@ fun AdminDashboardScreen(
     onUpdateRoom: (RoomEntity) -> Unit,
     onDeleteRoom: (RoomEntity) -> Unit,
     onAssignUserRole: (String, UserRole) -> Unit,
+    auditLogs: List<AuditLogEntity> = emptyList(),
+    onBulkUploadSchedules: ((List<ScheduleEventEntity>) -> Unit)? = null,
+    onImportParticipantsCsvJson: ((String) -> Unit)? = null,
     onBackToMain: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -93,6 +100,9 @@ fun AdminDashboardScreen(
 
     var showEditRoomDialog by remember { mutableStateOf(false) }
     var roomToEdit by remember { mutableStateOf<RoomEntity?>(null) }
+
+    var showBulkScheduleUploadDialog by remember { mutableStateOf(false) }
+    var showParticipantImportDialog by remember { mutableStateOf(false) }
 
     var searchQuery by remember { mutableStateOf("") }
     var selectedDayFilter by remember { mutableIntStateOf(1) }
@@ -242,6 +252,13 @@ fun AdminDashboardScreen(
                         icon = { Icon(Icons.Default.ManageAccounts, contentDescription = null, modifier = Modifier.size(16.dp)) },
                         modifier = Modifier.testTag("admin_nav_users")
                     )
+                    Tab(
+                        selected = currentRoute == AdminRoutes.AUDIT_TRAIL,
+                        onClick = { navController.navigate(AdminRoutes.AUDIT_TRAIL) },
+                        text = { Text(if (isBangla) "অডিট ট্রেইল (${auditLogs.size})" else "Audit Trail (${auditLogs.size})", fontSize = 12.sp) },
+                        icon = { Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                        modifier = Modifier.testTag("admin_nav_audit_trail")
+                    )
                 }
             }
         }
@@ -296,7 +313,9 @@ fun AdminDashboardScreen(
                     schedulesCount = schedules.size,
                     roomsCount = rooms.size,
                     usersCount = userAccounts.size,
-                    onNavigateTo = { route -> navController.navigate(route) }
+                    onNavigateTo = { route -> navController.navigate(route) },
+                    onOpenBulkScheduleUpload = { showBulkScheduleUploadDialog = true },
+                    onOpenParticipantImport = { showParticipantImportDialog = true }
                 )
             }
 
@@ -347,6 +366,9 @@ fun AdminDashboardScreen(
                     onAddSchedule = {
                         scheduleToEdit = null
                         showEditScheduleDialog = true
+                    },
+                    onBulkUploadSchedule = {
+                        showBulkScheduleUploadDialog = true
                     },
                     onEditSchedule = { ev ->
                         scheduleToEdit = ev
@@ -412,6 +434,15 @@ fun AdminDashboardScreen(
                     isBangla = isBangla,
                     users = filteredUsers,
                     onAssignRole = onAssignUserRole
+                )
+            }
+
+            // AUDIT TRAIL ROUTE
+            composable(AdminRoutes.AUDIT_TRAIL) {
+                AdminAuditTrailModule(
+                    isBangla = isBangla,
+                    auditLogs = auditLogs,
+                    searchQuery = searchQuery
                 )
             }
         }
@@ -491,6 +522,39 @@ fun AdminDashboardScreen(
             }
         )
     }
+
+    if (showBulkScheduleUploadDialog) {
+        BulkScheduleUploadDialog(
+            language = language,
+            onDismiss = { showBulkScheduleUploadDialog = false },
+            onConfirmUpload = { events ->
+                if (onBulkUploadSchedules != null) {
+                    onBulkUploadSchedules(events)
+                } else {
+                    scope.launch {
+                        FirestoreManager.bulkSaveSchedules(events)
+                        events.forEach { onAddSchedule(it) }
+                    }
+                }
+            }
+        )
+    }
+
+    if (showParticipantImportDialog) {
+        ParticipantRosterImportDialog(
+            language = language,
+            onDismiss = { showParticipantImportDialog = false },
+            onConfirmImport = { rawJson ->
+                if (onImportParticipantsCsvJson != null) {
+                    onImportParticipantsCsvJson(rawJson)
+                } else {
+                    scope.launch {
+                        com.example.data.service.ParticipantImportService.importRosterToFirestore(rawJson)
+                    }
+                }
+            }
+        )
+    }
 }
 
 /**
@@ -503,7 +567,9 @@ private fun AdminOverviewView(
     schedulesCount: Int,
     roomsCount: Int,
     usersCount: Int,
-    onNavigateTo: (String) -> Unit
+    onNavigateTo: (String) -> Unit,
+    onOpenBulkScheduleUpload: () -> Unit = {},
+    onOpenParticipantImport: () -> Unit = {}
 ) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -530,6 +596,109 @@ private fun AdminOverviewView(
                         color = Color.White.copy(alpha = 0.9f),
                         fontSize = 12.sp
                     )
+                }
+            }
+        }
+
+        // Firestore Cloud Bulk Utilities Banner
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .background(Color(0xFFEFF6FF), RoundedCornerShape(10.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CloudSync,
+                                    contentDescription = null,
+                                    tint = Color(0xFF1D4ED8),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = if (isBangla) "ফায়ারস্টোর বাল্ক ইউটিলিটিজ" else "Firestore Bulk Utilities",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    color = LscSlateDark
+                                )
+                                Text(
+                                    text = if (isBangla)
+                                        "সময়সূচী ও অংশগ্রহণকারী রোস্টার এক ক্লিকে সিঙ্ক করুন"
+                                    else
+                                        "Batch upload schedules and roster to cloud",
+                                    fontSize = 11.sp,
+                                    color = Color.Gray
+                                )
+                            }
+                        }
+
+                        Surface(
+                            color = Color(0xFFDCFCE7),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = "Firestore Live",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF15803D),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Button(
+                            onClick = onOpenBulkScheduleUpload,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF047857)),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("overview_bulk_schedule_upload_btn")
+                        ) {
+                            Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (isBangla) "শিডিউল আপলোড" else "Upload Schedules",
+                                fontSize = 12.sp
+                            )
+                        }
+
+                        Button(
+                            onClick = onOpenParticipantImport,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1D4ED8)),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("overview_import_participants_btn")
+                        ) {
+                            Icon(Icons.Default.GroupAdd, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (isBangla) "রোস্টার ইম্পোর্ট" else "Import Roster",
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -738,6 +907,7 @@ private fun AdminSchedulesModule(
     selectedDay: Int,
     onSelectDay: (Int) -> Unit,
     onAddSchedule: () -> Unit,
+    onBulkUploadSchedule: () -> Unit = {},
     onEditSchedule: (ScheduleEventEntity) -> Unit,
     onDeleteSchedule: (ScheduleEventEntity) -> Unit
 ) {
@@ -746,7 +916,7 @@ private fun AdminSchedulesModule(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            (1..4).forEach { day ->
+            (1..5).forEach { day ->
                 FilterChip(
                     selected = selectedDay == day,
                     onClick = { onSelectDay(day) },
@@ -762,18 +932,37 @@ private fun AdminSchedulesModule(
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        Button(
-            onClick = onAddSchedule,
-            colors = ButtonDefaults.buttonColors(containerColor = LscEmeraldPrimary),
-            shape = RoundedCornerShape(10.dp),
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 4.dp)
-                .testTag("admin_add_schedule_btn")
+                .padding(vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(if (isBangla) "নতুন রুটিন সময়সূচী যোগ করুন" else "Add Schedule Event")
+            Button(
+                onClick = onAddSchedule,
+                colors = ButtonDefaults.buttonColors(containerColor = LscEmeraldPrimary),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag("admin_add_schedule_btn")
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(if (isBangla) "নতুন যোগ করুন" else "Add Event", fontSize = 12.sp)
+            }
+
+            Button(
+                onClick = onBulkUploadSchedule,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF047857)),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier
+                    .weight(1.3f)
+                    .testTag("admin_bulk_upload_schedule_btn")
+            ) {
+                Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(if (isBangla) "বাল্ক শিডিউল আপলোড" else "Bulk Upload", fontSize = 12.sp)
+            }
         }
 
         LazyColumn(
@@ -957,6 +1146,336 @@ private fun AdminUsersModule(
                                         expandedRolePicker = false
                                     }
                                 )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AdminAuditTrailModule(
+    isBangla: Boolean,
+    auditLogs: List<AuditLogEntity>,
+    searchQuery: String
+) {
+    var selectedCategoryFilter by remember { mutableStateOf("ALL") }
+
+    val filteredLogs = remember(auditLogs, searchQuery, selectedCategoryFilter) {
+        auditLogs.filter { log ->
+            val matchesCategory = when (selectedCategoryFilter) {
+                "ROLE" -> log.actionType.contains("ROLE", ignoreCase = true) || log.targetEntity.contains("Role", ignoreCase = true)
+                "ROOM" -> log.actionType.contains("ROOM", ignoreCase = true) || log.targetEntity.contains("Room", ignoreCase = true)
+                "MEAL" -> log.actionType.contains("MEAL", ignoreCase = true) || log.actionType.contains("SCHEDULE", ignoreCase = true) || log.targetEntity.contains("Schedule", ignoreCase = true)
+                "STATION" -> log.actionType.contains("STATION", ignoreCase = true) || log.targetEntity.contains("Station", ignoreCase = true)
+                "IMPORT" -> log.actionType.contains("IMPORT", ignoreCase = true) || log.actionType.contains("UPLOAD", ignoreCase = true)
+                else -> true
+            }
+            val matchesSearch = searchQuery.isBlank() ||
+                    log.userEmail.contains(searchQuery, ignoreCase = true) ||
+                    log.adminId.contains(searchQuery, ignoreCase = true) ||
+                    log.actionType.contains(searchQuery, ignoreCase = true) ||
+                    log.targetEntity.contains(searchQuery, ignoreCase = true) ||
+                    log.description.contains(searchQuery, ignoreCase = true) ||
+                    log.modifiedRecordDetails.contains(searchQuery, ignoreCase = true)
+
+            matchesCategory && matchesSearch
+        }
+    }
+
+    val dateFormat = remember { java.text.SimpleDateFormat("dd MMM yyyy, hh:mm:ss a", java.util.Locale.getDefault()) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        // Header Banner with Firestore Live Collection Indicator
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            shape = RoundedCornerShape(14.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp)
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            color = LscEmeraldPrimary.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.size(42.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.History,
+                                    contentDescription = null,
+                                    tint = LscEmeraldPrimary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = if (isBangla) "অ্যাডমিন অডিট ট্রেইল (Audit Trail)" else "Admin Audit Trail & Logs",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = if (isBangla)
+                                    "ইউজার রোল, রুম বরাদ্দ ও শিডিউল পরিবর্তনের ফায়ারস্টোর হিস্ট্রি"
+                                else
+                                    "Real-time records of role updates, room assignments & schedule edits",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Surface(
+                        color = Color(0xFFDCFCE7),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = "Firestore: audit_trail",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF15803D),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Category Filter Chips
+        LazyRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            val filters = listOf(
+                "ALL" to if (isBangla) "সকল (${auditLogs.size})" else "All (${auditLogs.size})",
+                "ROLE" to if (isBangla) "ইউজার রোলস" else "Roles",
+                "ROOM" to if (isBangla) "রুম বরাদ্দ" else "Rooms",
+                "MEAL" to if (isBangla) "খাবার ও শিডিউল" else "Meals & Schedule",
+                "STATION" to if (isBangla) "দক্ষতা স্টেশন" else "Stations",
+                "IMPORT" to if (isBangla) "বাল্ক ইম্পোর্ট" else "Imports"
+            )
+            items(filters) { (catKey, catLabel) ->
+                FilterChip(
+                    selected = selectedCategoryFilter == catKey,
+                    onClick = { selectedCategoryFilter = catKey },
+                    label = { Text(catLabel, fontSize = 11.sp) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = LscEmeraldPrimary,
+                        selectedLabelColor = Color.White
+                    )
+                )
+            }
+        }
+
+        if (filteredLogs.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = Icons.Default.ReceiptLong,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = if (isBangla) "কোনো অডিট লগ রেকর্ড পাওয়া যায়নি" else "No audit log records found",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        } else {
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .testTag("audit_logs_list")
+            ) {
+                items(filteredLogs, key = { it.id }) { log ->
+                    val (badgeBg, badgeFg) = when {
+                        log.actionType.contains("ROLE", ignoreCase = true) -> Color(0xFFF3E8FF) to Color(0xFF6B21A8)
+                        log.actionType.contains("ROOM", ignoreCase = true) -> Color(0xFFE0F2FE) to Color(0xFF0369A1)
+                        log.actionType.contains("MEAL", ignoreCase = true) || log.actionType.contains("SCHEDULE", ignoreCase = true) -> Color(0xFFFEF3C7) to Color(0xFF92400E)
+                        log.actionType.contains("STATION", ignoreCase = true) -> Color(0xFFDCFCE7) to Color(0xFF15803D)
+                        log.actionType.contains("IMPORT", ignoreCase = true) || log.actionType.contains("UPLOAD", ignoreCase = true) -> Color(0xFFEDE9FE) to Color(0xFF5B21B6)
+                        else -> Color(0xFFF1F5F9) to Color(0xFF334155)
+                    }
+
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("audit_log_item_${log.id}")
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            // Header Row: Action badge, Target Entity, Timestamp
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Surface(
+                                        color = badgeBg,
+                                        shape = RoundedCornerShape(6.dp)
+                                    ) {
+                                        Text(
+                                            text = log.actionType,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = badgeFg,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                        )
+                                    }
+
+                                    Surface(
+                                        color = Color(0xFFF8FAFC),
+                                        shape = RoundedCornerShape(6.dp)
+                                    ) {
+                                        Text(
+                                            text = log.targetEntity,
+                                            fontSize = 10.sp,
+                                            color = Color.DarkGray,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                        )
+                                    }
+                                }
+
+                                Text(
+                                    text = dateFormat.format(java.util.Date(log.timestamp)),
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Human Readable Description
+                            Text(
+                                text = log.description,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Admin ID & User Email Row
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                if (log.adminId.isNotBlank()) {
+                                    Surface(
+                                        color = Color(0xFFF1F5F9),
+                                        shape = RoundedCornerShape(6.dp)
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Badge,
+                                                contentDescription = null,
+                                                tint = Color.Gray,
+                                                modifier = Modifier.size(12.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = "Admin: ${log.adminId}",
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = Color.DarkGray
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.AccountCircle,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.outline,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = log.userEmail,
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            // Modified Record Details Section (if present)
+                            if (log.modifiedRecordDetails.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Surface(
+                                    color = Color(0xFFF8FAFC),
+                                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(modifier = Modifier.padding(10.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                imageVector = Icons.Default.DataObject,
+                                                contentDescription = null,
+                                                tint = LscEmeraldPrimary,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = if (isBangla)
+                                                    "সংশোধিত রেকর্ডের বিবরণ (Modified Details):"
+                                                else
+                                                    "Modified Record Details:",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = LscSlateDark
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = log.modifiedRecordDetails,
+                                            fontSize = 11.sp,
+                                            fontFamily = FontFamily.Monospace,
+                                            color = Color(0xFF334155),
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

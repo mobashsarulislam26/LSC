@@ -75,10 +75,13 @@ fun deriveStationCheckInMetrics(
         val groupMatches = { gName: String ->
             gName.contains(assignedGroup, ignoreCase = true) ||
             (assignedGroup == "bukhari" && gName.contains("বুখারী")) ||
+            (assignedGroup == "muslim" && gName.contains("মুসলিম")) ||
+            (assignedGroup == "abu_dawood" && (gName.contains("আবু দাউদ") || gName.contains("আবুদাউদ"))) ||
+            (assignedGroup == "tirmidhi" && (gName.contains("তিরমিযী") || gName.contains("তিরমিজি"))) ||
+            (assignedGroup == "salahuddin" && gName.contains("সালাহউদ্দীন")) ||
             (assignedGroup == "sumaiya" && (gName.contains("সুমাইয়া") || gName.contains("সুমাইয়া"))) ||
             (assignedGroup == "shafeyi" && (gName.contains("শাফেয়ী") || gName.contains("শাফেয়ী"))) ||
             (assignedGroup == "umm_ayman" && gName.contains("আয়মান")) ||
-            (assignedGroup == "salahuddin" && gName.contains("সালাহউদ্দীন")) ||
             (assignedGroup == "umm_saad" && gName.contains("সা'দ"))
         }
 
@@ -105,10 +108,13 @@ fun deriveStationCheckInMetrics(
 
         val groupNameBn = when (assignedGroup) {
             "bukhari" -> "বুখারী গ্রুপ"
+            "muslim" -> "মুসলিম গ্রুপ"
+            "abu_dawood" -> "আবু দাউদ গ্রুপ"
+            "tirmidhi" -> "তিরমিযী গ্রুপ"
+            "salahuddin" -> "সালাহউদ্দীন আইয়ুবী"
             "sumaiya" -> "সুমাইয়া গ্রুপ"
             "shafeyi" -> "শাফেয়ী গ্রুপ"
             "umm_ayman" -> "উম্মে আয়মান"
-            "salahuddin" -> "সালাহউদ্দীন আইয়ুবী"
             "umm_saad" -> "উম্মে সা'দ গ্রুপ"
             else -> assignedGroup
         }

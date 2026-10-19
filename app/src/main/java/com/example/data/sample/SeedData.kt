@@ -9,144 +9,152 @@ object SeedData {
             id = "bukhari",
             nameBn = "বুখারী",
             nameEn = "Bukhari",
-            leaderName = "হাফেজ তানভীর আহমেদ (Tanvir Ahmed)",
-            leaderPhone = "01711-234567",
+            leaderName = "উস্তাদ আহমাদুল্লাহ (Ustad Ahmadullah)",
+            leaderPhone = "01711-000001",
             colorHex = 0xFF1976D2,
             memberCount = 101,
-            totalPoints = 840
-        ),
-        CampGroupEntity(
-            id = "sumaiya",
-            nameBn = "সুমাইয়া",
-            nameEn = "Sumaiya",
-            leaderName = "মুহতারামা খাদিজা আক্তার (Khadija Akter)",
-            leaderPhone = "01819-345678",
-            colorHex = 0xFFC2185B,
-            memberCount = 100,
             totalPoints = 890
         ),
         CampGroupEntity(
-            id = "shafeyi",
-            nameBn = "শাফেয়ী",
-            nameEn = "Shafeyi",
-            leaderName = "মাওলানা আব্দুল গাফফার (Abdul Gaffar)",
-            leaderPhone = "01912-456789",
+            id = "muslim",
+            nameBn = "মুসলিম",
+            nameEn = "Muslim",
+            leaderName = "মাওলানা তারিক জামিল (Maulana Tariq Jamil)",
+            leaderPhone = "01711-000002",
             colorHex = 0xFF00796B,
             memberCount = 101,
-            totalPoints = 780
+            totalPoints = 875
         ),
         CampGroupEntity(
-            id = "umm_ayman",
-            nameBn = "উম্মে আয়মান",
-            nameEn = "Umm Ayman",
-            leaderName = "মুহতারামা সাবিহা পারভীন (Sabiha Parveen)",
-            leaderPhone = "01722-567890",
+            id = "abu_dawood",
+            nameBn = "আবু দাউদ",
+            nameEn = "Abu Dawood",
+            leaderName = "হাফেজ তানভীর (Hafez Tanvir)",
+            leaderPhone = "01711-000003",
+            colorHex = 0xFF0288D1,
+            memberCount = 100,
+            totalPoints = 840
+        ),
+        CampGroupEntity(
+            id = "tirmidhi",
+            nameBn = "তিরমিযী",
+            nameEn = "Tirmidhi",
+            leaderName = "মুফতি সালমান (Mufti Salman)",
+            leaderPhone = "01711-000004",
             colorHex = 0xFF7B1FA2,
             memberCount = 100,
-            totalPoints = 815
+            totalPoints = 860
         ),
         CampGroupEntity(
             id = "salahuddin",
-            nameBn = "সালাহউদ্দীন আইয়ুবী",
+            nameBn = "সালাহউদ্দীন আইয়ুবী",
             nameEn = "Salahuddin Ayyubi",
-            leaderName = "ইঞ্জিনিয়ার রায়হান উদ্দিন (Rayhan Uddin)",
-            leaderPhone = "01611-678901",
+            leaderName = "ইঞ্জি. খালিদ মাহমুদ (Engr. Khalid Mahmud)",
+            leaderPhone = "01711-000005",
             colorHex = 0xFFE65100,
             memberCount = 101,
             totalPoints = 920
         ),
         CampGroupEntity(
-            id = "umm_saad",
-            nameBn = "উম্মে সা'দ",
-            nameEn = "Umm Sa'ad",
-            leaderName = "মুহতারামা নাসরিন জাহান (Nasrin Jahan)",
-            leaderPhone = "01511-789012",
-            colorHex = 0xFF388E3C,
+            id = "sumaiya",
+            nameBn = "সুমাইয়া",
+            nameEn = "Sumaiya",
+            leaderName = "ডা. নাসিমা সুলতানা (Dr. Nasima Sultana)",
+            leaderPhone = "01711-000006",
+            colorHex = 0xFFC2185B,
             memberCount = 100,
-            totalPoints = 860
+            totalPoints = 905
         )
     )
 
     val stations = listOf(
         StationEntity(
             id = 1,
-            nameBn = "স্টেশন ১: প্রতিযোগিতা ও শিষ্টাচার",
-            nameEn = "Station 1: Competitions & Etiquette",
-            moderatorName = "উস্তাদ মাহমুদুল হাসান (Mahmudul Hasan)",
-            location = "অডিটোরিয়াম উইং এ (Auditorium A)",
-            objectiveBn = "সুন্নাহসম্মত আদব, দলগত আচরণ, প্রতিযোগিতার নিয়মাবলি ও সুন্দর চরিত্র গঠন",
+            nameBn = "স্টেশন ১: কুরআন ও তাজবীদ",
+            nameEn = "Station 1: Quran & Tajweed",
+            moderatorName = "উস্তাদ আহমাদুল্লাহ ও তাজবীদ টিম",
+            location = "মসজিদ কমপ্লেক্স (Mosque Complex)",
+            objectiveBn = "বিশুদ্ধ উচ্চারণ, মাখরাজ ও অর্থানুবাদ",
             iconKey = "quran",
-            materialsNeeded = "শিষ্টাচার ম্যানুয়াল, স্কোরশিট, প্রজেক্টর"
+            materialsNeeded = "মুসহাফ, তাজবীদ চার্ট, মাখরাজ অডিও গাইড"
         ),
         StationEntity(
             id = 2,
-            nameBn = "স্টেশন ২: লাইফ স্কিল ও ব্যবহারিক দক্ষতা",
-            nameEn = "Station 2: Life Skills & Practical Wisdom",
-            moderatorName = "ব্রাদার তানভীর হোসাইন (Tanvir Hossain)",
-            location = "স্কিল ওয়ার্কশপ শেড (Skills Shed)",
-            objectiveBn = "বাস্তব জীবনের সিদ্ধান্ত গ্রহণ, দুর্যোগ প্রস্তুতি, সময় ব্যবস্থাপনা ও স্বাবলম্বিতা",
-            iconKey = "science",
-            materialsNeeded = "টুলকিট, রশি, কম্পাস, ওয়ার্কবুক"
+            nameBn = "স্টেশন ২: আত্মরক্ষা ও ফিটনেস",
+            nameEn = "Station 2: Self-Defense & Fitness",
+            moderatorName = "ক্যাপ্টেন মোজাম্মেল হক ও ট্রেইনারবৃন্দ",
+            location = "মূল খেলার মাঠ (Main Ground)",
+            objectiveBn = "বেসিক ডিফেন্স, ওয়ার্মআপ, ক্যারাটে মুভস ও শারীরিক সক্ষমতা",
+            iconKey = "fitness",
+            materialsNeeded = "ম্যাট, পাঞ্চিং প্যাড, ফার্স্ট এইড কিট, হুইসেল"
         ),
         StationEntity(
             id = 3,
-            nameBn = "স্টেশন ৩: শিশুতোষ আলোচনা ও মানসিক বিকাশ",
-            nameEn = "Station 3: Child Development & Psychology",
-            moderatorName = "মুহতারামা খাদিজা আক্তার (Khadija Akter)",
-            location = "কাউন্সেলিং রুম ও লাইব্রেরি (Library)",
-            objectiveBn = "বয়সোপযোগী মানসিক বিকাশ, ইতিবাচক দৃষ্টিভঙ্গি ও সহমর্মিতা চর্চা",
-            iconKey = "speech",
-            materialsNeeded = "স্টোরিবুক, কালারিং পেপার, চার্ট"
+            nameBn = "স্টেশন ৩: ফার্স্ট এইড ও উদ্ধার",
+            nameEn = "Station 3: First Aid & Rescue",
+            moderatorName = "ডা. তারিকুল ইসলাম ও রেড ক্রিসেন্ট টিম",
+            location = "হল রুম ১ (Hall Room 1)",
+            objectiveBn = "সিপিআর, ব্যান্ডেজ, ফায়ার ড্রিল ও স্ট্রেচার হ্যান্ডলিং",
+            iconKey = "medical",
+            materialsNeeded = "সিপিআর ম্যানিকিন, ট্রায়াঙ্গুলার ব্যান্ডেজ, স্ট্রেচার, স্প্লিন্ট"
         ),
         StationEntity(
             id = 4,
-            nameBn = "স্টেশন ৪: ফিকাহ ও সালাত প্রশিক্ষণ",
-            nameEn = "Station 4: Fiqh & Prayer Mastery",
-            moderatorName = "মাওলানা আব্দুল গাফফার (Abdul Gaffar)",
-            location = "মসজিদ কমপ্লেক্স হল (Mosque Hall)",
-            objectiveBn = "সহীহ পদ্ধতিতে অজু, সালাতের রুকনসমূহ, মাসআলা ও বিনম্র একাগ্রতা",
-            iconKey = "fitness",
-            materialsNeeded = "অজু গাইড, জায়নামাজ, মাসআলা হ্যান্ডআউট"
+            nameBn = "স্টেশন ৪: টিমওয়ার্ক ও কমিউনিকেশন",
+            nameEn = "Station 4: Teamwork & Communication",
+            moderatorName = "মুহাম্মদ ফারহান কবির ও টিম",
+            location = "মুক্তমঞ্চ প্রাঙ্গণ (Open Stage)",
+            objectiveBn = "রোল প্লে, মাইন্ড ম্যাপ, দলগত যোগাযোগ ও নেতৃত্ব চর্চা",
+            iconKey = "teamwork",
+            materialsNeeded = "মাইন্ড ম্যাপ চার্ট, কমিউনিকেশন কার্ড, মার্কার, স্পিকার"
         ),
         StationEntity(
             id = 5,
-            nameBn = "স্টেশন ৫: রিফ্লেক্টিভ সেশন ও আত্মশুদ্ধি",
-            nameEn = "Station 5: Reflective Session & Tazkiyah",
-            moderatorName = "শায়খ আবু তালহা (Shaykh Abu Talha)",
-            location = "গ্রাউন্ড প্যাভিলিয়ন (Pavilion)",
-            objectiveBn = "জীবনের লক্ষ্য নির্ধারণ, আত্মপর্যালোচনা, আন্তরিক তওবা ও নিয়মিত কুরআন চর্চা",
-            iconKey = "arts",
-            materialsNeeded = "রিফ্লেকশন ডায়েরি, পেনসিল, মোটিভেশনাল কার্ড"
+            nameBn = "স্টেশন ৫: প্রব্লেম সলভিং ও বিজ্ঞান",
+            nameEn = "Station 5: Problem Solving & Science",
+            moderatorName = "প্রকৌশলী খালিদ মাহমুদ ও বিজ্ঞান স্কোয়াড",
+            location = "অডিটোরিয়াম (Auditorium)",
+            objectiveBn = "ব্রেইনস্টর্মিং, কেস স্টাডি, উদ্ভাবনী বিজ্ঞান মডেল ও কুইজ",
+            iconKey = "science",
+            materialsNeeded = "প্রজেক্টর, কেস শিট, সায়েন্স মডেল কিট, বাজার সিস্টেম"
         ),
         StationEntity(
             id = 6,
-            nameBn = "স্টেশন ৬: মেডিকেল, ডেন্টাল ও আই ক্যাম্প",
-            nameEn = "Station 6: Medical, Dental & Eye Clinic",
-            moderatorName = "ডা. তারিকুল ইসলাম ও মেডিকেল টিম",
-            location = "মেডিকেল সেন্টার (Camp Clinic)",
-            objectiveBn = "দাঁত, চোখ ও সাধারণ স্বাস্থ্য পরীক্ষা, বিপি চেকআপ ও ব্যক্তিগত পরিচ্ছন্নতা",
-            iconKey = "medical",
-            materialsNeeded = "স্টেথোস্কোপ, ডেন্টাল কিট, আই চার্ট, ভিটামিন"
+            nameBn = "স্টেশন ৬: নৈতিক নেতৃত্ব ও চরিত্র",
+            nameEn = "Station 6: Moral Leadership & Character",
+            moderatorName = "শায়খ আবু তালহা ও উস্তাদবৃন্দ",
+            location = "সম্মেলন কক্ষ ২ (Conference Room 2)",
+            objectiveBn = "উসওয়ায়ে হাসানাহ, শিষ্টাচার, সমাজসেবা ও আদর্শ নেতৃত্ব",
+            iconKey = "speech",
+            materialsNeeded = "সীরাত হ্যান্ডবুক, চরিত্র ডায়েরি, প্রজেকশন স্ক্রিন"
         )
     )
 
     fun generateParticipants(): List<ParticipantEntity> {
         val list = mutableListOf<ParticipantEntity>()
-        val banglaFirstNames = listOf(
+        val maleFirstNames = listOf(
             "আব্দুল্লাহ", "মুহাম্মদ", "আহমেদ", "তাহমিদ", "আরাফাত", "সালমান", "সাকিব", "মাহমুদ",
-            "হাসান", "হুসাইন", "ইব্রাহিম", "ইউসুফ", "ফাতিমা", "আয়েশা", "মরিয়ম", "নুসরাত",
-            "সামিয়া", "তাসনিম", "খাদিজা", "সায়মা", "রাইয়ান", "ফারহান", "তানভীর", "সাদিয়া",
-            "মাহির", "তামিম", "মুস্তাকিম", "জুনায়েদ", "আদনান", "নাসিফ", "জাহিদুল", "কাওসার"
+            "হাসান", "হুসাইন", "ইব্রাহিম", "ইউসুফ", "রাইয়ান", "ফারহান", "তানভীর", "মাহির",
+            "তামিম", "মুস্তাকিম", "জুনায়েদ", "আদনান", "নাসিফ", "জাহিদুল", "কাওসার", "শামীম",
+            "মারুফ", "রাকিব", "আসিফ", "মিজান", "জুবায়ের", "শাকিল", "মুরাদ", "বশির"
+        )
+        val femaleFirstNames = listOf(
+            "ফাতিমা", "আয়েশা", "মরিয়ম", "নুসরাত", "সামিয়া", "তাসনিম", "খাদিজা", "সায়মা",
+            "সাদিয়া", "সুমাইয়া", "রুমানা", "ফারহানা", "আফরিন", "নাসরিন", "সালমা", "হাবিবা"
+        )
+        val maleFirstNamesEn = listOf(
+            "Abdullah", "Muhammad", "Ahmed", "Tahmid", "Arafat", "Salman", "Sakib", "Mahmud",
+            "Hasan", "Husain", "Ibrahim", "Yusuf", "Raiyan", "Farhan", "Tanvir", "Mahir",
+            "Tamim", "Mustakim", "Junaid", "Adnan", "Nasif", "Zahidul", "Kawsar", "Shamim",
+            "Maruf", "Rakib", "Asif", "Mizan", "Zubair", "Shakil", "Murad", "Bashir"
+        )
+        val femaleFirstNamesEn = listOf(
+            "Fatima", "Ayesha", "Maryam", "Nusrat", "Samiya", "Tasnim", "Khadija", "Sayma",
+            "Sadia", "Sumaiya", "Rumana", "Farhana", "Afrin", "Nasrin", "Salma", "Habiba"
         )
         val banglaLastNames = listOf(
             "আল মামুন", "হোসাইন", "রহমান", "ইসলাম", "চৌধুরী", "খন্দকার", "খান", "আলী",
             "মোল্লা", "শিকদার", "আখন্দ", "তালুকদার", "সরকার", "পাটোয়ারী", "বেগম", "জাহান"
-        )
-        val enFirstNames = listOf(
-            "Abdullah", "Muhammad", "Ahmed", "Tahmid", "Arafat", "Salman", "Sakib", "Mahmud",
-            "Hasan", "Husain", "Ibrahim", "Yusuf", "Fatima", "Ayesha", "Maryam", "Nusrat",
-            "Samiya", "Tasnim", "Khadija", "Sayma", "Raiyan", "Farhan", "Tanvir", "Sadia",
-            "Mahir", "Tamim", "Mustakim", "Junaid", "Adnan", "Nasif", "Zahidul", "Kawsar"
         )
         val enLastNames = listOf(
             "Al Mamun", "Hossain", "Rahman", "Islam", "Chowdhury", "Khandaker", "Khan", "Ali",
@@ -173,20 +181,45 @@ object SeedData {
         for (i in 1..603) {
             val code = "LSC-2026-%03d".format(i)
             val fileNo = "F-%04d".format(1000 + i)
-            val fnIdx = (i * 7) % banglaFirstNames.size
-            val lnIdx = (i * 11) % banglaLastNames.size
-            val isFemale = fnIdx in 12..19 || fnIdx == 23
+            val grp = groupsList[(i - 1) % groupsList.size]
+            val isFemale = grp.id == "sumaiya"
 
-            val nameBn = "${banglaFirstNames[fnIdx]} ${banglaLastNames[lnIdx]}"
-            val nameEn = "${enFirstNames[fnIdx]} ${enLastNames[lnIdx]}"
+            val fnIdx = if (isFemale) (i * 7) % femaleFirstNames.size else (i * 7) % maleFirstNames.size
+            val lnIdx = (i * 11) % banglaLastNames.size
+
+            val nameBn = if (isFemale) {
+                "${femaleFirstNames[fnIdx]} ${banglaLastNames[lnIdx]}"
+            } else {
+                "${maleFirstNames[fnIdx]} ${banglaLastNames[lnIdx]}"
+            }
+            val nameEn = if (isFemale) {
+                "${femaleFirstNamesEn[fnIdx]} ${enLastNames[lnIdx]}"
+            } else {
+                "${maleFirstNamesEn[fnIdx]} ${enLastNames[lnIdx]}"
+            }
+
             val dist = districts[i % districts.size]
-            val grp = groupsList[i % groupsList.size]
-            val subNo = (i % 10) + 1
-            val subgroup = "${grp.nameEn}-$subNo"
-            val block = if (isFemale) "Block B" else "Block A"
-            val roomNum = 101 + ((i / 6) % 12)
-            val roomNo = "$block Room $roomNum"
-            val bedNo = "Bed-${(i % 6) + 1}"
+
+            // Assign exact subgroups from official camp manual
+            val subgroupList = when (grp.id) {
+                "bukhari" -> listOf("Bukhari-1", "Bukhari-2", "Bukhari-3")
+                "muslim" -> listOf("Muslim-1", "Muslim-2", "Muslim-3")
+                "abu_dawood" -> listOf("AbuDawood-1", "AbuDawood-2")
+                "tirmidhi" -> listOf("Tirmidhi-1", "Tirmidhi-2")
+                "salahuddin" -> listOf("Salahuddin-1", "Salahuddin-2", "Salahuddin-3")
+                else -> listOf("Sumaiya-1", "Sumaiya-2", "Sumaiya-3")
+            }
+            val subgroup = subgroupList[((i - 1) / groupsList.size) % subgroupList.size]
+
+            val roomNo = when (grp.id) {
+                "bukhari" -> if (subgroup == "Bukhari-3") "তাজমহল হল ১০২" else "তাজমহল হল ১০১"
+                "muslim" -> if (subgroup == "Muslim-3") "তাজমহল হল ১০৪" else "তাজমহল হল ১০৩"
+                "abu_dawood" -> if (subgroup == "AbuDawood-2") "তাজমহল হল ১০৬" else "তাজমহল হল ১০৫"
+                "tirmidhi" -> if (subgroup == "Tirmidhi-2") "শহীদ মিনার ভবন ২০২" else "শহীদ মিনার ভবন ২০১"
+                "salahuddin" -> if (subgroup == "Salahuddin-3") "শহীদ মিনার ভবন ২০৪" else "শহীদ মিনার ভবন ২০৩"
+                else -> if (subgroup == "Sumaiya-3") "শহীদ মিনার ভবন ২০৬" else "শহীদ মিনার ভবন ২০৫"
+            }
+            val bedNo = "Bed-${((i - 1) % 6) + 1}"
 
             val medFlag = when {
                 i % 29 == 0 -> "অ্যাজমা / শ্বাসকষ্ট (Asthma Inhaler)"
@@ -230,19 +263,19 @@ object SeedData {
     }
 
     val scheduleEvents = listOf(
-        // Day 1
+        // ==================== DAY 1 ====================
         ScheduleEventEntity(
             dayNo = 1,
-            timeSlot = "04:45 - 05:45",
+            timeSlot = "05:00 - 06:00",
             titleBn = "ফজর নামাজ, কুরআন তিলাওয়াত ও মাসনূন দোয়া",
             titleEn = "Fajr Prayer, Quran Tilawat & Morning Azkar",
             category = "Jamaat",
-            location = "সেন্ট্রাল মসজিদ (Central Mosque)",
+            location = "মসজিদ কমপ্লেক্স (Central Mosque)",
             isCompleted = true
         ),
         ScheduleEventEntity(
             dayNo = 1,
-            timeSlot = "06:00 - 07:00",
+            timeSlot = "06:15 - 07:15",
             titleBn = "প্রভাতী শরীরচর্চা ও পিটি ড্রিল",
             titleEn = "Morning Physical Drill & Fitness",
             category = "Physical",
@@ -251,41 +284,41 @@ object SeedData {
         ),
         ScheduleEventEntity(
             dayNo = 1,
-            timeSlot = "07:15 - 08:15",
-            titleBn = "স্বাস্থ্যকর নাস্তা ও ক্যাম্প প্রস্তুতি",
-            titleEn = "Healthy Breakfast & Camp Preparation",
+            timeSlot = "07:30 - 08:30",
+            titleBn = "স্বাস্থ্যকর পুষ্টিকর নাস্তা ও ক্যাম্প প্রস্তুতি",
+            titleEn = "Nutritious Breakfast & Camp Inspection",
             category = "Meal",
             location = "ডাইনিং হল (Dining Hall)",
             isCompleted = true
         ),
         ScheduleEventEntity(
             dayNo = 1,
-            timeSlot = "08:30 - 10:00",
-            titleBn = "স্টেশন রোটেশন সেশন - ১ (Station Rotation 1)",
-            titleEn = "Station Rotation Session 1",
+            timeSlot = "08:45 - 10:15",
+            titleBn = "স্টেশন রোটেশন সেশন - ১ (কুরআন ও তাজবীদ)",
+            titleEn = "Station Rotation Session 1 (Quran & Tajweed)",
             category = "Station",
             stationId = 1,
             location = "নির্ধারিত স্টেশন ১-৬ (Assigned Stations 1-6)",
             isCurrent = true,
-            rotationJson = "bukhari:1,sumaiya:2,shafeyi:3,umm_ayman:4,salahuddin:5,umm_saad:6"
+            rotationJson = "bukhari:1,muslim:2,abu_dawood:3,tirmidhi:4,salahuddin:5,sumaiya:6"
         ),
         ScheduleEventEntity(
             dayNo = 1,
-            timeSlot = "10:15 - 11:45",
-            titleBn = "স্টেশন রোটেশন সেশন - ২ (Station Rotation 2)",
-            titleEn = "Station Rotation Session 2",
+            timeSlot = "10:30 - 12:00",
+            titleBn = "স্টেশন রোটেশন সেশন - ২ (আত্মরক্ষা ও ফিটনেস)",
+            titleEn = "Station Rotation Session 2 (Self-Defense & Fitness)",
             category = "Station",
             stationId = 2,
             location = "নির্ধারিত স্টেশন ১-৬ (Assigned Stations 1-6)",
-            rotationJson = "bukhari:2,sumaiya:3,shafeyi:4,umm_ayman:5,salahuddin:6,umm_saad:1"
+            rotationJson = "bukhari:2,muslim:3,abu_dawood:4,tirmidhi:5,salahuddin:6,sumaiya:1"
         ),
         ScheduleEventEntity(
             dayNo = 1,
-            timeSlot = "12:00 - 01:15",
-            titleBn = "দলীয় আলোচনা ও জীবন দক্ষতা প্রেজেন্টেশন",
-            titleEn = "Group Discussion & Life Skills Presentation",
+            timeSlot = "12:15 - 01:15",
+            titleBn = "ক্যাম্প উদ্বোধনী অধিবেশন ও জীবন দক্ষতা ব্রিফিং",
+            titleEn = "Camp Opening Plenary & Life Skills Orientation",
             category = "Halaqa",
-            location = "সেমিনার হল (Seminar Hall)"
+            location = "সেন্ট্রাল অডিটোরিয়াম (Auditorium)"
         ),
         ScheduleEventEntity(
             dayNo = 1,
@@ -297,13 +330,13 @@ object SeedData {
         ),
         ScheduleEventEntity(
             dayNo = 1,
-            timeSlot = "03:15 - 04:30",
-            titleBn = "স্টেশন রোটেশন সেশন - ৩ (Station Rotation 3)",
-            titleEn = "Station Rotation Session 3",
+            timeSlot = "03:00 - 04:30",
+            titleBn = "স্টেশন রোটেশন সেশন - ৩ (ফার্স্ট এইড ও উদ্ধার)",
+            titleEn = "Station Rotation Session 3 (First Aid & Rescue)",
             category = "Station",
             stationId = 3,
             location = "নির্ধারিত স্টেশন ১-৬",
-            rotationJson = "bukhari:3,sumaiya:4,shafeyi:5,umm_ayman:6,salahuddin:1,umm_saad:2"
+            rotationJson = "bukhari:3,muslim:4,abu_dawood:5,tirmidhi:6,salahuddin:1,sumaiya:2"
         ),
         ScheduleEventEntity(
             dayNo = 1,
@@ -337,34 +370,335 @@ object SeedData {
             category = "Meal",
             location = "অ্যাম্পিথিয়েটার"
         ),
-        // Day 2
+
+        // ==================== DAY 2 ====================
         ScheduleEventEntity(
             dayNo = 2,
-            timeSlot = "08:30 - 10:00",
-            titleBn = "স্টেশন রোটেশন সেশন - ৪ (বিজ্ঞান ও রোবোটিক্স)",
-            titleEn = "Station Rotation Session 4 (Science & Robotics)",
+            timeSlot = "05:00 - 06:00",
+            titleBn = "ফজর সালাত, তাজবীদ মাস্ক ও প্রাতরাশের দোয়া",
+            titleEn = "Fajr Prayer, Tajweed Recitation & Azkar",
+            category = "Jamaat",
+            location = "মসজিদ কমপ্লেক্স"
+        ),
+        ScheduleEventEntity(
+            dayNo = 2,
+            timeSlot = "06:15 - 07:15",
+            titleBn = "আত্মরক্ষা ওয়ার্কআউট ও জুডো-ক্যারাটে বেসিকস",
+            titleEn = "Self-Defense Workout & Martial Arts Basics",
+            category = "Physical",
+            location = "মূল খেলার মাঠ"
+        ),
+        ScheduleEventEntity(
+            dayNo = 2,
+            timeSlot = "07:30 - 08:30",
+            titleBn = "সুষম প্রাতরাশ ও ব্যক্তিগত স্বাস্থ্য পরিচ্ছন্নতা",
+            titleEn = "Nutritious Breakfast & Health Check",
+            category = "Meal",
+            location = "ডাইনিং হল"
+        ),
+        ScheduleEventEntity(
+            dayNo = 2,
+            timeSlot = "08:45 - 10:15",
+            titleBn = "স্টেশন রোটেশন সেশন - ৪ (টিমওয়ার্ক ও কমিউনিকেশন)",
+            titleEn = "Station Rotation Session 4 (Teamwork & Communication)",
             category = "Station",
             stationId = 4,
-            rotationJson = "bukhari:4,sumaiya:5,shafeyi:6,umm_ayman:1,salahuddin:2,umm_saad:3"
+            location = "মুক্তমঞ্চ প্রাঙ্গণ",
+            rotationJson = "bukhari:4,muslim:5,abu_dawood:6,tirmidhi:1,salahuddin:2,sumaiya:3"
         ),
         ScheduleEventEntity(
             dayNo = 2,
-            timeSlot = "10:15 - 11:45",
-            titleBn = "স্টেশন রোটেশন সেশন - ৫ (আত্মরক্ষা ও টিম ড্রিল)",
-            titleEn = "Station Rotation Session 5 (Self-Defense)",
+            timeSlot = "10:30 - 12:00",
+            titleBn = "স্টেশন রোটেশন সেশন - ৫ (প্রব্লেম সলভিং ও বিজ্ঞান)",
+            titleEn = "Station Rotation Session 5 (Problem Solving & Science)",
             category = "Station",
             stationId = 5,
-            rotationJson = "bukhari:5,sumaiya:6,shafeyi:1,umm_ayman:2,salahuddin:3,umm_saad:4"
+            location = "অডিটোরিয়াম",
+            rotationJson = "bukhari:5,muslim:6,abu_dawood:1,tirmidhi:2,salahuddin:3,sumaiya:4"
         ),
-        // Day 3
         ScheduleEventEntity(
-            dayNo = 3,
-            timeSlot = "08:30 - 10:00",
-            titleBn = "স্টেশন রোটেশন সেশন - ৬ (ক্যালিগ্রাফি ও দেয়াল পত্রিকা)",
-            titleEn = "Station Rotation Session 6 (Calligraphy & Magazine)",
+            dayNo = 2,
+            timeSlot = "12:15 - 01:15",
+            titleBn = "সাইবার নিরাপত্তা, সোশ্যাল মিডিয়া ও মানসিক স্বাস্থ্য সেমিনার",
+            titleEn = "Cyber Safety, Media Literacy & Mental Wellness",
+            category = "Halaqa",
+            location = "সেন্ট্রাল সেমিনার হল"
+        ),
+        ScheduleEventEntity(
+            dayNo = 2,
+            timeSlot = "01:30 - 02:45",
+            titleBn = "যোহর নামাজ, পুষ্টিকর মধ্যাহ্নভোজ ও বিশ্রাম",
+            titleEn = "Dhuhr Prayer, Lunch & Siesta",
+            category = "Meal",
+            location = "ডাইনিং হল ও হোস্টেল রুম"
+        ),
+        ScheduleEventEntity(
+            dayNo = 2,
+            timeSlot = "03:00 - 04:30",
+            titleBn = "স্টেশন রোটেশন সেশন - ৬ (নৈতিক নেতৃত্ব ও চরিত্র)",
+            titleEn = "Station Rotation Session 6 (Moral Leadership & Character)",
             category = "Station",
             stationId = 6,
-            rotationJson = "bukhari:6,sumaiya:1,shafeyi:2,umm_ayman:3,salahuddin:4,umm_saad:5"
+            location = "সম্মেলন কক্ষ ২",
+            rotationJson = "bukhari:6,muslim:1,abu_dawood:2,tirmidhi:3,salahuddin:4,sumaiya:5"
+        ),
+        ScheduleEventEntity(
+            dayNo = 2,
+            timeSlot = "04:45 - 05:45",
+            titleBn = "আসর নামাজ ও সারভাইভাল অবস্ট্যাকল চ্যালেঞ্জ",
+            titleEn = "Asr Prayer & Survival Obstacle Run",
+            category = "Physical",
+            location = "ক্যাম্প জঙ্গল ট্রেইল ও মাঠ"
+        ),
+        ScheduleEventEntity(
+            dayNo = 2,
+            timeSlot = "06:00 - 07:15",
+            titleBn = "মাগরিব নামাজ ও তাজকিয়াতুন নফস রিফ্লেকশন",
+            titleEn = "Maghrib Prayer & Tazkiyah Soul Circle",
+            category = "Halaqa",
+            location = "মসজিদ কমপ্লেক্স"
+        ),
+        ScheduleEventEntity(
+            dayNo = 2,
+            timeSlot = "07:30 - 09:00",
+            titleBn = "ইসলামী সাধারণ জ্ঞান ও আইকিউ কুইজ প্রতিযোগিতা",
+            titleEn = "Islamic General Knowledge & IQ Quiz Competition",
+            category = "Competition",
+            location = "সেন্ট্রাল অডিটোরিয়াম"
+        ),
+        ScheduleEventEntity(
+            dayNo = 2,
+            timeSlot = "09:15 - 10:15",
+            titleBn = "নৈশভোজ, এশা নামাজ ও দেয়াল পত্রিকা সম্পাদনা",
+            titleEn = "Dinner, Isha & Wall Magazine Editorial Desk",
+            category = "Meal",
+            location = "ডাইনিং হল ও ক্রিয়েটিভ রুম"
+        ),
+
+        // ==================== DAY 3 (STUDY TOUR) ====================
+        ScheduleEventEntity(
+            dayNo = 3,
+            timeSlot = "05:00 - 06:00",
+            titleBn = "ফজর সালাত ও শিক্ষা সফর প্রস্তুতি ব্রিফিং",
+            titleEn = "Fajr Prayer & Study Tour Briefing",
+            category = "Jamaat",
+            location = "মসজিদ কমপ্লেক্স"
+        ),
+        ScheduleEventEntity(
+            dayNo = 3,
+            timeSlot = "06:15 - 07:00",
+            titleBn = "দ্রুত নাস্তা গ্রহণ ও বাস বোর্ডিং কিউআর রোল-কল",
+            titleEn = "Quick Breakfast & Bus Boarding QR Roll-Call",
+            category = "Meal",
+            location = "ডাইনিং হল ও সেন্ট্রাল গেট"
+        ),
+        ScheduleEventEntity(
+            dayNo = 3,
+            timeSlot = "07:15 - 12:30",
+            titleBn = "ঐতিহাসিক সোনারগাঁ ও লোকশিল্প জাদুঘর শিক্ষা সফর",
+            titleEn = "Study Tour to Historic Sonargaon & Folk Art Museum",
+            category = "Halaqa",
+            location = "সোনারগাঁ হেরিটেজ কমপ্লেক্স"
+        ),
+        ScheduleEventEntity(
+            dayNo = 3,
+            timeSlot = "12:45 - 02:15",
+            titleBn = "শিক্ষা সফরে যোহর সালাত ও বিশেষ প্যাকেট লাঞ্চ",
+            titleEn = "Study Tour Dhuhr Prayer & Picnic Lunch",
+            category = "Meal",
+            location = "ট্যুর গার্ডেন ও পার্ক চত্বর"
+        ),
+        ScheduleEventEntity(
+            dayNo = 3,
+            timeSlot = "02:30 - 04:30",
+            titleBn = "পানাম নগর ফিল্ড স্টাডি, হেরিটেজ কুইজ ও গ্রুপ ফটো",
+            titleEn = "Panam City Field Study, Heritage Quiz & Photo",
+            category = "Physical",
+            location = "ঐতিহাসিক পানাম নগর"
+        ),
+        ScheduleEventEntity(
+            dayNo = 3,
+            timeSlot = "04:45 - 06:00",
+            titleBn = "আসর সালাত ও ক্যাম্পাসে নিরাপদ প্রত্যাবর্তন বাস রোল-কল",
+            titleEn = "Asr Prayer & Return Journey Headcount",
+            category = "Transport",
+            location = "বাস বহর ও ক্যাম্প প্রবেশদ্বার"
+        ),
+        ScheduleEventEntity(
+            dayNo = 3,
+            timeSlot = "06:15 - 07:30",
+            titleBn = "মাগরিব সালাত ও শিক্ষা সফর অভিজ্ঞতা রিফ্লেকশন হালাকা",
+            titleEn = "Maghrib Prayer & Tour Experience Reflection",
+            category = "Halaqa",
+            location = "মসজিদ কমপ্লেক্স"
+        ),
+        ScheduleEventEntity(
+            dayNo = 3,
+            timeSlot = "07:45 - 09:15",
+            titleBn = "দিন ৩ - দেয়াল পত্রিকা প্রদর্শনী ও সেরা গ্রুপ মূল্যায়ন",
+            titleEn = "Wall Magazine Grand Exhibition & Group Judging",
+            category = "Competition",
+            location = "সেন্ট্রাল আর্ট করিডোর"
+        ),
+        ScheduleEventEntity(
+            dayNo = 3,
+            timeSlot = "09:30 - 10:15",
+            titleBn = "বিশেষ ডিনার, এশা সালাত ও বিশ্রামের ঘোষণা",
+            titleEn = "Special Dinner, Isha Prayer & Rest Announcement",
+            category = "Meal",
+            location = "ডাইনিং হল"
+        ),
+
+        // ==================== DAY 4 ====================
+        ScheduleEventEntity(
+            dayNo = 4,
+            timeSlot = "05:00 - 06:00",
+            titleBn = "তাহাজ্জুদ, ফজর সালাত ও কুরআনিক জীবনবোধ",
+            titleEn = "Tahajjud, Fajr Prayer & Quranic Living Circle",
+            category = "Jamaat",
+            location = "মসজিদ কমপ্লেক্স"
+        ),
+        ScheduleEventEntity(
+            dayNo = 4,
+            timeSlot = "06:15 - 07:15",
+            titleBn = "অগ্নিনির্বাপণ ও জরুরি দুর্যোগ রেসকিউ মহড়া",
+            titleEn = "Fire Fighting & Emergency Disaster Rescue Drill",
+            category = "Physical",
+            location = "প্রধান মাঠ"
+        ),
+        ScheduleEventEntity(
+            dayNo = 4,
+            timeSlot = "07:30 - 08:30",
+            titleBn = "সুস্বাদু পুষ্টিকর নাস্তা ও ডরমিটরি পরিদর্শন",
+            titleEn = "Healthy Breakfast & Dormitory Cleanliness Check",
+            category = "Meal",
+            location = "ডাইনিং হল"
+        ),
+        ScheduleEventEntity(
+            dayNo = 4,
+            timeSlot = "08:45 - 10:15",
+            titleBn = "ব্যবহারিক ফার্স্ট এইড ও সিপিআর লাইভ অ্যাসেসমেন্ট",
+            titleEn = "Practical First Aid, Bandaging & CPR Assessment",
+            category = "Station",
+            stationId = 3,
+            location = "হল রুম ১",
+            rotationJson = "bukhari:1,muslim:2,abu_dawood:3,tirmidhi:4,salahuddin:5,sumaiya:6"
+        ),
+        ScheduleEventEntity(
+            dayNo = 4,
+            timeSlot = "10:30 - 12:00",
+            titleBn = "আন্তঃদলীয় বিতর্ক প্রতিযোগিতা ও পাবলিক স্পিকিং ফিনালে",
+            titleEn = "Inter-Group Debate Championship & Public Speaking",
+            category = "Competition",
+            location = "সেন্ট্রাল অডিটোরিয়াম"
+        ),
+        ScheduleEventEntity(
+            dayNo = 4,
+            timeSlot = "12:15 - 01:15",
+            titleBn = "গ্রিন ক্যাম্পাস ও পরিবেশবান্ধব বৃক্ষরোপণ অভিযান",
+            titleEn = "Green Campus Initiative & Tree Plantation Drive",
+            category = "Physical",
+            location = "ক্যাম্পাস চত্বর ও বাগান"
+        ),
+        ScheduleEventEntity(
+            dayNo = 4,
+            timeSlot = "01:30 - 02:45",
+            titleBn = "যোহর সালাত ও ঐতিহ্যবাহী ভোজ মধ্যাহ্নভোজ",
+            titleEn = "Dhuhr Prayer & Traditional Camp Feast Lunch",
+            category = "Meal",
+            location = "মসজিদ ও ডাইনিং হল"
+        ),
+        ScheduleEventEntity(
+            dayNo = 4,
+            timeSlot = "03:00 - 04:30",
+            titleBn = "বিজ্ঞান মডেল ও উদ্ভাবনী প্রযুক্তি প্রদর্শনী",
+            titleEn = "Science Model & Innovative Technology Expo",
+            category = "Station",
+            stationId = 5,
+            location = "অডিটোরিয়াম উইং",
+            rotationJson = "bukhari:5,muslim:6,abu_dawood:1,tirmidhi:2,salahuddin:3,sumaiya:4"
+        ),
+        ScheduleEventEntity(
+            dayNo = 4,
+            timeSlot = "04:45 - 05:45",
+            titleBn = "আসর সালাত ও দলগত প্রীতি ফুটবল ও ক্রিকেট টুর্নামেন্ট",
+            titleEn = "Asr Prayer & Friendship Sports Championship",
+            category = "Physical",
+            location = "সেন্ট্রাল স্টেডিয়াম"
+        ),
+        ScheduleEventEntity(
+            dayNo = 4,
+            timeSlot = "06:00 - 07:15",
+            titleBn = "মাগরিব সালাত ও বিদায়ী আত্মউন্নয়ন নসীহত হালাকা",
+            titleEn = "Maghrib Prayer & Mentorship Farewell Circle",
+            category = "Halaqa",
+            location = "মসজিদ কমপ্লেক্স"
+        ),
+        ScheduleEventEntity(
+            dayNo = 4,
+            timeSlot = "07:30 - 09:30",
+            titleBn = "মনোজ্ঞ সাংস্কৃতিক সন্ধ্যা ও গ্র্যান্ড ক্যাম্পফায়ার",
+            titleEn = "Grand Cultural Evening & Campfire Celebration",
+            category = "Halaqa",
+            location = "মুক্তমঞ্চ অ্যাম্পিথিয়েটার"
+        ),
+        ScheduleEventEntity(
+            dayNo = 4,
+            timeSlot = "09:45 - 10:30",
+            titleBn = "রাতের খাবার, এশা সালাত ও লাইট অফ",
+            titleEn = "Dinner, Isha Prayer & Lights Off",
+            category = "Meal",
+            location = "ডাইনিং হল"
+        ),
+
+        // ==================== DAY 5 (CLOSING & GRADUATION) ====================
+        ScheduleEventEntity(
+            dayNo = 5,
+            timeSlot = "05:00 - 06:00",
+            titleBn = "ফজর সালাত ও খতমে কুরআন সমাপনী দোয়া",
+            titleEn = "Fajr Prayer & Quran Completion Closing Dua",
+            category = "Jamaat",
+            location = "মসজিদ কমপ্লেক্স"
+        ),
+        ScheduleEventEntity(
+            dayNo = 5,
+            timeSlot = "06:15 - 07:15",
+            titleBn = "ক্যাম্পাস পরিচ্ছন্নতা ড্রাইভ ও লাগেজ প্যাকিং",
+            titleEn = "Campus Cleanliness Drive & Room Packing",
+            category = "Physical",
+            location = "হোস্টেল ডরমিটরি"
+        ),
+        ScheduleEventEntity(
+            dayNo = 5,
+            timeSlot = "07:30 - 08:30",
+            titleBn = "বিদায়ী প্রাতরাশ ও শুভেচ্ছা বিনিময়",
+            titleEn = "Farewell Breakfast & Morning Fellowship",
+            category = "Meal",
+            location = "ডাইনিং হল"
+        ),
+        ScheduleEventEntity(
+            dayNo = 5,
+            timeSlot = "09:00 - 11:30",
+            titleBn = "সমাপনী অধিবেশন, চ্যাম্পিয়ন ট্রফি বিতরণ ও সনদ প্রদান",
+            titleEn = "Grand Closing, Trophy Distribution & Certificate Award",
+            category = "Competition",
+            location = "সেন্ট্রাল অডিটোরিয়াম"
+        ),
+        ScheduleEventEntity(
+            dayNo = 5,
+            timeSlot = "11:45 - 12:45",
+            titleBn = "সমাজ বিনির্মাণ অঙ্গীকারপত্র স্বাক্ষর ও দলগত ফটোসেশন",
+            titleEn = "Social Pledge Signing & Official Group Photo",
+            category = "Halaqa",
+            location = "অডিটোরিয়াম প্লাজা"
+        ),
+        ScheduleEventEntity(
+            dayNo = 5,
+            timeSlot = "01:00 - 02:30",
+            titleBn = "যোহর সালাত, বিদায়ী মধ্যাহ্নভোজ ও অভিভাবকদের কাছে হস্তান্তর",
+            titleEn = "Dhuhr Prayer, Farewell Lunch & Safe Parent Handover",
+            category = "Meal",
+            location = "প্রধান ফটক ও ক্যাম্পাস"
         )
     )
 
@@ -636,27 +970,27 @@ object SeedData {
     )
 
     val rooms = listOf(
-        RoomEntity(id = 1, buildingName = "তাজমহল হল", roomNo = "১০১", floor = "১ম তলা", capacity = 12, assignedCount = 12, assignedGroupId = "bukhari", inChargeName = "মুহাম্মদ জুবায়ের", inChargePhone = "01711-101001", notes = "বুখারী সাব-১ ও সাব-২"),
-        RoomEntity(id = 2, buildingName = "তাজমহল হল", roomNo = "১০২", floor = "১ম তলা", capacity = 12, assignedCount = 12, assignedGroupId = "bukhari", inChargeName = "আহমেদ হাসিব", inChargePhone = "01711-101002", notes = "বুখারী সাব-৩ ও সাব-৪"),
-        RoomEntity(id = 3, buildingName = "তাজমহল হল", roomNo = "১০৩", floor = "১ম তলা", capacity = 12, assignedCount = 12, assignedGroupId = "sumaiya", inChargeName = "ফারহানা ইয়াসমিন", inChargePhone = "01819-101003", notes = "সুমাইয়া সাব-১ ও সাব-২"),
-        RoomEntity(id = 4, buildingName = "তাজমহল হল", roomNo = "১০৪", floor = "১ম তলা", capacity = 12, assignedCount = 12, assignedGroupId = "sumaiya", inChargeName = "রুমানা আফরোজ", inChargePhone = "01819-101004", notes = "সুমাইয়া সাব-৩ ও সাব-৪"),
-        RoomEntity(id = 5, buildingName = "তাজমহল হল", roomNo = "১০৫", floor = "১ম তলা", capacity = 12, assignedCount = 12, assignedGroupId = "shafeyi", inChargeName = "মাহমুদুর রহমান", inChargePhone = "01912-101005", notes = "শাফেয়ী সাব-১ ও সাব-২"),
-        RoomEntity(id = 6, buildingName = "তাজমহল হল", roomNo = "১০৬", floor = "১ম তলা", capacity = 12, assignedCount = 12, assignedGroupId = "shafeyi", inChargeName = "সাঈদ আনোয়ার", inChargePhone = "01912-101006", notes = "শাফেয়ী সাব-৩ ও সাব-৪"),
-        RoomEntity(id = 7, buildingName = "শহীদ মিনার ভবন", roomNo = "২০১", floor = "২য় তলা", capacity = 12, assignedCount = 12, assignedGroupId = "umm_ayman", inChargeName = "সাবিহা পারভীন", inChargePhone = "01722-201001", notes = "উম্মে আয়মান সাব-১ ও ২"),
-        RoomEntity(id = 8, buildingName = "শহীদ মিনার ভবন", roomNo = "২০২", floor = "২য় তলা", capacity = 12, assignedCount = 12, assignedGroupId = "umm_ayman", inChargeName = "নুসরাত জাহান", inChargePhone = "01722-201002", notes = "উম্মে আয়মান সাব-৩ ও ৪"),
-        RoomEntity(id = 9, buildingName = "শহীদ মিনার ভবন", roomNo = "২০৩", floor = "২য় তলা", capacity = 12, assignedCount = 12, assignedGroupId = "salahuddin", inChargeName = "রায়হান উদ্দিন", inChargePhone = "01611-201003", notes = "সালাহউদ্দীন সাব-১ ও ২"),
-        RoomEntity(id = 10, buildingName = "শহীদ মিনার ভবন", roomNo = "২০৪", floor = "২য় তলা", capacity = 12, assignedCount = 12, assignedGroupId = "salahuddin", inChargeName = "তারেক মাহমুদ", inChargePhone = "01611-201004", notes = "সালাহউদ্দীন সাব-৩ ও ৪"),
-        RoomEntity(id = 11, buildingName = "শহীদ মিনার ভবন", roomNo = "২০৫", floor = "২য় তলা", capacity = 12, assignedCount = 12, assignedGroupId = "umm_saad", inChargeName = "নাসরিন জাহান", inChargePhone = "01511-201005", notes = "উম্মে সা'দ সাব-১ ও ২"),
-        RoomEntity(id = 12, buildingName = "শহীদ মিনার ভবন", roomNo = "২০৬", floor = "২য় তলা", capacity = 12, assignedCount = 12, assignedGroupId = "umm_saad", inChargeName = "সালমা বেগম", inChargePhone = "01511-201006", notes = "উম্মে সা'দ সাব-৩ ও ৪")
+        RoomEntity(id = 1, buildingName = "তাজমহল হল", roomNo = "১০১", floor = "১ম তলা", capacity = 12, assignedCount = 12, assignedGroupId = "bukhari", inChargeName = "মুহাম্মদ মারুফ", inChargePhone = "01711-101001", notes = "বুখারী সাব-১ ও সাব-২"),
+        RoomEntity(id = 2, buildingName = "তাজমহল হল", roomNo = "১০২", floor = "১ম তলা", capacity = 12, assignedCount = 12, assignedGroupId = "bukhari", inChargeName = "মুহাম্মদ রাকিব", inChargePhone = "01711-101002", notes = "বুখারী সাব-৩"),
+        RoomEntity(id = 3, buildingName = "তাজমহল হল", roomNo = "১০৩", floor = "১ম তলা", capacity = 12, assignedCount = 12, assignedGroupId = "muslim", inChargeName = "হাসান মাহমুদ", inChargePhone = "01819-101003", notes = "মুসলিম সাব-১ ও সাব-২"),
+        RoomEntity(id = 4, buildingName = "তাজমহল হল", roomNo = "১০৪", floor = "১ম তলা", capacity = 12, assignedCount = 12, assignedGroupId = "muslim", inChargeName = "মিজানুর রহমান", inChargePhone = "01819-101004", notes = "মুসলিম সাব-৩"),
+        RoomEntity(id = 5, buildingName = "তাজমহল হল", roomNo = "১০৫", floor = "১ম তলা", capacity = 12, assignedCount = 12, assignedGroupId = "abu_dawood", inChargeName = "জুবায়ের আহমেদ", inChargePhone = "01912-101005", notes = "আবু দাউদ সাব-১"),
+        RoomEntity(id = 6, buildingName = "তাজমহল হল", roomNo = "১০৬", floor = "১ম তলা", capacity = 12, assignedCount = 12, assignedGroupId = "abu_dawood", inChargeName = "তাহমিদুল হক", inChargePhone = "01912-101006", notes = "আবু দাউদ সাব-২"),
+        RoomEntity(id = 7, buildingName = "শহীদ মিনার ভবন", roomNo = "২০১", floor = "২য় তলা", capacity = 12, assignedCount = 12, assignedGroupId = "tirmidhi", inChargeName = "কাওসার আহমেদ", inChargePhone = "01722-201001", notes = "তিরমিযী সাব-১"),
+        RoomEntity(id = 8, buildingName = "শহীদ মিনার ভবন", roomNo = "২০২", floor = "২য় তলা", capacity = 12, assignedCount = 12, assignedGroupId = "tirmidhi", inChargeName = "রিয়াদ হোসেন", inChargePhone = "01722-201002", notes = "তিরমিযী সাব-২"),
+        RoomEntity(id = 9, buildingName = "শহীদ মিনার ভবন", roomNo = "২০৩", floor = "২য় তলা", capacity = 12, assignedCount = 12, assignedGroupId = "salahuddin", inChargeName = "শাকিল আহমেদ", inChargePhone = "01611-201003", notes = "সালাহউদ্দীন সাব-১ ও ২"),
+        RoomEntity(id = 10, buildingName = "শহীদ মিনার ভবন", roomNo = "২০৪", floor = "২য় তলা", capacity = 12, assignedCount = 12, assignedGroupId = "salahuddin", inChargeName = "মুরাদ ও বশির", inChargePhone = "01611-201004", notes = "সালাহউদ্দীন সাব-৩"),
+        RoomEntity(id = 11, buildingName = "শহীদ মিনার ভবন", roomNo = "২০৫", floor = "২য় তলা", capacity = 12, assignedCount = 12, assignedGroupId = "sumaiya", inChargeName = "ফাতেমা ও মরিয়ম", inChargePhone = "01511-201005", notes = "সুমাইয়া সাব-১ ও ২"),
+        RoomEntity(id = 12, buildingName = "শহীদ মিনার ভবন", roomNo = "২০৬", floor = "২য় তলা", capacity = 12, assignedCount = 12, assignedGroupId = "sumaiya", inChargeName = "আয়েশা খাতুন", inChargePhone = "01511-201006", notes = "সুমাইয়া সাব-৩")
     )
 
     val travelVehicles = listOf(
-        TravelVehicleEntity(id = 1, vehicleNo = "বাস ১ (ঢাকা মেট্রো ব-১১-২৩৪৫)", driverName = "মো. রফিক মিয়া", driverPhone = "01711-888001", inChargeName = "হাফেজ তানভীর আহমেদ", inChargePhone = "01711-234567", capacity = 40, assignedGroupId = "bukhari", departureHeadcount = 38, returnHeadcount = 38, status = "SCHEDULED"),
-        TravelVehicleEntity(id = 2, vehicleNo = "বাস ২ (ঢাকা মেট্রো ব-১১-২৩৪৬)", driverName = "মো. বাবুল হোসেন", driverPhone = "01819-888002", inChargeName = "মুহতারামা খাদিজা আক্তার", inChargePhone = "01819-345678", capacity = 40, assignedGroupId = "sumaiya", departureHeadcount = 39, returnHeadcount = 39, status = "SCHEDULED"),
-        TravelVehicleEntity(id = 3, vehicleNo = "বাস ৩ (ঢাকা মেট্রো ব-১১-২৩৪৭)", driverName = "মো. সেলিম উদ্দিন", driverPhone = "01912-888003", inChargeName = "মাওলানা আব্দুল গাফফার", inChargePhone = "01912-456789", capacity = 40, assignedGroupId = "shafeyi", departureHeadcount = 38, returnHeadcount = 38, status = "SCHEDULED"),
-        TravelVehicleEntity(id = 4, vehicleNo = "বাস ৪ (ঢাকা মেট্রো ব-১১-২৩৪৮)", driverName = "মো. কালাম মিয়া", driverPhone = "01611-888004", inChargeName = "মুহতারামা সাবিহা পারভীন", inChargePhone = "01722-567890", capacity = 40, assignedGroupId = "umm_ayman", departureHeadcount = 39, returnHeadcount = 39, status = "SCHEDULED"),
-        TravelVehicleEntity(id = 5, vehicleNo = "বাস ৫ (ঢাকা মেট্রো ব-১১-২৩৪৯)", driverName = "মো. খোরশেদ আলম", driverPhone = "01511-888005", inChargeName = "ইঞ্জিনিয়ার রায়হান উদ্দিন", inChargePhone = "01611-678901", capacity = 40, assignedGroupId = "salahuddin", departureHeadcount = 38, returnHeadcount = 38, status = "SCHEDULED"),
-        TravelVehicleEntity(id = 6, vehicleNo = "বাস ৬ (ঢাকা মেট্রো ব-১১-২৩৫০)", driverName = "মো. ফারুক হাসান", driverPhone = "01712-888006", inChargeName = "মুহতারামা নাসরিন জাহান", inChargePhone = "01511-789012", capacity = 40, assignedGroupId = "umm_saad", departureHeadcount = 39, returnHeadcount = 39, status = "SCHEDULED")
+        TravelVehicleEntity(id = 1, vehicleNo = "বাস ১ (ঢাকা মেট্রো ব-১১-২৩৪৫)", driverName = "মো. রফিক মিয়া", driverPhone = "01711-888001", inChargeName = "উস্তাদ আহমাদুল্লাহ", inChargePhone = "01711-000001", capacity = 40, assignedGroupId = "bukhari", departureHeadcount = 38, returnHeadcount = 38, status = "SCHEDULED"),
+        TravelVehicleEntity(id = 2, vehicleNo = "বাস ২ (ঢাকা মেট্রো ব-১১-২৩৪৬)", driverName = "মো. বাবুল হোসেন", driverPhone = "01819-888002", inChargeName = "মাওলানা তারিক জামিল", inChargePhone = "01711-000002", capacity = 40, assignedGroupId = "muslim", departureHeadcount = 39, returnHeadcount = 39, status = "SCHEDULED"),
+        TravelVehicleEntity(id = 3, vehicleNo = "বাস ৩ (ঢাকা মেট্রো ব-১১-২৩৪৭)", driverName = "মো. সেলিম উদ্দিন", driverPhone = "01912-888003", inChargeName = "হাফেজ তানভীর", inChargePhone = "01711-000003", capacity = 40, assignedGroupId = "abu_dawood", departureHeadcount = 38, returnHeadcount = 38, status = "SCHEDULED"),
+        TravelVehicleEntity(id = 4, vehicleNo = "বাস ৪ (ঢাকা মেট্রো ব-১১-২৩৪৮)", driverName = "মো. কালাম মিয়া", driverPhone = "01611-888004", inChargeName = "মুফতি সালমান", inChargePhone = "01711-000004", capacity = 40, assignedGroupId = "tirmidhi", departureHeadcount = 39, returnHeadcount = 39, status = "SCHEDULED"),
+        TravelVehicleEntity(id = 5, vehicleNo = "বাস ৫ (ঢাকা মেট্রো ব-১১-২৩৪৯)", driverName = "মো. খোরশেদ আলম", driverPhone = "01511-888005", inChargeName = "ইঞ্জি. খালিদ মাহমুদ", inChargePhone = "01711-000005", capacity = 40, assignedGroupId = "salahuddin", departureHeadcount = 38, returnHeadcount = 38, status = "SCHEDULED"),
+        TravelVehicleEntity(id = 6, vehicleNo = "বাস ৬ (ঢাকা মেট্রো ব-১১-২৩৫০)", driverName = "মো. ফারুক হাসান", driverPhone = "01712-888006", inChargeName = "ডা. নাসিমা সুলতানা", inChargePhone = "01711-000006", capacity = 40, assignedGroupId = "sumaiya", departureHeadcount = 39, returnHeadcount = 39, status = "SCHEDULED")
     )
 
     val dutyRosters = listOf(
@@ -680,12 +1014,86 @@ object SeedData {
     )
 
     val staffAccounts = listOf(
-        UserAccountEntity(email = "admin@lsc.org", fullName = "সুপার অ্যাডমিন (IT ও ডাটা কন্ট্রোল)", role = "SUPER_ADMIN", passwordHash = "Lsc@Admin2026", phone = "01711-000000"),
-        UserAccountEntity(email = "chief@lsc.org", fullName = "ড. এনামুল হক চৌধুরী (ক্যাম্প চিফ)", role = "CAMP_CHIEF", passwordHash = "Lsc@Chief2026", phone = "01711-000111"),
-        UserAccountEntity(email = "reg@lsc.org", fullName = "রেজিস্ট্রেশন ও রোস্টার অফিসার", role = "REGISTRATION", passwordHash = "Lsc@Reg2026", phone = "01811-123456"),
-        UserAccountEntity(email = "medical@lsc.org", fullName = "ডা. তারিকুল ইসলাম (মেডিকেল ইন-চার্জ)", role = "MEDICAL", passwordHash = "Lsc@Med2026", phone = "01819-222333"),
-        UserAccountEntity(email = "judge@lsc.org", fullName = "মাওলানা আব্দুল গাফফার (প্রধান বিচারক)", role = "JUDGE", passwordHash = "Lsc@Judge2026", phone = "01912-456789"),
-        UserAccountEntity(email = "logistics@lsc.org", fullName = "ইঞ্জিনিয়ার রেজওয়ান করিম (লজিস্টিকস লিড)", role = "LOGISTICS", passwordHash = "Lsc@Log2026", phone = "01611-444555")
+        UserAccountEntity(email = "admin@lsc.org", fullName = "সুপার অ্যাডমিন (IT ও ডাটা কন্ট্রোল)", role = "SUPER_ADMIN", passwordHash = com.example.data.repository.CampRepository.hashPasswordWithSalt("Lsc@Admin2026"), phone = "01711-000000"),
+        UserAccountEntity(email = "chief@lsc.org", fullName = "ড. এনামুল হক চৌধুরী (ক্যাম্প চিফ)", role = "CAMP_CHIEF", passwordHash = com.example.data.repository.CampRepository.hashPasswordWithSalt("Lsc@Chief2026"), phone = "01711-000111"),
+        UserAccountEntity(email = "reg@lsc.org", fullName = "রেজিস্ট্রেশন ও রোস্টার অফিসার", role = "REGISTRATION", passwordHash = com.example.data.repository.CampRepository.hashPasswordWithSalt("Lsc@Reg2026"), phone = "01811-123456"),
+        UserAccountEntity(email = "medical@lsc.org", fullName = "ডা. তারিকুল ইসলাম (মেডিকেল ইন-চার্জ)", role = "MEDICAL", passwordHash = com.example.data.repository.CampRepository.hashPasswordWithSalt("Lsc@Med2026"), phone = "01819-222333"),
+        UserAccountEntity(email = "judge@lsc.org", fullName = "মাওলানা আব্দুল গাফফার (প্রধান বিচারক)", role = "JUDGE", passwordHash = com.example.data.repository.CampRepository.hashPasswordWithSalt("Lsc@Judge2026"), phone = "01912-456789"),
+        UserAccountEntity(email = "logistics@lsc.org", fullName = "ইঞ্জিনিয়ার রেজওয়ান করিম (লজিস্টিকস লিড)", role = "LOGISTICS", passwordHash = com.example.data.repository.CampRepository.hashPasswordWithSalt("Lsc@Log2026"), phone = "01611-444555")
+    )
+
+    val volunteerShifts = listOf(
+        VolunteerShiftEntity(
+            id = 1,
+            volunteerId = 101,
+            volunteerName = "তারিকুল হাসান",
+            volunteerRole = "হল শৃঙ্খলা ও গেট পাস টিজার",
+            taskTitleBn = "প্রধান ফটক রেজিস্ট্রেশন ও কিট ব্যাগ ডেলিভারি সহায়তা",
+            taskTitleEn = "Main Gate Registration & Kit Bag Delivery Support",
+            departmentOrLocation = "প্রধান ফটক ও অভ্যর্থনা ডেস্ক",
+            dayNo = 1,
+            startTime = "সকাল ০৭:০০",
+            endTime = "সকাল ১১:০০",
+            taskDescription = "৬০০+ অংশগ্রহণকারীর কিট ব্যাগ বিতরণ, কিউ ম্যানেজমেন্ট ও নাম তালিকা মেলানো।",
+            status = "CONFIRMED",
+            confirmedAt = System.currentTimeMillis() - 3600000L
+        ),
+        VolunteerShiftEntity(
+            id = 2,
+            volunteerId = 102,
+            volunteerName = "নূরে আলম",
+            volunteerRole = "ডাইনিং সার্ভিস মনিটর",
+            taskTitleBn = "দুপুরের খাবার কাউন্টার পরিচালনা ও স্পেশাল ডায়েট সার্ভিস",
+            taskTitleEn = "Lunch Counter Operations & Special Diet Service",
+            departmentOrLocation = "সেন্ট্রাল ডাইনিং হল (তাজমহল ব্লক)",
+            dayNo = 1,
+            startTime = "দুপুর ১২:০০",
+            endTime = "দুপুর ০২:৩০",
+            taskDescription = "৬টি লাইনে খাদ্য বণ্টন তদারকি ও অ্যালার্জিভুক্ত ৫৬ জন অংশগ্রহণকারীর জন্য সংরক্ষিত প্যাকেট বিতরণ।",
+            status = "SCHEDULED"
+        ),
+        VolunteerShiftEntity(
+            id = 3,
+            volunteerId = 103,
+            volunteerName = "তানভীর আহমেদ",
+            volunteerRole = "স্টেশন লজিস্টিকস ভলান্টিয়ার",
+            taskTitleBn = "স্টেশন রোটেশন ৩ (লাইফ স্কিলস) উপকরণ সেটআপ",
+            taskTitleEn = "Station Rotation 3 Material Setup & Timer",
+            departmentOrLocation = "স্টেশন ৩ (হাঁটুরিয়া গ্রাউন্ড)",
+            dayNo = 2,
+            startTime = "সকাল ০৯:৩০",
+            endTime = "দুপুর ০১:০০",
+            taskDescription = "টাইমার ঘণ্টা বাজানো, স্টেশন স্কোরশিট জজ সাহেবের কাছে পৌঁছে দেওয়া ও মাইক সেটআপ।",
+            status = "SCHEDULED"
+        ),
+        VolunteerShiftEntity(
+            id = 4,
+            volunteerId = 104,
+            volunteerName = "সাইফুল ইসলাম",
+            volunteerRole = "মেডিকেল ও ফার্স্ট এইড সহকারী",
+            taskTitleBn = "ক্যাম্প ক্লিনিক ট্রায়াজ ও জরুরি ওষুধ ডেলিভারি",
+            taskTitleEn = "Camp Clinic Triage & Emergency Med Delivery",
+            departmentOrLocation = "ক্যাম্প ফার্স্ট এইড বুথ",
+            dayNo = 2,
+            startTime = "বিকাল ০৩:০০",
+            endTime = "সন্ধ্যা ০৭:০০",
+            taskDescription = "ডাক্তার সাহেবের সাথে প্রাথমিক ভাইটালস গ্রহণ (BP, SpO2) এবং রুটিন ওষুধ ফাইল প্রস্তুত রাখা।",
+            status = "SCHEDULED"
+        ),
+        VolunteerShiftEntity(
+            id = 5,
+            volunteerId = 105,
+            volunteerName = "জাহিদুল ইসলাম",
+            volunteerRole = "শিক্ষা সফর বাস ও সিকিউরিটি ক্রু",
+            taskTitleBn = "বাস ৪ (সোনারগাঁ সফর) হেডকাউন্ট ও সিকিউরিটি চেইন",
+            taskTitleEn = "Bus 4 Study Tour Headcount & Safety Chain",
+            departmentOrLocation = "বাস পার্কিং জোন ও পানাম নগর",
+            dayNo = 4,
+            startTime = "সকাল ০৭:৩০",
+            endTime = "সন্ধ্যা ০৫:৩০",
+            taskDescription = "বাসে ওঠার আগে ও নামার সময় ৪০ জন সহযাত্রীর কিউআর স্ক্যান হেডকাউন্ট নিশ্চিতকরণ।",
+            status = "SCHEDULED"
+        )
     )
 
     fun generateKitDistributions(participants: List<ParticipantEntity>): List<KitDistributionEntity> {

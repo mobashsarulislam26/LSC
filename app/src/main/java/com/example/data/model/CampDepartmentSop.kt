@@ -572,9 +572,9 @@ object CampRationaleData {
         )
     )
 
-    // Complete 24 Subgroups from Page 27 of LSC 2025 Rationale
+    // Official Subgroups & Mentors from Table 1 of LSC Camp Documentation
     val subgroups = listOf(
-        // Group 1: বুখারী (Bukhari)
+        // Group 1: বুখারী (Bukhari) - Leader: উস্তাদ আহমাদুল্লাহ (01711-000001)
         SubgroupInfo(
             id = "bukhari_sub1",
             groupId = "bukhari",
@@ -582,11 +582,11 @@ object CampRationaleData {
             groupNameEn = "Bukhari",
             subgroupNo = 1,
             subgroupCode = "বুখারী সাব-১ (Bukhari-1)",
-            mentorName = "মুহাম্মদ জুবায়ের",
+            mentorName = "মারুফ (Maruf)",
             mentorPhone = "01711-101001",
             roomNo = "১০১",
             buildingName = "তাজমহল হল (১ম তলা)",
-            memberCount = 25,
+            memberCount = 34,
             colorHex = 0xFF1976D2
         ),
         SubgroupInfo(
@@ -596,11 +596,11 @@ object CampRationaleData {
             groupNameEn = "Bukhari",
             subgroupNo = 2,
             subgroupCode = "বুখারী সাব-২ (Bukhari-2)",
-            mentorName = "হাফেজ তানভীর আহমেদ (দলনেতা)",
-            mentorPhone = "01711-234567",
+            mentorName = "শামীম (Shamim)",
+            mentorPhone = "01711-101002",
             roomNo = "১০১",
             buildingName = "তাজমহল হল (১ম তলা)",
-            memberCount = 25,
+            memberCount = 34,
             colorHex = 0xFF1976D2
         ),
         SubgroupInfo(
@@ -610,29 +610,163 @@ object CampRationaleData {
             groupNameEn = "Bukhari",
             subgroupNo = 3,
             subgroupCode = "বুখারী সাব-৩ (Bukhari-3)",
-            mentorName = "আহমেদ হাসিব",
-            mentorPhone = "01711-101002",
+            mentorName = "রাকিব (Rakib)",
+            mentorPhone = "01711-101003",
             roomNo = "১০২",
             buildingName = "তাজমহল হল (১ম তলা)",
-            memberCount = 25,
-            colorHex = 0xFF1976D2
-        ),
-        SubgroupInfo(
-            id = "bukhari_sub4",
-            groupId = "bukhari",
-            groupNameBn = "বুখারী",
-            groupNameEn = "Bukhari",
-            subgroupNo = 4,
-            subgroupCode = "বুখারী সাব-৪ (Bukhari-4)",
-            mentorName = "মাহমুদুর রহমান",
-            mentorPhone = "01711-101007",
-            roomNo = "১০২",
-            buildingName = "তাজমহল হল (১ম তলা)",
-            memberCount = 26,
+            memberCount = 33,
             colorHex = 0xFF1976D2
         ),
 
-        // Group 2: সুমাইয়া (Sumaiya)
+        // Group 2: মুসলিম (Muslim) - Leader: মাওলানা তারিক জামিল (01711-000002)
+        SubgroupInfo(
+            id = "muslim_sub1",
+            groupId = "muslim",
+            groupNameBn = "মুসলিম",
+            groupNameEn = "Muslim",
+            subgroupNo = 1,
+            subgroupCode = "মুসলিম সাব-১ (Muslim-1)",
+            mentorName = "হাসান (Hasan)",
+            mentorPhone = "01819-201001",
+            roomNo = "১০৩",
+            buildingName = "তাজমহল হল (১ম তলা)",
+            memberCount = 34,
+            colorHex = 0xFF00796B
+        ),
+        SubgroupInfo(
+            id = "muslim_sub2",
+            groupId = "muslim",
+            groupNameBn = "মুসলিম",
+            groupNameEn = "Muslim",
+            subgroupNo = 2,
+            subgroupCode = "মুসলিম সাব-২ (Muslim-2)",
+            mentorName = "আসিফ (Asif)",
+            mentorPhone = "01819-201002",
+            roomNo = "১০৩",
+            buildingName = "তাজমহল হল (১ম তলা)",
+            memberCount = 34,
+            colorHex = 0xFF00796B
+        ),
+        SubgroupInfo(
+            id = "muslim_sub3",
+            groupId = "muslim",
+            groupNameBn = "মুসলিম",
+            groupNameEn = "Muslim",
+            subgroupNo = 3,
+            subgroupCode = "মুসলিম সাব-৩ (Muslim-3)",
+            mentorName = "মিজান (Mizan)",
+            mentorPhone = "01819-201003",
+            roomNo = "১০৪",
+            buildingName = "তাজমহল হল (১ম তলা)",
+            memberCount = 33,
+            colorHex = 0xFF00796B
+        ),
+
+        // Group 3: আবু দাউদ (Abu Dawood) - Leader: হাফেজ তানভীর (01711-000003)
+        SubgroupInfo(
+            id = "abu_dawood_sub1",
+            groupId = "abu_dawood",
+            groupNameBn = "আবু দাউদ",
+            groupNameEn = "Abu Dawood",
+            subgroupNo = 1,
+            subgroupCode = "আবু দাউদ সাব-১ (AbuDawood-1)",
+            mentorName = "জুবায়ের (Zubair)",
+            mentorPhone = "01711-301001",
+            roomNo = "১০৫",
+            buildingName = "তাজমহল হল (১ম তলা)",
+            memberCount = 50,
+            colorHex = 0xFF0288D1
+        ),
+        SubgroupInfo(
+            id = "abu_dawood_sub2",
+            groupId = "abu_dawood",
+            groupNameBn = "আবু দাউদ",
+            groupNameEn = "Abu Dawood",
+            subgroupNo = 2,
+            subgroupCode = "আবু দাউদ সাব-২ (AbuDawood-2)",
+            mentorName = "তাহমিদ (Tahmid)",
+            mentorPhone = "01711-301002",
+            roomNo = "১০৬",
+            buildingName = "তাজমহল হল (১ম তলা)",
+            memberCount = 50,
+            colorHex = 0xFF0288D1
+        ),
+
+        // Group 4: তিরমিযী (Tirmidhi) - Leader: মুফতি সালমান (01711-000004)
+        SubgroupInfo(
+            id = "tirmidhi_sub1",
+            groupId = "tirmidhi",
+            groupNameBn = "তিরমিযী",
+            groupNameEn = "Tirmidhi",
+            subgroupNo = 1,
+            subgroupCode = "তিরমিযী সাব-১ (Tirmidhi-1)",
+            mentorName = "কাওসার (Kawsar)",
+            mentorPhone = "01711-401001",
+            roomNo = "২০১",
+            buildingName = "শহীদ মিনার ভবন (২য় তলা)",
+            memberCount = 50,
+            colorHex = 0xFF7B1FA2
+        ),
+        SubgroupInfo(
+            id = "tirmidhi_sub2",
+            groupId = "tirmidhi",
+            groupNameBn = "তিরমিযী",
+            groupNameEn = "Tirmidhi",
+            subgroupNo = 2,
+            subgroupCode = "তিরমিযী সাব-২ (Tirmidhi-2)",
+            mentorName = "রিয়াদ (Riad)",
+            mentorPhone = "01711-401002",
+            roomNo = "২০২",
+            buildingName = "শহীদ মিনার ভবন (২য় তলা)",
+            memberCount = 50,
+            colorHex = 0xFF7B1FA2
+        ),
+
+        // Group 5: সালাহউদ্দীন আইয়ুবী (Salahuddin Ayyubi) - Leader: ইঞ্জি. খালিদ মাহমুদ (01711-000005)
+        SubgroupInfo(
+            id = "salahuddin_sub1",
+            groupId = "salahuddin",
+            groupNameBn = "সালাহউদ্দীন আইয়ুবী",
+            groupNameEn = "Salahuddin Ayyubi",
+            subgroupNo = 1,
+            subgroupCode = "সালাহউদ্দীন সাব-১ (Salahuddin-1)",
+            mentorName = "শাকিল (Shakil)",
+            mentorPhone = "01611-501001",
+            roomNo = "২০৩",
+            buildingName = "শহীদ মিনার ভবন (২য় তলা)",
+            memberCount = 34,
+            colorHex = 0xFFE65100
+        ),
+        SubgroupInfo(
+            id = "salahuddin_sub2",
+            groupId = "salahuddin",
+            groupNameBn = "সালাহউদ্দীন আইয়ুবী",
+            groupNameEn = "Salahuddin Ayyubi",
+            subgroupNo = 2,
+            subgroupCode = "সালাহউদ্দীন সাব-২ (Salahuddin-2)",
+            mentorName = "মুরাদ (Murad)",
+            mentorPhone = "01611-501002",
+            roomNo = "২০৩",
+            buildingName = "শহীদ মিনার ভবন (২য় তলা)",
+            memberCount = 34,
+            colorHex = 0xFFE65100
+        ),
+        SubgroupInfo(
+            id = "salahuddin_sub3",
+            groupId = "salahuddin",
+            groupNameBn = "সালাহউদ্দীন আইয়ুবী",
+            groupNameEn = "Salahuddin Ayyubi",
+            subgroupNo = 3,
+            subgroupCode = "সালাহউদ্দীন সাব-৩ (Salahuddin-3)",
+            mentorName = "বশির (Bashir)",
+            mentorPhone = "01611-501003",
+            roomNo = "২০৪",
+            buildingName = "শহীদ মিনার ভবন (২য় তলা)",
+            memberCount = 33,
+            colorHex = 0xFFE65100
+        ),
+
+        // Group 6: সুমাইয়া (Sumaiya) - Leader: ডা. নাসিমা সুলতানা (01711-000006)
         SubgroupInfo(
             id = "sumaiya_sub1",
             groupId = "sumaiya",
@@ -640,11 +774,11 @@ object CampRationaleData {
             groupNameEn = "Sumaiya",
             subgroupNo = 1,
             subgroupCode = "সুমাইয়া সাব-১ (Sumaiya-1)",
-            mentorName = "ফারহানা ইয়াসমিন",
-            mentorPhone = "01819-101003",
-            roomNo = "১০৩",
-            buildingName = "তাজমহল হল (১ম তলা)",
-            memberCount = 25,
+            mentorName = "ফাতেমা (Fatima)",
+            mentorPhone = "01511-601001",
+            roomNo = "২০৫",
+            buildingName = "শহীদ মিনার ভবন (২য় তলা)",
+            memberCount = 34,
             colorHex = 0xFFC2185B
         ),
         SubgroupInfo(
@@ -654,11 +788,11 @@ object CampRationaleData {
             groupNameEn = "Sumaiya",
             subgroupNo = 2,
             subgroupCode = "সুমাইয়া সাব-২ (Sumaiya-2)",
-            mentorName = "মুহতারামা খাদিজা আক্তার (দলনেতা)",
-            mentorPhone = "01819-345678",
-            roomNo = "১০৩",
-            buildingName = "তাজমহল হল (১ম তলা)",
-            memberCount = 25,
+            mentorName = "মরিয়ম (Maryam)",
+            mentorPhone = "01511-601002",
+            roomNo = "২০৫",
+            buildingName = "শহীদ মিনার ভবন (২য় তলা)",
+            memberCount = 33,
             colorHex = 0xFFC2185B
         ),
         SubgroupInfo(
@@ -668,258 +802,12 @@ object CampRationaleData {
             groupNameEn = "Sumaiya",
             subgroupNo = 3,
             subgroupCode = "সুমাইয়া সাব-৩ (Sumaiya-3)",
-            mentorName = "রুমানা আফরোজ",
-            mentorPhone = "01819-101004",
-            roomNo = "১০৪",
-            buildingName = "তাজমহল হল (১ম তলা)",
-            memberCount = 25,
-            colorHex = 0xFFC2185B
-        ),
-        SubgroupInfo(
-            id = "sumaiya_sub4",
-            groupId = "sumaiya",
-            groupNameBn = "সুমাইয়া",
-            groupNameEn = "Sumaiya",
-            subgroupNo = 4,
-            subgroupCode = "সুমাইয়া সাব-৪ (Sumaiya-4)",
-            mentorName = "সাদিয়া আফরিন",
-            mentorPhone = "01819-101008",
-            roomNo = "১০৪",
-            buildingName = "তাজমহল হল (১ম তলা)",
-            memberCount = 25,
-            colorHex = 0xFFC2185B
-        ),
-
-        // Group 3: শাফেয়ী (Shafeyi)
-        SubgroupInfo(
-            id = "shafeyi_sub1",
-            groupId = "shafeyi",
-            groupNameBn = "শাফেয়ী",
-            groupNameEn = "Shafeyi",
-            subgroupNo = 1,
-            subgroupCode = "শাফেয়ী সাব-১ (Shafeyi-1)",
-            mentorName = "মাহমুদুর রহমান সোহাগ",
-            mentorPhone = "01912-101005",
-            roomNo = "১০৫",
-            buildingName = "তাজমহল হল (১ম তলা)",
-            memberCount = 25,
-            colorHex = 0xFF00796B
-        ),
-        SubgroupInfo(
-            id = "shafeyi_sub2",
-            groupId = "shafeyi",
-            groupNameBn = "শাফেয়ী",
-            groupNameEn = "Shafeyi",
-            subgroupNo = 2,
-            subgroupCode = "শাফেয়ী সাব-২ (Shafeyi-2)",
-            mentorName = "মাওলানা আব্দুল গাফফার (দলনেতা)",
-            mentorPhone = "01912-456789",
-            roomNo = "১০৫",
-            buildingName = "তাজমহল হল (১ম তলা)",
-            memberCount = 25,
-            colorHex = 0xFF00796B
-        ),
-        SubgroupInfo(
-            id = "shafeyi_sub3",
-            groupId = "shafeyi",
-            groupNameBn = "শাফেয়ী",
-            groupNameEn = "Shafeyi",
-            subgroupNo = 3,
-            subgroupCode = "শাফেয়ী সাব-৩ (Shafeyi-3)",
-            mentorName = "সাঈদ আনোয়ার",
-            mentorPhone = "01912-101006",
-            roomNo = "১০৬",
-            buildingName = "তাজমহল হল (১ম তলা)",
-            memberCount = 25,
-            colorHex = 0xFF00796B
-        ),
-        SubgroupInfo(
-            id = "shafeyi_sub4",
-            groupId = "shafeyi",
-            groupNameBn = "শাফেয়ী",
-            groupNameEn = "Shafeyi",
-            subgroupNo = 4,
-            subgroupCode = "শাফেয়ী সাব-৪ (Shafeyi-4)",
-            mentorName = "তারেক মাহমুদ",
-            mentorPhone = "01912-101009",
-            roomNo = "১০৬",
-            buildingName = "তাজমহল হল (১ম তলা)",
-            memberCount = 26,
-            colorHex = 0xFF00796B
-        ),
-
-        // Group 4: উম্মে আয়মান (Umm Ayman)
-        SubgroupInfo(
-            id = "umm_ayman_sub1",
-            groupId = "umm_ayman",
-            groupNameBn = "উম্মে আয়মান",
-            groupNameEn = "Umm Ayman",
-            subgroupNo = 1,
-            subgroupCode = "উম্মে আয়মান সাব-১ (Umm Ayman-1)",
-            mentorName = "সাবিহা পারভীন",
-            mentorPhone = "01722-201001",
-            roomNo = "২০১",
-            buildingName = "শহীদ মিনার ভবন (২য় তলা)",
-            memberCount = 25,
-            colorHex = 0xFF7B1FA2
-        ),
-        SubgroupInfo(
-            id = "umm_ayman_sub2",
-            groupId = "umm_ayman",
-            groupNameBn = "উম্মে আয়মান",
-            groupNameEn = "Umm Ayman",
-            subgroupNo = 2,
-            subgroupCode = "উম্মে আয়মান সাব-২ (Umm Ayman-2)",
-            mentorName = "মুহতারামা সাবিহা পারভীন (দলনেতা)",
-            mentorPhone = "01722-567890",
-            roomNo = "২০১",
-            buildingName = "শহীদ মিনার ভবন (২য় তলা)",
-            memberCount = 25,
-            colorHex = 0xFF7B1FA2
-        ),
-        SubgroupInfo(
-            id = "umm_ayman_sub3",
-            groupId = "umm_ayman",
-            groupNameBn = "উম্মে আয়মান",
-            groupNameEn = "Umm Ayman",
-            subgroupNo = 3,
-            subgroupCode = "উম্মে আয়মান সাব-৩ (Umm Ayman-3)",
-            mentorName = "নুসরাত জাহান",
-            mentorPhone = "01722-201002",
-            roomNo = "২০২",
-            buildingName = "শহীদ মিনার ভবন (২য় তলা)",
-            memberCount = 25,
-            colorHex = 0xFF7B1FA2
-        ),
-        SubgroupInfo(
-            id = "umm_ayman_sub4",
-            groupId = "umm_ayman",
-            groupNameBn = "উম্মে আয়মান",
-            groupNameEn = "Umm Ayman",
-            subgroupNo = 4,
-            subgroupCode = "উম্মে আয়মান সাব-৪ (Umm Ayman-4)",
-            mentorName = "মারিয়াম সুলতানা",
-            mentorPhone = "01722-201008",
-            roomNo = "২০২",
-            buildingName = "শহীদ মিনার ভবন (২য় তলা)",
-            memberCount = 25,
-            colorHex = 0xFF7B1FA2
-        ),
-
-        // Group 5: সালাহউদ্দীন আইয়ুবী (Salahuddin Ayyubi)
-        SubgroupInfo(
-            id = "salahuddin_sub1",
-            groupId = "salahuddin",
-            groupNameBn = "সালাহউদ্দীন আইয়ুবী",
-            groupNameEn = "Salahuddin Ayyubi",
-            subgroupNo = 1,
-            subgroupCode = "সালাহউদ্দীন সাব-১ (Salahuddin-1)",
-            mentorName = "রায়হান উদ্দিন",
-            mentorPhone = "01611-201003",
-            roomNo = "২০৩",
-            buildingName = "শহীদ মিনার ভবন (২য় তলা)",
-            memberCount = 25,
-            colorHex = 0xFFE65100
-        ),
-        SubgroupInfo(
-            id = "salahuddin_sub2",
-            groupId = "salahuddin",
-            groupNameBn = "সালাহউদ্দীন আইয়ুবী",
-            groupNameEn = "Salahuddin Ayyubi",
-            subgroupNo = 2,
-            subgroupCode = "সালাহউদ্দীন সাব-২ (Salahuddin-2)",
-            mentorName = "ইঞ্জিনিয়ার রায়হান উদ্দিন (দলনেতা)",
-            mentorPhone = "01611-678901",
-            roomNo = "২০৩",
-            buildingName = "শহীদ মিনার ভবন (২য় তলা)",
-            memberCount = 25,
-            colorHex = 0xFFE65100
-        ),
-        SubgroupInfo(
-            id = "salahuddin_sub3",
-            groupId = "salahuddin",
-            groupNameBn = "সালাহউদ্দীন আইয়ুবী",
-            groupNameEn = "Salahuddin Ayyubi",
-            subgroupNo = 3,
-            subgroupCode = "সালাহউদ্দীন সাব-৩ (Salahuddin-3)",
-            mentorName = "তারেক মাহমুদ",
-            mentorPhone = "01611-201004",
-            roomNo = "২০৪",
-            buildingName = "শহীদ মিনার ভবন (২য় তলা)",
-            memberCount = 25,
-            colorHex = 0xFFE65100
-        ),
-        SubgroupInfo(
-            id = "salahuddin_sub4",
-            groupId = "salahuddin",
-            groupNameBn = "সালাহউদ্দীন আইয়ুবী",
-            groupNameEn = "Salahuddin Ayyubi",
-            subgroupNo = 4,
-            subgroupCode = "সালাহউদ্দীন সাব-৪ (Salahuddin-4)",
-            mentorName = "কাউসার আহমেদ",
-            mentorPhone = "01611-201009",
-            roomNo = "২০৪",
-            buildingName = "শহীদ মিনার ভবন (২য় তলা)",
-            memberCount = 26,
-            colorHex = 0xFFE65100
-        ),
-
-        // Group 6: উম্মে সা'দ (Umm Sa'ad)
-        SubgroupInfo(
-            id = "umm_saad_sub1",
-            groupId = "umm_saad",
-            groupNameBn = "উম্মে সা'দ",
-            groupNameEn = "Umm Sa'ad",
-            subgroupNo = 1,
-            subgroupCode = "উম্মে সা'দ সাব-১ (Umm Sa'ad-1)",
-            mentorName = "নাসরিন জাহান",
-            mentorPhone = "01511-201005",
-            roomNo = "২০৫",
-            buildingName = "শহীদ মিনার ভবন (২য় তলা)",
-            memberCount = 25,
-            colorHex = 0xFF388E3C
-        ),
-        SubgroupInfo(
-            id = "umm_saad_sub2",
-            groupId = "umm_saad",
-            groupNameBn = "উম্মে সা'দ",
-            groupNameEn = "Umm Sa'ad",
-            subgroupNo = 2,
-            subgroupCode = "উম্মে সা'দ সাব-২ (Umm Sa'ad-2)",
-            mentorName = "মুহতারামা নাসরিন জাহান (দলনেতা)",
-            mentorPhone = "01511-789012",
-            roomNo = "২০৫",
-            buildingName = "শহীদ মিনার ভবন (২য় তলা)",
-            memberCount = 25,
-            colorHex = 0xFF388E3C
-        ),
-        SubgroupInfo(
-            id = "umm_saad_sub3",
-            groupId = "umm_saad",
-            groupNameBn = "উম্মে সা'দ",
-            groupNameEn = "Umm Sa'ad",
-            subgroupNo = 3,
-            subgroupCode = "উম্মে সা'দ সাব-৩ (Umm Sa'ad-3)",
-            mentorName = "সালমা বেগম",
-            mentorPhone = "01511-201006",
+            mentorName = "আয়েশা (Ayesha)",
+            mentorPhone = "01511-601003",
             roomNo = "২০৬",
             buildingName = "শহীদ মিনার ভবন (২য় তলা)",
-            memberCount = 25,
-            colorHex = 0xFF388E3C
-        ),
-        SubgroupInfo(
-            id = "umm_saad_sub4",
-            groupId = "umm_saad",
-            groupNameBn = "উম্মে সা'দ",
-            groupNameEn = "Umm Sa'ad",
-            subgroupNo = 4,
-            subgroupCode = "উম্মে সা'দ সাব-৪ (Umm Sa'ad-4)",
-            mentorName = "হাবিবা খাতুন",
-            mentorPhone = "01511-201008",
-            roomNo = "২০৬",
-            buildingName = "শহীদ মিনার ভবন (২য় তলা)",
-            memberCount = 25,
-            colorHex = 0xFF388E3C
+            memberCount = 33,
+            colorHex = 0xFFC2185B
         )
     )
 }

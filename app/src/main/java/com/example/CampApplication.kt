@@ -9,6 +9,12 @@ class CampApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        try {
+            System.loadLibrary("sqlcipher")
+            Log.d(TAG, "SQLCipher native library loaded successfully.")
+        } catch (e: Throwable) {
+            Log.e(TAG, "Failed to load SQLCipher native library: ${e.message}")
+        }
         ensureFirebaseInitialized(this)
         com.example.data.sync.CampFirebaseMessagingService.createNotificationChannels(this)
         com.example.data.sync.CampFirebaseMessagingService.subscribeToDefaultTopics()

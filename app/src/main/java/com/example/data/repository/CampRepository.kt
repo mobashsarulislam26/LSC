@@ -12,9 +12,16 @@ import com.example.data.sample.SeedData
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.example.data.service.ParticipantImportResult
+import com.example.data.service.ParticipantImportService
+import com.example.data.service.ScheduleBulkUploadResult
+import com.example.data.service.ScheduleBulkUploadService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.withContext
 
 class CampRepository(
@@ -23,13 +30,35 @@ class CampRepository(
     private val participantDao: ParticipantDao? = null,
     private val stationDao: StationDao? = null
 ) {
-    val participants: Flow<List<ParticipantEntity>> = participantDao?.getAllParticipants() ?: dao.getAllParticipants()
+    val participants: Flow<List<ParticipantEntity>> = flow {
+        FirestoreManager.observeParticipants().collect { remoteList ->
+            if (remoteList.isNotEmpty()) {
+                emit(remoteList)
+            } else {
+                emitAll(participantDao?.getAllParticipants() ?: dao.getAllParticipants())
+            }
+        }
+    }.catch {
+        emitAll(participantDao?.getAllParticipants() ?: dao.getAllParticipants())
+    }
+
     val participantCount: Flow<Int> = participantDao?.observeParticipantCount() ?: dao.observeParticipantCount()
     val healthStatuses: Flow<List<ParticipantHealthStatusEntity>> =
         healthDao?.getAllHealthStatuses() ?: flowOf(emptyList())
     val groups: Flow<List<CampGroupEntity>> = dao.getAllGroups()
     val stations: Flow<List<StationEntity>> = stationDao?.getAllStations() ?: dao.getAllStations()
-    val schedule: Flow<List<ScheduleEventEntity>> = dao.getAllSchedule()
+
+    val schedule: Flow<List<ScheduleEventEntity>> = flow {
+        FirestoreManager.observeSchedule().collect { remoteList ->
+            if (remoteList.isNotEmpty()) {
+                emit(remoteList.sortedWith(compareBy({ it.dayNo }, { it.timeSlot })))
+            } else {
+                emitAll(dao.getAllSchedule())
+            }
+        }
+    }.catch {
+        emitAll(dao.getAllSchedule())
+    }
     val attendanceEvents: Flow<List<AttendanceEventEntity>> = dao.getAllAttendanceEvents()
     val attendanceRecords: Flow<List<AttendanceRecordEntity>> = dao.getAllAttendanceRecords()
     val competitions: Flow<List<CompetitionEntity>> = dao.getAllCompetitions()
@@ -45,11 +74,22 @@ class CampRepository(
     val rooms: Flow<List<RoomEntity>> = dao.getAllRooms()
     val vehicles: Flow<List<TravelVehicleEntity>> = dao.getAllVehicles()
     val dutyRosters: Flow<List<DutyRosterEntity>> = dao.getAllDutyRosters()
+    val volunteerShifts: Flow<List<VolunteerShiftEntity>> = dao.getAllVolunteerShifts()
     val kitDistributions: Flow<List<KitDistributionEntity>> = dao.getAllKitDistributions()
     val goalMetrics: Flow<List<CampGoalMetricEntity>> = dao.getAllGoalMetrics()
     val mealDistributions: Flow<List<MealDistributionEntity>> = dao.getAllMealDistributions()
     val userAccounts: Flow<List<UserAccountEntity>> = dao.getAllUserAccounts()
-    val auditLogs: Flow<List<AuditLogEntity>> = dao.getAllAuditLogs()
+    val auditLogs: Flow<List<AuditLogEntity>> = kotlinx.coroutines.flow.flow {
+        FirestoreManager.observeAuditLogs().collect { remoteLogs ->
+            if (remoteLogs.isNotEmpty()) {
+                emit(remoteLogs)
+            } else {
+                emitAll(dao.getAllAuditLogs())
+            }
+        }
+    }.catch {
+        emitAll(dao.getAllAuditLogs())
+    }
     val cachedSyncItems: Flow<List<CachedSyncItemEntity>> = dao.getAllCachedSyncItems()
     val pendingCachedSyncCount: Flow<Int> = dao.observePendingCachedSyncCount()
 
@@ -152,7 +192,14 @@ class CampRepository(
                     campCode = participant.campCode,
                     participantName = participant.nameBn,
                     summary = "হাজিরা স্ক্যান ($status) - ইভেন্ট #$eventId [${participant.groupNameBn}]",
-                    payloadJson = """{"eventId":$eventId,"status":"$status","method":"$method","reason":"${reason ?: ""}"}""",
+                    payloadJson = com.example.data.util.MoshiJsonUtils.toJson(
+                        mapOf(
+                            "eventId" to eventId,
+                            "status" to status,
+                            "method" to method,
+                            "reason" to (reason ?: "")
+                        )
+                    ),
                     status = CachedSyncItemEntity.STATUS_PENDING
                 )
             )
@@ -254,7 +301,15 @@ class CampRepository(
                     campCode = record.campCode,
                     participantName = record.participantName,
                     summary = "স্বাস্থ্য স্ক্রিনিং: ${record.checkupType} (${record.doctorName.ifBlank { "মেডিকেল টিম" }})",
-                    payloadJson = """{"checkupType":"${record.checkupType}","doctor":"${record.doctorName}","diagnosis":"${record.diagnosis}"}""",
+                    payloadJson = com.example.data.util.MoshiJsonUtils.toJson(
+                        mapOf(
+                            "checkupType" to record.checkupType,
+                            "doctor" to record.doctorName,
+                            "diagnosis" to record.diagnosis,
+                            "vitals" to record.vitals,
+                            "adviceAndMeds" to record.adviceAndMeds
+                        )
+                    ),
                     status = CachedSyncItemEntity.STATUS_PENDING
                 )
             )
@@ -428,10 +483,31 @@ class CampRepository(
 
     suspend fun addScheduleEvent(event: ScheduleEventEntity) = withContext(Dispatchers.IO) {
         dao.insertScheduleEvent(event)
+        FirestoreManager.saveScheduleEvent(event)
+    }
+
+    suspend fun addScheduleEvents(events: List<ScheduleEventEntity>) = withContext(Dispatchers.IO) {
+        dao.insertScheduleEvents(events)
+        FirestoreManager.bulkSaveSchedules(events)
+    }
+
+    suspend fun bulkUploadSchedules(
+        events: List<ScheduleEventEntity>,
+        adminEmail: String = "admin@lsc.org"
+    ): ScheduleBulkUploadResult {
+        return ScheduleBulkUploadService.bulkUploadSchedules(events, adminEmail, dao)
+    }
+
+    suspend fun importParticipantsFromCsvJson(
+        jsonContent: String,
+        adminEmail: String = "admin@lsc.org"
+    ): ParticipantImportResult {
+        return ParticipantImportService.importRosterToFirestore(jsonContent, adminEmail, dao)
     }
 
     suspend fun deleteScheduleEvent(event: ScheduleEventEntity) = withContext(Dispatchers.IO) {
         dao.deleteScheduleEvent(event)
+        FirestoreManager.deleteScheduleEvent(event.id)
     }
 
     suspend fun addRoom(room: RoomEntity) = withContext(Dispatchers.IO) {
@@ -470,6 +546,23 @@ class CampRepository(
         dao.updateDutyRoster(roster)
     }
 
+    // Volunteer Shifts Operations
+    suspend fun confirmShiftAttendance(shiftId: Long) = withContext(Dispatchers.IO) {
+        dao.confirmShiftAttendance(shiftId)
+    }
+
+    suspend fun checkInShift(shiftId: Long) = withContext(Dispatchers.IO) {
+        dao.checkInShift(shiftId)
+    }
+
+    suspend fun addVolunteerShift(shift: VolunteerShiftEntity) = withContext(Dispatchers.IO) {
+        dao.insertVolunteerShift(shift)
+    }
+
+    suspend fun updateVolunteerShift(shift: VolunteerShiftEntity) = withContext(Dispatchers.IO) {
+        dao.updateVolunteerShift(shift)
+    }
+
     suspend fun updateKitDistribution(kit: KitDistributionEntity) = withContext(Dispatchers.IO) {
         dao.updateKitDistribution(kit)
     }
@@ -478,20 +571,32 @@ class CampRepository(
         dao.updateGoalMetric(goal)
     }
 
-    suspend fun insertAuditLog(actionType: String, targetEntity: String, description: String, userEmail: String) = withContext(Dispatchers.IO) {
-        dao.insertAuditLog(
-            AuditLogEntity(
-                userEmail = userEmail,
-                actionType = actionType,
-                targetEntity = targetEntity,
-                description = description
-            )
+    suspend fun insertAuditLog(
+        actionType: String,
+        targetEntity: String,
+        description: String,
+        userEmail: String,
+        adminId: String = "",
+        modifiedRecordDetails: String = ""
+    ) = withContext(Dispatchers.IO) {
+        val entity = AuditLogEntity(
+            timestamp = System.currentTimeMillis(),
+            adminId = adminId,
+            userEmail = userEmail,
+            actionType = actionType,
+            targetEntity = targetEntity,
+            description = description,
+            modifiedRecordDetails = modifiedRecordDetails
         )
+        val generatedId = dao.insertAuditLog(entity)
+        FirestoreManager.saveAuditLog(entity.copy(id = generatedId))
     }
 
     suspend fun authenticateUser(email: String, pinOrPass: String): UserAccountEntity? = withContext(Dispatchers.IO) {
-        val user = dao.getUserAccount(email.trim().lowercase()) ?: return@withContext null
-        if (constantTimeEquals(user.passwordHash, pinOrPass.trim())) {
+        val cleanEmail = email.trim().lowercase()
+        val cleanPass = pinOrPass.trim()
+        val user = dao.getUserAccount(cleanEmail) ?: return@withContext null
+        if (verifyPassword(cleanPass, user.passwordHash)) {
             dao.insertAuditLog(
                 AuditLogEntity(
                     userEmail = user.email,
@@ -553,11 +658,13 @@ class CampRepository(
         Pair(user, generatedPassword)
     }
 
+    suspend fun insertUserAccount(user: UserAccountEntity) = withContext(Dispatchers.IO) {
+        dao.insertUserAccount(user)
+    }
+
     suspend fun requestPasswordResetToEmail(email: String): Pair<UserAccountEntity, String>? = withContext(Dispatchers.IO) {
         val cleanEmail = email.trim().lowercase()
-        val user = dao.getUserAccount(cleanEmail)
-            ?: SeedData.staffAccounts.find { it.email.equals(cleanEmail, ignoreCase = true) }
-            ?: return@withContext null
+        val user = dao.getUserAccount(cleanEmail) ?: return@withContext null
 
         val randomDigits = (1000..9999).random()
         val newPassword = "Lsc#$randomDigits"
@@ -695,7 +802,8 @@ class CampRepository(
                 dutyRosters = SeedData.dutyRosters,
                 kitDistributions = SeedData.generateKitDistributions(pList),
                 goalMetrics = SeedData.campGoals,
-                users = SeedData.staffAccounts
+                users = SeedData.staffAccounts,
+                volunteerShifts = SeedData.volunteerShifts
             )
         }
 
@@ -750,24 +858,7 @@ class CampRepository(
             healthDao.insertHealthStatuses(healthEntities)
         }
 
-        // Seed sample meal claims for day 1 lunch if empty (538 out of 603 claimed, 65 remaining)
-        val lunchClaimCheck = dao.hasClaimedMeal(1, "LUNCH", 1)
-        if (lunchClaimCheck == 0) {
-            val participantsList = dao.getAllParticipantsList()
-            if (participantsList.isNotEmpty()) {
-                val lunchClaims = participantsList.take(538).mapIndexed { idx, p ->
-                    MealDistributionEntity(
-                        dayNo = 1,
-                        mealType = "LUNCH",
-                        participantId = p.id,
-                        campCode = p.campCode,
-                        participantName = p.nameBn,
-                        claimedAt = System.currentTimeMillis() - ((538 - idx) * 15000L)
-                    )
-                }
-                dao.insertMealClaims(lunchClaims)
-            }
-        }
+        // Seed sample meal claims removed for production readiness.
     }
 
     // Participant Health Status
@@ -860,7 +951,13 @@ class CampRepository(
                     campCode = participant.campCode,
                     participantName = participant.nameBn,
                     summary = "দৈনিক স্বাস্থ্য চেক-ইন: $statusBn ${if (notes.isNotBlank()) "($notes)" else ""}",
-                    payloadJson = """{"status":"$status","notes":"$notes","date":"$checkInDate"}""",
+                    payloadJson = com.example.data.util.MoshiJsonUtils.toJson(
+                        mapOf(
+                            "status" to status,
+                            "notes" to notes,
+                            "date" to checkInDate
+                        )
+                    ),
                     status = CachedSyncItemEntity.STATUS_PENDING
                 )
             )
@@ -884,16 +981,22 @@ class CampRepository(
         val healthCount = pendingItems.count { it.itemType == CachedSyncItemEntity.TYPE_HEALTH_LOG || it.itemType == CachedSyncItemEntity.TYPE_HEALTH_CHECKUP }
         val totalCount = pendingItems.size.coerceAtLeast(unsyncedAttendance.size)
 
+        // Delegate actual network push to DataSyncManager before marking local items synced
+        val syncManager = com.example.data.sync.DataSyncManager.getInstance(this@CampRepository, dao)
+        val (syncedIncidents, syncedHealth) = syncManager.processPendingOfflineQueue()
+
         val now = System.currentTimeMillis()
         dao.markAllPendingCachedItemsSynced(now)
         dao.markAllAttendanceRecordsSynced()
 
+        val totalProcessed = totalCount + syncedIncidents + syncedHealth
+
         SyncResult(
-            totalSynced = totalCount,
+            totalSynced = totalProcessed,
             attendanceSynced = attendanceCount,
-            healthLogsSynced = healthCount,
-            message = if (totalCount > 0)
-                "সফলভাবে $attendanceCount টি হাজিরা ও $healthCount টি স্বাস্থ্য লগ ক্লাউডে সিঙ্ক হয়েছে!"
+            healthLogsSynced = healthCount + syncedHealth,
+            message = if (totalProcessed > 0)
+                "সফলভাবে $attendanceCount টি হাজিরা ও ${healthCount + syncedHealth} টি স্বাস্থ্য/ইনসিডেন্স রেকর্ড সার্ভারে সিঙ্ক হয়েছে!"
             else
                 "সকল ডেটা আপ-টু-ডেট রয়েছে (All records synchronized)"
         )
@@ -911,12 +1014,29 @@ class CampRepository(
         @Volatile
         private var INSTANCE: CampRepository? = null
 
-        private fun constantTimeEquals(a: String?, b: String?): Boolean {
+        const val PASSCODE_SALT = "lsc-camp-companion-v1"
+
+        fun hashPasswordWithSalt(password: String, salt: String = PASSCODE_SALT): String {
+            val digest = java.security.MessageDigest.getInstance("SHA-256")
+            val saltedBytes = digest.digest((salt + password).toByteArray(Charsets.UTF_8))
+            return saltedBytes.joinToString("") { "%02x".format(it) }
+        }
+
+        fun constantTimeEquals(a: String?, b: String?): Boolean {
             if (a == null || b == null) return false
             if (a.length != b.length) return false
             var result = 0
             for (i in a.indices) result = result or (a[i].code xor b[i].code)
             return result == 0
+        }
+
+        fun verifyPassword(inputPassword: String, storedHashOrPlain: String, salt: String = PASSCODE_SALT): Boolean {
+            val cleanInput = inputPassword.trim()
+            val cleanStored = storedHashOrPlain.trim()
+            if (cleanInput.isEmpty() || cleanStored.isEmpty()) return false
+
+            val inputHash = hashPasswordWithSalt(cleanInput, salt)
+            return constantTimeEquals(inputHash, cleanStored)
         }
 
         fun getInstance(context: Context): CampRepository {

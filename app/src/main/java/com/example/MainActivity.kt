@@ -274,6 +274,9 @@ fun LscMainApp(
                             } else if (tabIndex == 12) {
                                 currentTab = 4
                                 selectedMoreModule = "RATIONALE"
+                            } else if (tabIndex == 13) {
+                                currentTab = 4
+                                selectedMoreModule = "ROOMS"
                             }
                         },
                         onOpenScanner = { showUniversalScanner = true },
@@ -438,6 +441,13 @@ fun LscMainApp(
                                 icon = { Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp)) },
                                 modifier = Modifier.testTag("module_tab_rationale")
                             )
+                            Tab(
+                                selected = selectedMoreModule == "VOLUNTEERS",
+                                onClick = { selectedMoreModule = "VOLUNTEERS" },
+                                text = { Text(if (language == CampLanguage.BANGLA) "ভলান্টিয়ার শিফট" else "Volunteer Shifts", fontSize = 11.sp, fontWeight = if (selectedMoreModule == "VOLUNTEERS") FontWeight.Bold else FontWeight.Normal) },
+                                icon = { Icon(Icons.Default.Badge, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                                modifier = Modifier.testTag("module_tab_volunteers")
+                            )
                         }
 
                         when (selectedMoreModule) {
@@ -563,6 +573,16 @@ fun LscMainApp(
                                     onBack = { currentTab = 0 }
                                 )
                             }
+                            "VOLUNTEERS" -> {
+                                val volunteerShifts by campViewModel.volunteerShifts.collectAsStateWithLifecycle()
+                                com.example.ui.screens.volunteers.VolunteerShiftDashboardScreen(
+                                    language = language,
+                                    shifts = volunteerShifts,
+                                    onConfirmAttendance = { shiftId -> campViewModel.confirmShiftAttendance(shiftId) },
+                                    onCheckInShift = { shiftId -> campViewModel.checkInShift(shiftId) },
+                                    onAddShift = { shift -> campViewModel.addVolunteerShift(shift) }
+                                )
+                            }
                         }
                     }
                 }
@@ -585,7 +605,7 @@ fun LscMainApp(
             }
 
             // Notification Snackbar / Feedback Banner
-            if (statusNotification != null) {
+            statusNotification?.let { noteText ->
                 Snackbar(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -596,17 +616,17 @@ fun LscMainApp(
                         }
                     }
                 ) {
-                    Text(text = statusNotification!!, fontSize = 12.sp)
+                    Text(text = noteText, fontSize = 12.sp)
                 }
             }
 
             // Scan Result Dialog
-            if (scanFeedback != null) {
+            scanFeedback?.let { res ->
                 AlertDialog(
                     onDismissRequest = { campViewModel.clearScanFeedback() },
                     title = {
                         Text(
-                            text = when (val res = scanFeedback!!) {
+                            text = when (res) {
                                 is ScanResult.Success -> res.title
                                 is ScanResult.Warning -> res.title
                                 is ScanResult.Error -> res.title
@@ -616,7 +636,7 @@ fun LscMainApp(
                     },
                     text = {
                         Text(
-                            text = when (val res = scanFeedback!!) {
+                            text = when (res) {
                                 is ScanResult.Success -> res.message
                                 is ScanResult.Warning -> res.message
                                 is ScanResult.Error -> res.message
@@ -670,30 +690,30 @@ fun LscMainApp(
         )
     }
 
-    if (selectedParticipant != null) {
+    selectedParticipant?.let { participant ->
         val healthStatus by campViewModel.selectedParticipantHealthStatus.collectAsStateWithLifecycle()
-        val participantMedicalRecords by remember(selectedParticipant!!.id) {
-            campViewModel.getHealthRecordsForParticipant(selectedParticipant!!.id)
+        val participantMedicalRecords by remember(participant.id) {
+            campViewModel.getHealthRecordsForParticipant(participant.id)
         }.collectAsStateWithLifecycle(initialValue = emptyList())
 
         ParticipantDetailDialog(
-            participant = selectedParticipant!!,
+            participant = participant,
             language = language,
             onDismiss = { campViewModel.selectParticipant(null) },
             onViewIdCard = {
-                showDigitalIdCard = selectedParticipant
+                showDigitalIdCard = participant
             },
             onGenerateCertificate = {
-                showCertificateDialog = selectedParticipant
+                showCertificateDialog = participant
             },
             onEditParticipant = {
-                participantToEdit = selectedParticipant
+                participantToEdit = participant
                 showAddEditParticipantDialog = true
             },
             healthStatus = healthStatus,
             medicalRecords = participantMedicalRecords,
             onRecordHealthCheckIn = { status, notes ->
-                campViewModel.recordDailyHealthCheckIn(selectedParticipant!!, status, notes)
+                campViewModel.recordDailyHealthCheckIn(participant, status, notes)
             }
         )
     }
@@ -724,17 +744,17 @@ fun LscMainApp(
         )
     }
 
-    if (showDigitalIdCard != null) {
+    showDigitalIdCard?.let { cardParticipant ->
         DigitalIdCard(
-            participant = showDigitalIdCard!!,
+            participant = cardParticipant,
             language = language,
             onClose = { showDigitalIdCard = null }
         )
     }
 
-    if (showCertificateDialog != null) {
+    showCertificateDialog?.let { certParticipant ->
         CertificateGeneratorDialog(
-            participant = showCertificateDialog!!,
+            participant = certParticipant,
             isBangla = language == CampLanguage.BANGLA,
             onDismiss = { showCertificateDialog = null }
         )
@@ -769,8 +789,18 @@ fun LscMainApp(
                 onAssignUserRole = { uid, r ->
                     (authState as? AuthState.Authenticated)?.user?.let { user ->
                         loginViewModel.assignRoleAndProceed(user, r)
+                        campViewModel.logAdminAuditTrail(
+                            actionType = "USER_ROLE_UPDATE",
+                            targetEntity = "UserRole",
+                            description = "ব্যবহারকারী রোল পরিবর্তন: $uid -> ${r.titleBn} (${r.name})",
+                            adminId = user.uid,
+                            adminEmail = user.email ?: "admin@lsc.org",
+                            modifiedRecordDetails = """{"targetUid": "$uid", "newRole": "${r.name}", "newRoleTitleBn": "${r.titleBn}"}"""
+                        )
                     }
                 },
+                onBulkUploadSchedules = { campViewModel.bulkUploadSchedules(it) },
+                onImportParticipantsCsvJson = { campViewModel.importParticipantsCsvJson(it) },
                 onBackToMain = { showAdminControlCenterDialog = false },
                 modifier = Modifier.fillMaxSize()
             )

@@ -418,14 +418,29 @@ fun VisualRoomOccupancyMatrixCard(
     }
 
     // Interactive Room Bed Roster Detail Dialog
-    if (selectedRoomForDetail != null) {
-        val room = selectedRoomForDetail!!
-        val roomOccupants = remember(room, participants) {
-            participants.filter {
-                it.roomNo.equals(room.roomNo, ignoreCase = true) ||
-                it.roomNo.contains(room.roomNo) ||
-                (room.assignedGroupId.isNotBlank() && it.groupId == room.assignedGroupId && it.subgroup.isNotBlank())
-            }.take(room.capacity)
+    selectedRoomForDetail?.let { room ->
+        val roomOccupants = remember(room, participants, rooms) {
+            val banglaDigits = mapOf('০' to '0', '১' to '1', '২' to '2', '৩' to '3', '৪' to '4', '৫' to '5', '৬' to '6', '৭' to '7', '৮' to '8', '৯' to '9')
+            val roomDigits = room.roomNo.map { banglaDigits[it] ?: it }.joinToString("").filter { it.isDigit() }
+
+            val directMatches = participants.filter { p ->
+                val pRoomDigits = p.roomNo.map { banglaDigits[it] ?: it }.joinToString("").filter { it.isDigit() }
+                p.roomNo.equals(room.roomNo, ignoreCase = true) ||
+                (roomDigits.isNotBlank() && pRoomDigits == roomDigits) ||
+                p.roomNo.contains(room.roomNo, ignoreCase = true)
+            }
+
+            if (directMatches.isNotEmpty()) {
+                directMatches.take(room.capacity)
+            } else if (room.assignedGroupId.isNotBlank()) {
+                val groupParticipants = participants.filter { it.groupId == room.assignedGroupId }
+                val roomsInSameGroup = rooms.filter { it.assignedGroupId == room.assignedGroupId }
+                val roomIndex = roomsInSameGroup.indexOf(room).coerceAtLeast(0)
+                val startIndex = roomIndex * room.capacity
+                groupParticipants.drop(startIndex).take(room.capacity)
+            } else {
+                emptyList()
+            }
         }
 
         RoomBedRosterDialog(

@@ -220,6 +220,28 @@ interface CampDao {
     @Delete
     suspend fun deleteVolunteer(volunteer: VolunteerEntity)
 
+    // Volunteer Shifts
+    @Query("SELECT * FROM volunteer_shifts ORDER BY dayNo ASC, startTimeMillis ASC")
+    fun getAllVolunteerShifts(): Flow<List<VolunteerShiftEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertVolunteerShift(shift: VolunteerShiftEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertVolunteerShifts(shifts: List<VolunteerShiftEntity>)
+
+    @Update
+    suspend fun updateVolunteerShift(shift: VolunteerShiftEntity)
+
+    @Delete
+    suspend fun deleteVolunteerShift(shift: VolunteerShiftEntity)
+
+    @Query("UPDATE volunteer_shifts SET status = 'CONFIRMED', confirmedAt = :confirmedAt WHERE id = :shiftId")
+    suspend fun confirmShiftAttendance(shiftId: Long, confirmedAt: Long = System.currentTimeMillis())
+
+    @Query("UPDATE volunteer_shifts SET status = 'CHECKED_IN', checkedInAt = :checkedInAt WHERE id = :shiftId")
+    suspend fun checkInShift(shiftId: Long, checkedInAt: Long = System.currentTimeMillis())
+
     // Duty Officers
     @Query("SELECT * FROM duty_officers ORDER BY id ASC")
     fun getAllDutyOfficers(): Flow<List<DutyOfficerEntity>>
@@ -313,10 +335,10 @@ interface CampDao {
     @Query("SELECT COUNT(*) FROM meal_distributions WHERE dayNo = :dayNo AND mealType = :mealType AND participantId = :participantId")
     suspend fun hasClaimedMeal(dayNo: Int, mealType: String, participantId: Long): Int
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertMealClaim(claim: MealDistributionEntity): Long
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertMealClaims(claims: List<MealDistributionEntity>)
 
     // Accommodation & Rooms
@@ -420,7 +442,8 @@ interface CampDao {
         kitDistributions: List<KitDistributionEntity> = emptyList(),
         goalMetrics: List<CampGoalMetricEntity> = emptyList(),
         users: List<UserAccountEntity> = emptyList(),
-        meals: List<MealDistributionEntity> = emptyList()
+        meals: List<MealDistributionEntity> = emptyList(),
+        volunteerShifts: List<VolunteerShiftEntity> = emptyList()
     ) {
         insertGroups(groups)
         insertStations(stations)
@@ -455,6 +478,9 @@ interface CampDao {
         }
         if (meals.isNotEmpty()) {
             insertMealClaims(meals)
+        }
+        if (volunteerShifts.isNotEmpty()) {
+            insertVolunteerShifts(volunteerShifts)
         }
     }
 

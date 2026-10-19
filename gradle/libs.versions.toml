@@ -79,6 +79,7 @@ firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging
 androidx-credentials = { group = "androidx.credentials", name = "credentials", version.ref = "credentials" }
 androidx-credentials-play-services = { group = "androidx.credentials", name = "credentials-play-services-auth", version.ref = "credentials" }
 googleid = { group = "com.google.android.libraries.identity.googleid", name = "googleid", version.ref = "googleid" }
+sqlcipher = { group = "net.zetetic", name = "sqlcipher-android", version = "4.5.4" }
 androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }
 
 [plugins]
