@@ -688,20 +688,29 @@ private fun ParticipantHeaderCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Key Stats Row (Age, Attendance, Score)
+            // Key Stats Row (Age, Attendance, 18-Star Seals, Score)
+            val completedSealsCount = remember(participant.completedStationSeals) {
+                participant.completedStationSeals.split(',').count { it.isNotBlank() }
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 StatPill(
                     label = if (language == CampLanguage.BANGLA) "বয়স / লিঙ্গ" else "Age / Gender",
-                    value = "${participant.age}y • ${participant.gender}",
+                    value = "${participant.age}y • ${participant.gender.firstOrNull() ?: ""}",
                     modifier = Modifier.weight(1f)
                 )
                 StatPill(
-                    label = if (language == CampLanguage.BANGLA) "উপস্থিতি হার" else "Attendance",
+                    label = if (language == CampLanguage.BANGLA) "উপস্থিতি" else "Attendance",
                     value = "${"%.0f".format(participant.attendancePercentage)}%",
                     valueColor = if (participant.attendancePercentage >= 90f) Color(0xFF059669) else Color(0xFFDC2626),
+                    modifier = Modifier.weight(1f)
+                )
+                StatPill(
+                    label = if (language == CampLanguage.BANGLA) "স্টার সিল" else "Seals",
+                    value = "★ $completedSealsCount/18",
+                    valueColor = Color(0xFFB45309),
                     modifier = Modifier.weight(1f)
                 )
                 StatPill(
@@ -1056,6 +1065,17 @@ private fun AccommodationIdentityCard(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(text = if (language == CampLanguage.BANGLA) "ফাইল নং:" else "File No:", fontSize = 12.sp, color = Color.Gray)
                 Text(text = participant.fileNo, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            }
+            if (participant.classLevel.isNotBlank() || participant.organization.isNotBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(text = if (language == CampLanguage.BANGLA) "শ্রেণি ও সংস্থা:" else "Class & Org:", fontSize = 12.sp, color = Color.Gray)
+                    Text(
+                        text = listOf(participant.classLevel, participant.organization).filter { it.isNotBlank() }.joinToString(" • "),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(6.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

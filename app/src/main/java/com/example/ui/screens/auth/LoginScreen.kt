@@ -1,6 +1,5 @@
 package com.example.ui.screens.auth
 
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -10,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -39,8 +39,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.CampLanguage
-import com.example.data.model.UserAccountEntity
-import com.example.data.sample.SeedData
 import com.example.ui.components.CampLogoImage
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.CampViewModel
@@ -50,7 +48,6 @@ import kotlinx.coroutines.launch
  * Dedicated Camp Staff & Official Login / Sign-Up Screen.
  * Strictly gates the application so that no camp data, dashboard, or modules
  * can be accessed without valid authentication ("login ছাড়া ব্যবহার করা যাবে না").
- * Supports Sign Up with automatic email password dispatch.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,8 +64,8 @@ fun LoginScreen(
     // 0 = Login, 1 = Sign Up
     var authMode by remember { mutableIntStateOf(0) }
 
-    // Login Form State
-    var email by remember { mutableStateOf("admin@lsc.org") }
+    // Login Form State (strictly empty by default — user must authenticate)
+    var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
 
@@ -97,16 +94,28 @@ fun LoginScreen(
     val isBangla = language == CampLanguage.BANGLA
 
     val rolesList = listOf(
+        "STATION_MANAGER" to if (isBangla) "স্টেশন ম্যানেজার (৬ স্টেশন রোটেশন প্রধান)" else "Station Manager (6-Station Rotation Lead)",
+        "STATION_MODERATOR" to if (isBangla) "স্টেশন মডারেটর (স্টেশন ১–৬)" else "Station Moderator",
+        "GROUP_LEADER" to if (isBangla) "গ্রুপ লিডার (৬টি মূল গ্রুপ)" else "Group Leader",
+        "MENTOR" to if (isBangla) "সাব-গ্রুপ ইনচার্জ (২৪টি সাব-গ্রুপ)" else "Subgroup In-charge / Mentor",
+        "JUDGE" to if (isBangla) "প্রতিযোগিতা বিচারক (২১টি ইভেন্ট)" else "Competition Judge",
+        "MEDICAL" to if (isBangla) "মেডিকেল ও ডেন্টাল টিম (স্টেশন-৬)" else "Medical & Dental Team",
+        "LOGISTICS" to if (isBangla) "উপহার, খাবার ও লজিস্টিকস কর্মকর্তা" else "Gift, Food & Logistics Officer",
+        "BULLETIN_EDITOR" to if (isBangla) "ক্যাম্প বুলেটিন ও মিডিয়া সম্পাদক" else "Bulletin & Media Editor",
         "VOLUNTEER" to if (isBangla) "ভলান্টিয়ার / রেজিস্ট্রেশন অফিসার" else "Volunteer / Registration Officer",
-        "GROUP_LEADER" to if (isBangla) "গ্রুপ লিডার (দলের দায়িত্বপ্রাপ্ত)" else "Group Leader",
-        "MENTOR" to if (isBangla) "মেন্টর / প্রশিক্ষক" else "Mentor / Instructor",
-        "STATION_MODERATOR" to if (isBangla) "স্টেশন মডারেটর (দক্ষতা স্টেশন)" else "Station Moderator",
-        "JUDGE" to if (isBangla) "প্রতিযোগিতা বিচারক" else "Competition Judge",
-        "MEDICAL" to if (isBangla) "মেডিকেল অফিসার (স্বাস্থ্য দল)" else "Medical Officer",
-        "LOGISTICS" to if (isBangla) "লজিস্টিকস ও খাবার কর্মকর্তা" else "Logistics & Food Officer",
-        "BULLETIN_EDITOR" to if (isBangla) "বুলেটিন ও মিডিয়া সম্পাদক" else "Bulletin & Media Editor",
-        "CAMP_CHIEF" to if (isBangla) "ক্যাম্প চিফ / প্রধান সমন্বয়ক" else "Camp Chief",
+        "CAMP_CHIEF" to if (isBangla) "ক্যাম্প প্রধান / প্রোগ্রাম চেয়ারম্যান" else "Camp Chief / Chairman",
         "SUPER_ADMIN" to if (isBangla) "ক্যাম্প সুপার অ্যাডমিন / আইটি কন্ট্রোল" else "Camp Super Admin"
+    )
+
+    val officialQuickRoles = listOf(
+        Triple("স্টেশন ম্যানেজার", "stationmanager@lsc.org", "আবদুল মোহাইমিন নাঈম"),
+        Triple("ক্যাম্প প্রধান", "chief@lsc.org", "এয়ার কমোডোর শওকত আলী"),
+        Triple("মেডিকেল (S6)", "medical@lsc.org", "ডা. তাওহীদ"),
+        Triple("প্রধান বিচারক", "judge@lsc.org", "আনিসুর রহমান খন্দকার"),
+        Triple("গ্রুপ লিডার", "leader@lsc.org", "আয়াতুল্লাহ নাহিদ"),
+        Triple("উপহার ও খাবার", "logistics@lsc.org", "মোহাম্মাদ আতাউল্লাহ"),
+        Triple("বুলেটিন", "bulletin@lsc.org", "আশরাফুল ইসলাম"),
+        Triple("সুপার অ্যাডমিন", "admin@lsc.org", "ড. রেদওয়ানুর রহমান")
     )
 
     Scaffold(
@@ -215,7 +224,7 @@ fun LoginScreen(
                         Spacer(modifier = Modifier.height(10.dp))
 
                         Text(
-                            text = if (isBangla) "লাইফ স্কিলস ক্যাম্প ২০২৬" else "Life Skills Camp 2026",
+                            text = if (isBangla) "লাইফ স্কিলস ক্যাম্পিং ২০২৬" else "Life Skills Camping 2026",
                             color = Color.White,
                             fontSize = 21.sp,
                             fontWeight = FontWeight.ExtraBold,
@@ -226,11 +235,11 @@ fun LoginScreen(
 
                         Text(
                             text = if (isBangla)
-                                "ক্যাম্প কমপ্যানিয়ন — স্টাফ ও অফিশিয়াল পোর্টাল"
+                                "নিজকে গড়ো, গড়তে শেখাও • ২২–২৬ অক্টোবর ২০২৬ • ওয়ামী বাংলাদেশ"
                             else
-                                "Camp Companion — Staff & Official Portal",
+                                "WAMY Bangladesh • 22–26 Oct 2026 • Rangamati Waterfront Resort",
                             color = Color(0xFF94A3B8),
-                            fontSize = 12.sp,
+                            fontSize = 11.sp,
                             textAlign = TextAlign.Center
                         )
 
@@ -387,13 +396,53 @@ fun LoginScreen(
 
                                 Text(
                                     text = if (isBangla)
-                                        "আপনার ক্যাম্প অফিসিয়াল ইমেইল ও পাসওয়ার্ড প্রদান করুন"
+                                        "দ্রুত লগইনের জন্য নিচে আপনার বিভাগীয় পদবিতে ট্যাপ করে ইমেইল নির্বাচন করুন ও পাসওয়ার্ড দিন"
                                     else
-                                        "Enter your registered camp email and security password",
-                                    fontSize = 12.sp,
+                                        "Tap your department role chip below to fill official email, then enter password",
+                                    fontSize = 11.sp,
                                     color = Color.Gray,
-                                    modifier = Modifier.padding(top = 2.dp, bottom = 14.dp)
+                                    modifier = Modifier.padding(top = 2.dp, bottom = 8.dp)
                                 )
+
+                                // 1-Tap Official Role Email Quick-Select Strip
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 10.dp)
+                                ) {
+                                    items(officialQuickRoles) { (roleTitle, roleEmail, personName) ->
+                                        val isSelected = email.equals(roleEmail, ignoreCase = true)
+                                        Surface(
+                                            color = if (isSelected) LscEmeraldPrimary else Color(0xFFF8FAFC),
+                                            shape = RoundedCornerShape(10.dp),
+                                            border = BorderStroke(
+                                                1.dp,
+                                                if (isSelected) LscEmeraldPrimary else Color(0xFFCBD5E1)
+                                            ),
+                                            modifier = Modifier.clickable {
+                                                email = roleEmail
+                                                campViewModel.clearLoginError()
+                                            }
+                                        ) {
+                                            Column(
+                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                            ) {
+                                                Text(
+                                                    text = "⚡ $roleTitle",
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (isSelected) Color.White else LscSlateDark
+                                                )
+                                                Text(
+                                                    text = personName,
+                                                    fontSize = 9.sp,
+                                                    color = if (isSelected) Color.White.copy(alpha = 0.85f) else Color.Gray
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
 
                                 // Email Field
                                 OutlinedTextField(
@@ -403,7 +452,7 @@ fun LoginScreen(
                                         campViewModel.clearLoginError()
                                     },
                                     label = { Text(if (isBangla) "অফিসিয়াল ইমেইল" else "Official Email") },
-                                    placeholder = { Text("admin@lsc.org") },
+                                    placeholder = { Text("stationmanager@lsc.org") },
                                     leadingIcon = {
                                         Icon(
                                             imageVector = Icons.Default.Email,
@@ -592,7 +641,6 @@ fun LoginScreen(
                                     modifier = Modifier.padding(top = 2.dp, bottom = 12.dp)
                                 )
 
-                                // Instructions Card
                                 Surface(
                                     color = Color(0xFFEFF6FF),
                                     shape = RoundedCornerShape(10.dp),
@@ -624,7 +672,6 @@ fun LoginScreen(
                                     }
                                 }
 
-                                // Full Name
                                 OutlinedTextField(
                                     value = signUpFullName,
                                     onValueChange = {
@@ -632,7 +679,7 @@ fun LoginScreen(
                                         campViewModel.clearLoginError()
                                     },
                                     label = { Text(if (isBangla) "পূর্ণ নাম (Full Name)" else "Full Name") },
-                                    placeholder = { Text(if (isBangla) "যেমন: মোবাশশেরুল ইসলাম" else "e.g. Mobashsarul Islam") },
+                                    placeholder = { Text(if (isBangla) "যেমন: আবদুল মোহাইমিন নাঈম" else "e.g. Abdul Mohaimin Nayeem") },
                                     leadingIcon = {
                                         Icon(Icons.Default.Person, contentDescription = null, tint = LscEmeraldPrimary)
                                     },
@@ -649,7 +696,6 @@ fun LoginScreen(
 
                                 Spacer(modifier = Modifier.height(10.dp))
 
-                                // Email
                                 OutlinedTextField(
                                     value = signUpEmail,
                                     onValueChange = {
@@ -657,7 +703,7 @@ fun LoginScreen(
                                         campViewModel.clearLoginError()
                                     },
                                     label = { Text(if (isBangla) "আপনার ইমেইল ঠিকানা (Email)" else "Email Address") },
-                                    placeholder = { Text("mobashsarulislam26@gmail.com") },
+                                    placeholder = { Text("staff@lsc.org") },
                                     leadingIcon = {
                                         Icon(Icons.Default.Email, contentDescription = null, tint = LscEmeraldPrimary)
                                     },
@@ -675,7 +721,6 @@ fun LoginScreen(
 
                                 Spacer(modifier = Modifier.height(10.dp))
 
-                                // Role Selector
                                 ExposedDropdownMenuBox(
                                     expanded = isRoleDropdownExpanded,
                                     onExpandedChange = { isRoleDropdownExpanded = !isRoleDropdownExpanded },
@@ -721,7 +766,6 @@ fun LoginScreen(
 
                                 Spacer(modifier = Modifier.height(10.dp))
 
-                                // Phone
                                 OutlinedTextField(
                                     value = signUpPhone,
                                     onValueChange = { signUpPhone = it },
@@ -744,7 +788,6 @@ fun LoginScreen(
 
                                 Spacer(modifier = Modifier.height(10.dp))
 
-                                // Optional Custom Password (or leave blank for auto-generated Lsc#XXXX password)
                                 OutlinedTextField(
                                     value = signUpCustomPassword,
                                     onValueChange = {
@@ -788,7 +831,6 @@ fun LoginScreen(
                                         .testTag("signup_password_input")
                                 )
 
-                                // Error Message Display inside Sign-Up Tab as well
                                 AnimatedVisibility(visible = errorMessage != null) {
                                     Surface(
                                         color = Color(0xFFFEF2F2),
@@ -821,12 +863,11 @@ fun LoginScreen(
 
                                 Spacer(modifier = Modifier.height(16.dp))
 
-                                // Sign Up Submit Button
                                 Button(
                                     onClick = {
                                         focusManager.clearFocus()
                                         coroutineScope.launch {
-                                            val (success, generatedPass, msg) = campViewModel.signUp(
+                                            val (success, generatedPass, _) = campViewModel.signUp(
                                                 fullName = signUpFullName,
                                                 email = signUpEmail,
                                                 role = signUpRole,
@@ -838,33 +879,25 @@ fun LoginScreen(
                                                 registeredUserEmail = signUpEmail.trim().lowercase()
                                                 showSignUpSuccessDialog = true
 
-                                                // Prepare email intent for sending/dispatching password
                                                 try {
                                                     val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
                                                         data = Uri.parse("mailto:$registeredUserEmail")
-                                                        putExtra(Intent.EXTRA_SUBJECT, "Life Skills Camp 2026 - আপনার লগইন পাসওয়ার্ড")
+                                                        putExtra(Intent.EXTRA_SUBJECT, "Life Skills Camping 2026 - আপনার লগইন পাসওয়ার্ড")
                                                         putExtra(
                                                             Intent.EXTRA_TEXT,
                                                             """
                                                             প্রিয় $signUpFullName,
                                                             
-                                                            লাইফ স্কিলস ক্যাম্প ২০২৬ (LSC Companion)-এ আপনার রেজিস্ট্রেশন সফল হয়েছে।
+                                                            লাইফ স্কিলস ক্যাম্পিং ২০২৬ (WAMY Bangladesh)-এ আপনার রেজিস্ট্রেশন সফল হয়েছে।
                                                             
-                                                            আপনার লগইন বিবরণ:
-                                                            ------------------------------------
                                                             ইমেইল: $registeredUserEmail
                                                             ভূমিকা: $signUpRole
                                                             পাসওয়ার্ড: $generatedPass
-                                                            ------------------------------------
-                                                            
-                                                            অনুগ্রহ করে এই পাসওয়ার্ডটি ব্যবহার করে অ্যাপে লগইন করুন। login ছাড়া কোনো তথ্য ব্যবহার করা যাবে না।
                                                             """.trimIndent()
                                                         )
                                                     }
                                                     context.startActivity(Intent.createChooser(emailIntent, "Send password via Email"))
-                                                } catch (_: Exception) {
-                                                    // Continue gracefully even if no default email client is installed
-                                                }
+                                                } catch (_: Exception) {}
                                             }
                                         }
                                     },
@@ -897,7 +930,6 @@ fun LoginScreen(
 
                                 Spacer(modifier = Modifier.height(10.dp))
 
-                                // Switch back to login
                                 TextButton(
                                     onClick = {
                                         authMode = 0
@@ -917,51 +949,42 @@ fun LoginScreen(
                     }
                 }
 
-                // Quick Demo Staff Accounts Selection
                 item {
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    Text(
-                        text = if (isBangla) "— অথবা দ্রুত স্টাফ ডেমো লগইন নির্বাচন করুন —" else "— Or Quick Select Staff Role —",
-                        color = Color(0xFFCBD5E1),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-                }
-
-                items(SeedData.staffAccounts) { account ->
-                    QuickStaffAccountCard(
-                        account = account,
-                        isBangla = isBangla,
-                        onSelect = {
-                            email = account.email
-                            campViewModel.quickLogin(account)
+                    Surface(
+                        color = Color(0xFF1E293B).copy(alpha = 0.85f),
+                        shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.VerifiedUser,
+                                contentDescription = null,
+                                tint = Color(0xFF34D399),
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = if (isBangla)
+                                    "নিরাপত্তা নীতিমালা: নিবন্ধিত ইমেইল ও বৈধ পাসওয়ার্ড ছাড়া অ্যাপের কোনো মডিউলে প্রবেশ করা যাবে না। (রাঙামাটি ওয়াটারফ্রন্ট রিসোর্ট, শফিপুর, গাজীপুর)"
+                                else
+                                    "Security Policy: Access to all camp modules requires a registered email and valid password.",
+                                color = Color(0xFFCBD5E1),
+                                fontSize = 11.sp,
+                                lineHeight = 16.sp
+                            )
                         }
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-
-                item {
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = if (isBangla)
-                            "লগইন সমস্যা হলে ক্যাম্প কন্ট্রোল রুম অথবা আইটি টিমের সাথে যোগাযোগ করুন।"
-                        else
-                            "If you encounter login issues, contact the Camp Control Room or IT Team.",
-                        color = Color(0xFF94A3B8),
-                        fontSize = 11.sp,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
+                    }
                 }
             }
         }
     }
 
-    // Sign Up Success Dialog (Displays generated password and instructs to login)
     if (showSignUpSuccessDialog) {
         AlertDialog(
             onDismissRequest = { showSignUpSuccessDialog = false },
@@ -988,9 +1011,9 @@ fun LoginScreen(
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
                         text = if (isBangla)
-                            "আপনার অ্যাকাউন্ট ($registeredUserEmail) সফলভাবে তৈরি হয়েছে এবং পাসওয়ার্ডটি নিরাপদভাবে হ্যাশ করে ডেটাবেজে সংরক্ষিত হয়েছে।"
+                            "আপনার অ্যাকাউন্ট ($registeredUserEmail) সফলভাবে তৈরি হয়েছে।"
                         else
-                            "Your account ($registeredUserEmail) has been created and your password is securely hashed in the database.",
+                            "Your account ($registeredUserEmail) has been created.",
                         fontSize = 12.sp,
                         color = LscSlateDark
                     )
@@ -1050,18 +1073,6 @@ fun LoginScreen(
                             }
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Text(
-                        text = if (isBangla)
-                            "⚠️ মনে রাখবেন: login ছাড়া কোনোভাবেই অ্যাপে প্রবেশ করা যাবে না। এখন এই পাসওয়ার্ডটি দিয়ে লগইন করুন।"
-                        else
-                            "⚠️ Remember: The app cannot be accessed without login. Proceed to login with this password.",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFFDC2626)
-                    )
                 }
             },
             confirmButton = {
@@ -1070,26 +1081,10 @@ fun LoginScreen(
                         showSignUpSuccessDialog = false
                         authMode = 0
                         email = registeredUserEmail
-                        password = generatedPasswordForUser
-                        // Trigger immediate login with the generated credentials!
-                        coroutineScope.launch {
-                            campViewModel.login(email, password)
-                        }
+                        password = ""
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = LscEmeraldPrimary),
                     modifier = Modifier.testTag("signup_success_login_now_btn")
-                ) {
-                    Text(if (isBangla) "লগইন করুন (Enter App)" else "Login Now")
-                }
-            },
-            dismissButton = {
-                OutlinedButton(
-                    onClick = {
-                        showSignUpSuccessDialog = false
-                        authMode = 0
-                        email = registeredUserEmail
-                        password = generatedPasswordForUser
-                    }
                 ) {
                     Text(if (isBangla) "লগইন ফর্মে যান" else "Go to Login Form")
                 }
@@ -1097,11 +1092,9 @@ fun LoginScreen(
         )
     }
 
-    // Forgot Password Dialog
     if (showForgotPasswordDialog) {
         var isResetting by remember { mutableStateOf(false) }
         var resetResultMsg by remember { mutableStateOf<String?>(null) }
-        var tempResetPassword by remember { mutableStateOf<String?>(null) }
 
         AlertDialog(
             onDismissRequest = { showForgotPasswordDialog = false },
@@ -1158,11 +1151,10 @@ fun LoginScreen(
                             val (success, newPass) = campViewModel.requestPasswordToEmail(forgotEmailInput)
                             isResetting = false
                             if (success) {
-                                tempResetPassword = newPass
                                 resetResultMsg = if (isBangla)
-                                    "✅ নতুন পাসওয়ার্ড তৈরি হয়েছে: $newPass"
+                                    "✅ নতুন পাসওয়ার্ড আপনার ইমেলে পাঠানো হয়েছে।"
                                 else
-                                    "✅ New password generated: $newPass"
+                                    "✅ A new password has been dispatched to your email."
 
                                 try {
                                     val mailIntent = Intent(Intent.ACTION_SENDTO).apply {
@@ -1170,15 +1162,14 @@ fun LoginScreen(
                                         putExtra(Intent.EXTRA_SUBJECT, "LSC Camp 2026 - পাসওয়ার্ড রিসেট")
                                         putExtra(
                                             Intent.EXTRA_TEXT,
-                                            "আপনার নতুন ক্যাম্প লগইন পাসওয়ার্ড: $newPass\n\nঅনুগ্রহ করে এই পাসওয়ার্ড দিয়ে লগইন করুন।"
+                                            "আপনার নতুন ক্যাম্প লগইন পাসওয়ার্ড: $newPass"
                                         )
                                     }
                                     context.startActivity(Intent.createChooser(mailIntent, "Send Email"))
                                 } catch (_: Exception) {}
 
-                                // Pre-fill login
                                 email = forgotEmailInput.trim().lowercase()
-                                password = newPass
+                                password = ""
                                 showForgotPasswordDialog = false
                             } else {
                                 Toast.makeText(context, newPass, Toast.LENGTH_SHORT).show()
@@ -1198,93 +1189,5 @@ fun LoginScreen(
                 }
             }
         )
-    }
-}
-
-/**
- * Quick Staff Account Item Card for 1-Tap Login
- */
-@Composable
-private fun QuickStaffAccountCard(
-    account: UserAccountEntity,
-    isBangla: Boolean,
-    onSelect: () -> Unit
-) {
-    val (icon, badgeColor) = when (account.role.uppercase()) {
-        "SUPER_ADMIN" -> Icons.Default.Security to Color(0xFF9333EA)
-        "CAMP_CHIEF" -> Icons.Default.Stars to Color(0xFF2563EB)
-        "REGISTRATION" -> Icons.Default.AppRegistration to Color(0xFF059669)
-        "MEDICAL" -> Icons.Default.MedicalServices to Color(0xFFDC2626)
-        "JUDGE" -> Icons.Default.EmojiEvents to Color(0xFFD97706)
-        "LOGISTICS" -> Icons.Default.Inventory2 to Color(0xFF0284C7)
-        else -> Icons.Default.Person to Color(0xFF475569)
-    }
-
-    Surface(
-        color = Color(0xFF1E293B).copy(alpha = 0.85f),
-        shape = RoundedCornerShape(14.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onSelect() }
-            .testTag("quick_login_${account.email.replace("@", "_").replace(".", "_")}")
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(CircleShape)
-                        .background(badgeColor.copy(alpha = 0.2f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = account.role,
-                        tint = badgeColor,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column {
-                    Text(
-                        text = account.fullName,
-                        color = Color.White,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "${account.email} • ${account.role}",
-                        color = Color(0xFF94A3B8),
-                        fontSize = 11.sp
-                    )
-                }
-            }
-
-            Surface(
-                color = LscEmeraldPrimary.copy(alpha = 0.25f),
-                shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, LscEmeraldPrimary.copy(alpha = 0.5f))
-            ) {
-                Text(
-                    text = if (isBangla) "প্রবেশ" else "Login",
-                    color = Color(0xFF6EE7B7),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                )
-            }
-        }
     }
 }

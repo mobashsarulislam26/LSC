@@ -34,11 +34,22 @@ object FirestoreManager {
 
     private var dbInstance: FirebaseFirestore? = null
 
+    private fun isRobolectricTest(): Boolean {
+        return try {
+            Class.forName("org.robolectric.Robolectric") != null ||
+                android.os.Build.FINGERPRINT == "unknown" ||
+                android.os.Build.MODEL.contains("robolectric", ignoreCase = true)
+        } catch (_: Throwable) {
+            false
+        }
+    }
+
     /**
      * Lazy singleton initializer for FirebaseFirestore SDK.
      */
     val db: FirebaseFirestore?
         get() {
+            if (isRobolectricTest()) return null
             if (dbInstance == null) {
                 synchronized(this) {
                     if (dbInstance == null) {

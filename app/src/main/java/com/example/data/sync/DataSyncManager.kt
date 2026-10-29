@@ -191,9 +191,11 @@ class DataSyncManager private constructor(
                         "status" to record.status,
                         "scannedBy" to scannerId
                     )
-                    firestoreDb.collection("attendance").document(record.id.toString())
-                        .set(data, com.google.firebase.firestore.SetOptions.merge())
-                        .await()
+                    withTimeout(3000L) {
+                        firestoreDb.collection("attendance").document(record.id.toString())
+                            .set(data, com.google.firebase.firestore.SetOptions.merge())
+                            .await()
+                    }
 
                     // ONLY mark as synced AFTER server write acknowledgement succeeds
                     dao.markAttendanceRecordSynced(record.id)
@@ -388,9 +390,11 @@ class DataSyncManager private constructor(
                                 "timestamp" to att.scannedAt,
                                 "status" to att.status
                             )
-                            firestoreDb.collection("attendance").document(att.id.toString())
-                                .set(data, com.google.firebase.firestore.SetOptions.merge())
-                                .await()
+                            withTimeout(3000L) {
+                                firestoreDb.collection("attendance").document(att.id.toString())
+                                    .set(data, com.google.firebase.firestore.SetOptions.merge())
+                                    .await()
+                            }
 
                             dao.markAttendanceRecordSynced(att.id)
                         } catch (e: Exception) {
@@ -420,9 +424,11 @@ class DataSyncManager private constructor(
                                     else -> cached.id.toString()
                                 }
 
-                                firestoreDb.collection(targetCollection).document(docId)
-                                    .set(payloadMap, com.google.firebase.firestore.SetOptions.merge())
-                                    .await()
+                                withTimeout(3000L) {
+                                    firestoreDb.collection(targetCollection).document(docId)
+                                        .set(payloadMap, com.google.firebase.firestore.SetOptions.merge())
+                                        .await()
+                                }
 
                                 // ONLY mark as synced AFTER server write acknowledgement (.await()) succeeds
                                 dao.markCachedItemSynced(cached.id)

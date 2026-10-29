@@ -2,11 +2,13 @@ package com.example
 
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
+import com.example.data.local.CampDatabase
 import com.example.data.model.CampLanguage
 import com.example.data.model.UserRole
 import com.example.data.sample.SeedData
 import com.example.ui.viewmodel.CampViewModel
 import kotlinx.coroutines.runBlocking
+import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
@@ -22,8 +24,14 @@ class UserAuthenticationTest {
 
     @Before
     fun setUp() {
+        CampDatabase.closeAndResetInstance()
         val app = ApplicationProvider.getApplicationContext<Application>()
         viewModel = CampViewModel(app)
+    }
+
+    @After
+    fun tearDown() {
+        CampDatabase.closeAndResetInstance()
     }
 
     @Test

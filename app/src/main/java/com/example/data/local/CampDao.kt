@@ -17,6 +17,9 @@ interface CampDao {
     @Query("SELECT * FROM participants WHERE groupId = :groupId ORDER BY id ASC")
     fun getParticipantsByGroup(groupId: String): Flow<List<ParticipantEntity>>
 
+    @Query("SELECT * FROM participants WHERE LOWER(TRIM(subgroup)) = LOWER(TRIM(:subgroup)) ORDER BY id ASC")
+    suspend fun getParticipantsBySubgroupList(subgroup: String): List<ParticipantEntity>
+
     @Query("""
         SELECT * FROM participants 
         WHERE nameBn LIKE '%' || :query || '%' 
@@ -29,7 +32,7 @@ interface CampDao {
     """)
     fun searchParticipants(query: String): Flow<List<ParticipantEntity>>
 
-    @Query("SELECT * FROM participants WHERE campCode = :campCode LIMIT 1")
+    @Query("SELECT * FROM participants WHERE LOWER(TRIM(campCode)) = LOWER(TRIM(:campCode)) OR (TRIM(:campCode) != 'N/A' AND LOWER(TRIM(fileNo)) = LOWER(TRIM(:campCode))) LIMIT 1")
     suspend fun getParticipantByCampCode(campCode: String): ParticipantEntity?
 
     @Query("SELECT * FROM participants WHERE id = :id LIMIT 1")
@@ -43,6 +46,9 @@ interface CampDao {
 
     @Update
     suspend fun updateParticipant(participant: ParticipantEntity)
+
+    @Update
+    suspend fun updateParticipants(participants: List<ParticipantEntity>)
 
     @Delete
     suspend fun deleteParticipant(participant: ParticipantEntity)
@@ -74,6 +80,9 @@ interface CampDao {
 
     @Query("UPDATE camp_groups SET totalPoints = totalPoints + :points WHERE id = :groupId")
     suspend fun addGroupPoints(groupId: String, points: Int)
+
+    @Query("DELETE FROM camp_groups")
+    suspend fun deleteAllGroups()
 
     // Stations
     @Query("SELECT * FROM stations ORDER BY id ASC")
@@ -122,6 +131,9 @@ interface CampDao {
     @Query("DELETE FROM schedule_events WHERE id = :id")
     suspend fun deleteScheduleEventById(id: Long)
 
+    @Query("DELETE FROM schedule_events")
+    suspend fun deleteAllScheduleEvents()
+
     // Attendance Events
     @Query("SELECT * FROM attendance_events ORDER BY dayNo ASC, id ASC")
     fun getAllAttendanceEvents(): Flow<List<AttendanceEventEntity>>
@@ -141,9 +153,15 @@ interface CampDao {
     @Delete
     suspend fun deleteAttendanceEvent(event: AttendanceEventEntity)
 
+    @Query("DELETE FROM attendance_events")
+    suspend fun deleteAllAttendanceEvents()
+
     // Attendance Records
     @Query("SELECT * FROM attendance_records WHERE eventId = :eventId ORDER BY scannedAt DESC")
     fun getRecordsForEvent(eventId: Long): Flow<List<AttendanceRecordEntity>>
+
+    @Query("SELECT * FROM attendance_records WHERE eventId = :eventId ORDER BY scannedAt DESC")
+    suspend fun getRecordsForEventImmediate(eventId: Long): List<AttendanceRecordEntity>
 
     @Query("SELECT * FROM attendance_records ORDER BY scannedAt DESC")
     fun getAllAttendanceRecords(): Flow<List<AttendanceRecordEntity>>
@@ -153,6 +171,9 @@ interface CampDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAttendanceRecord(record: AttendanceRecordEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAttendanceRecords(records: List<AttendanceRecordEntity>)
 
     @Query("SELECT COUNT(*) FROM attendance_records WHERE eventId = :eventId AND status = 'PRESENT'")
     suspend fun countPresentForEvent(eventId: Long): Int
@@ -173,8 +194,14 @@ interface CampDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCompetition(competition: CompetitionEntity): Long
 
+    @Query("DELETE FROM competitions")
+    suspend fun deleteAllCompetitions()
+
     @Query("SELECT * FROM competition_scores WHERE competitionId = :competitionId ORDER BY totalScore DESC")
     fun getScoresForCompetition(competitionId: Long): Flow<List<CompetitionScoreEntity>>
+
+    @Query("SELECT * FROM competition_scores WHERE competitionId = :competitionId ORDER BY totalScore DESC")
+    suspend fun getScoresForCompetitionImmediate(competitionId: Long): List<CompetitionScoreEntity>
 
     @Query("SELECT * FROM competition_scores ORDER BY totalScore DESC")
     fun getAllCompetitionScores(): Flow<List<CompetitionScoreEntity>>
@@ -184,6 +211,9 @@ interface CampDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCompetitionScores(scores: List<CompetitionScoreEntity>)
+
+    @Update
+    suspend fun updateCompetitionScore(score: CompetitionScoreEntity)
 
     // Judges
     @Query("SELECT * FROM judges ORDER BY id DESC")
@@ -290,6 +320,9 @@ interface CampDao {
     @Update
     suspend fun updateInventoryItem(item: InventoryItemEntity)
 
+    @Query("DELETE FROM inventory_items")
+    suspend fun deleteAllInventoryItems()
+
     @Query("SELECT * FROM inventory_transactions ORDER BY timestamp DESC")
     fun getAllInventoryTransactions(): Flow<List<InventoryTransactionEntity>>
 
@@ -342,7 +375,7 @@ interface CampDao {
     suspend fun insertMealClaims(claims: List<MealDistributionEntity>)
 
     // Accommodation & Rooms
-    @Query("SELECT * FROM camp_rooms ORDER BY buildingName ASC, roomNo ASC")
+    @Query("SELECT * FROM camp_rooms ORDER BY id ASC")
     fun getAllRooms(): Flow<List<RoomEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -356,6 +389,9 @@ interface CampDao {
 
     @Delete
     suspend fun deleteRoom(room: RoomEntity)
+
+    @Query("DELETE FROM camp_rooms")
+    suspend fun deleteAllRooms()
 
     // Travel & Vehicles
     @Query("SELECT * FROM travel_vehicles ORDER BY id ASC")
@@ -384,7 +420,7 @@ interface CampDao {
     suspend fun deleteDutyRoster(roster: DutyRosterEntity)
 
     // Kit Distributions
-    @Query("SELECT * FROM kit_distributions ORDER BY campCode ASC")
+    @Query("SELECT * FROM kit_distributions ORDER BY id ASC")
     fun getAllKitDistributions(): Flow<List<KitDistributionEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -392,6 +428,9 @@ interface CampDao {
 
     @Update
     suspend fun updateKitDistribution(distribution: KitDistributionEntity)
+
+    @Query("DELETE FROM kit_distributions")
+    suspend fun deleteAllKitDistributions()
 
     // Goal Metrics
     @Query("SELECT * FROM camp_goal_metrics ORDER BY id ASC")
@@ -431,6 +470,18 @@ interface CampDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAuditLog(log: AuditLogEntity): Long
+
+    @Transaction
+    suspend fun clearLegacySeedTables() {
+        deleteAllParticipants()
+        deleteAllGroups()
+        deleteAllScheduleEvents()
+        deleteAllRooms()
+        deleteAllCompetitions()
+        deleteAllInventoryItems()
+        deleteAllAttendanceEvents()
+        deleteAllKitDistributions()
+    }
 
     @Transaction
     suspend fun seedDatabase(

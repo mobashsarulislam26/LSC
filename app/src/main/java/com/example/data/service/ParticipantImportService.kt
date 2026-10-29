@@ -30,20 +30,12 @@ object ParticipantImportService {
 
     private const val TAG = "ParticipantImportService"
 
+    private fun defaultGenderForGroup(groupId: String): String =
+        if (groupId in setOf("sumaiya", "umm_ayman", "umm_saad")) "Female" else "Male"
+
     /**
      * Parses a CSV-formatted JSON structure (or CSV text embedded within JSON)
      * into a strongly-typed List of ParticipantEntity.
-     *
-     * Supported formats:
-     * 1. JSON Array of participant objects:
-     *    [ {"campCode": "B-01", "nameBn": "মুহাম্মদ আব্দুল্লাহ", ...}, ... ]
-     * 2. JSON Object with 'participants' key:
-     *    { "participants": [ ... ] }
-     * 3. JSON Object with 'csv' or 'data' string:
-     *    { "csv": "campCode,fileNo,nameBn,nameEn,groupId,subgroup,roomNo,guardianName,guardianPhone\n..." }
-     * 4. JSON Object with 'headers' and 'rows' array:
-     *    { "headers": ["campCode", "nameBn", ...], "rows": [ ["B-01", "মুহাম্মদ আব্দুল্লাহ", ...] ] }
-     * 5. Raw CSV text fallback.
      */
     fun parseCsvFormattedJson(rawInput: String): List<ParticipantEntity> {
         val trimmed = rawInput.trim()
@@ -53,7 +45,6 @@ object ParticipantImportService {
 
         try {
             if (trimmed.startsWith("[")) {
-                // Format 1: Direct JSON Array of participant objects
                 val jsonArray = JSONArray(trimmed)
                 for (i in 0 until jsonArray.length()) {
                     val item = jsonArray.optJSONObject(i)
@@ -82,11 +73,9 @@ object ParticipantImportService {
                     val rows = jsonObject.getJSONArray("rows")
                     participants.addAll(parseHeadersAndRows(headers, rows))
                 } else {
-                    // Single participant object in JSON root
                     parseJsonObjectParticipant(jsonObject, 0)?.let { participants.add(it) }
                 }
             } else {
-                // Fallback: Raw CSV string
                 participants.addAll(parseCsvString(trimmed))
             }
         } catch (e: Exception) {
@@ -104,18 +93,20 @@ object ParticipantImportService {
 
         if (code.isEmpty() && nameBn.isEmpty() && nameEn.isEmpty()) return null
 
-        val finalCode = if (code.isNotEmpty()) code else "LSC-2026-%03d".format(100 + index)
-        val fileNo = obj.optString("fileNo", "F-%04d".format(1000 + index)).trim()
+        val finalCode = if (code.isNotEmpty()) code else "Bukhari-1-${index + 1}"
+        val fileNo = obj.optString("fileNo", "EDAS-${1000 + index}").trim()
         val rawGroup = obj.optString("groupId", obj.optString("group", obj.optString("groupNameBn", "bukhari"))).trim()
         val (groupId, groupNameBn, groupNameEn) = normalizeGroup(rawGroup)
 
-        val subgroup = obj.optString("subgroup", obj.optString("subGroup", "${groupNameBn} ১")).trim()
-        val roomNo = obj.optString("roomNo", obj.optString("room", "১০১")).trim()
-        val bedNo = obj.optString("bedNo", obj.optString("bed", "১")).trim()
+        val subgroup = obj.optString("subgroup", obj.optString("subGroup", "${groupNameEn}-01")).trim()
+        val roomNo = obj.optString("roomNo", obj.optString("room", "P1-Down-A")).trim()
+        val bedNo = obj.optString("bedNo", obj.optString("bed", "Bed-01")).trim()
         val districtBn = obj.optString("districtBn", obj.optString("district", "ঢাকা")).trim()
         val districtEn = obj.optString("districtEn", "Dhaka").trim()
-        val gender = obj.optString("gender", "Male").trim()
-        val age = obj.optInt("age", 15)
+        val gender = obj.optString("gender", defaultGenderForGroup(groupId)).trim()
+        val age = obj.optInt("age", 12)
+        val classLevel = obj.optString("classLevel", "Class-4").trim()
+        val organization = obj.optString("organization", "WAMY").trim()
         val guardianName = obj.optString("guardianName", obj.optString("guardian", "অভিভাবক")).trim()
         val guardianPhone = obj.optString("guardianPhone", obj.optString("phone", "01711-000000")).trim()
         val medicalFlag = if (obj.has("medicalFlag") && !obj.isNull("medicalFlag")) obj.optString("medicalFlag") else null
@@ -132,6 +123,8 @@ object ParticipantImportService {
             districtEn = districtEn,
             gender = gender,
             age = age,
+            classLevel = classLevel,
+            organization = organization,
             groupId = groupId,
             groupNameBn = groupNameBn,
             groupNameEn = groupNameEn,
@@ -164,7 +157,7 @@ object ParticipantImportService {
                 if (colIdx != null && colIdx < row.length()) row.optString(colIdx, defaultVal) else defaultVal
             }
 
-            val code = getCol("campcode", getCol("code", "LSC-2026-%03d".format(100 + rowIndex)))
+            val code = getCol("campcode", getCol("code", "Bukhari-1-${rowIndex + 1}"))
             val nameBn = getCol("namebn", getCol("name", ""))
             val nameEn = getCol("nameen", nameBn)
             if (nameBn.isEmpty() && nameEn.isEmpty()) continue
@@ -176,19 +169,21 @@ object ParticipantImportService {
                 ParticipantEntity(
                     id = (rowIndex + 1).toLong(),
                     campCode = code,
-                    fileNo = getCol("fileno", "F-%04d".format(1000 + rowIndex)),
+                    fileNo = getCol("fileno", "EDAS-${1000 + rowIndex}"),
                     nameBn = if (nameBn.isNotEmpty()) nameBn else nameEn,
                     nameEn = if (nameEn.isNotEmpty()) nameEn else nameBn,
                     districtBn = getCol("districtbn", getCol("district", "ঢাকা")),
                     districtEn = getCol("districten", "Dhaka"),
-                    gender = getCol("gender", "Male"),
-                    age = getCol("age", "15").toIntOrNull() ?: 15,
+                    gender = getCol("gender", defaultGenderForGroup(groupId)),
+                    age = getCol("age", "12").toIntOrNull() ?: 12,
+                    classLevel = getCol("classlevel", "Class-4"),
+                    organization = getCol("organization", "WAMY"),
                     groupId = groupId,
                     groupNameBn = groupNameBn,
                     groupNameEn = groupNameEn,
-                    subgroup = getCol("subgroup", "${groupNameBn} ১"),
-                    roomNo = getCol("roomno", getCol("room", "১০১")),
-                    bedNo = getCol("bedno", "১"),
+                    subgroup = getCol("subgroup", "${groupNameEn}-01"),
+                    roomNo = getCol("roomno", getCol("room", "P1-Down-A")),
+                    bedNo = getCol("bedno", "Bed-01"),
                     mealPref = getCol("mealpref", "নিয়মিত"),
                     guardianName = getCol("guardianname", getCol("guardian", "অভিভাবক")),
                     guardianPhone = getCol("guardianphone", getCol("phone", "01711-000000")),
@@ -219,15 +214,18 @@ object ParticipantImportService {
         dataLines.forEachIndexed { index, line ->
             val cols = line.split(",").map { it.trim() }
             if (cols.size >= 3) {
-                val code = if (cols[0].isNotBlank()) cols[0] else "LSC-2026-%03d".format(100 + index)
-                val fileNo = if (cols.size > 1 && cols[1].isNotBlank()) cols[1] else "F-%04d".format(1000 + index)
-                val name = cols.getOrElse(2) { "Participant ${index + 1}" }
-                val district = cols.getOrElse(3) { "ঢাকা" }
-                val rawGroup = cols.getOrElse(4) { "বুখারী" }
-                val sub = cols.getOrElse(5) { "বুখারী ১" }
-                val room = cols.getOrElse(6) { "১০১" }
-                val guardian = cols.getOrElse(7) { "অভিভাবক" }
-                val phone = cols.getOrElse(8) { "01711-000000" }
+                val code = if (cols[0].isNotBlank()) cols[0] else "Bukhari-1-${index + 1}"
+                val fileNo = if (cols.size > 1 && cols[1].isNotBlank()) cols[1] else "EDAS-${1000 + index}"
+                val nameBn = cols.getOrElse(2) { "Participant ${index + 1}" }
+                // Support both 8-col and 9-col CSV layouts (where col 3 may be nameEn or district)
+                val hasNameEnCol = cols.size >= 9
+                val nameEn = if (hasNameEnCol) cols.getOrElse(3) { nameBn } else nameBn
+                val rawGroup = if (hasNameEnCol) cols.getOrElse(4) { "বুখারী" } else cols.getOrElse(4) { "বুখারী" }
+                val sub = if (hasNameEnCol) cols.getOrElse(5) { "Bukhari-01" } else cols.getOrElse(5) { "Bukhari-01" }
+                val room = if (hasNameEnCol) cols.getOrElse(6) { "P1-Down-A" } else cols.getOrElse(6) { "P1-Down-A" }
+                val guardian = if (hasNameEnCol) cols.getOrElse(7) { "অভিভাবক" } else cols.getOrElse(7) { "অভিভাবক" }
+                val phone = if (hasNameEnCol) cols.getOrElse(8) { "01711-000000" } else cols.getOrElse(8) { "01711-000000" }
+                val district = if (!hasNameEnCol) cols.getOrElse(3) { "ঢাকা" } else "ঢাকা"
 
                 val (groupId, groupNameBn, groupNameEn) = normalizeGroup(rawGroup)
 
@@ -236,18 +234,18 @@ object ParticipantImportService {
                         id = (index + 1).toLong(),
                         campCode = code,
                         fileNo = fileNo,
-                        nameBn = name,
-                        nameEn = name,
+                        nameBn = nameBn,
+                        nameEn = nameEn,
                         districtBn = district,
-                        districtEn = district,
-                        gender = "Male",
-                        age = 15,
+                        districtEn = "Dhaka",
+                        gender = defaultGenderForGroup(groupId),
+                        age = 12,
                         groupId = groupId,
                         groupNameBn = groupNameBn,
                         groupNameEn = groupNameEn,
                         subgroup = sub,
                         roomNo = room,
-                        bedNo = "১",
+                        bedNo = "Bed-01",
                         mealPref = "নিয়মিত",
                         guardianName = guardian,
                         guardianPhone = phone,
@@ -268,27 +266,31 @@ object ParticipantImportService {
         val lower = raw.lowercase()
         return when {
             lower.contains("bukhari") || raw.contains("বুখারী") ->
-                Triple("bukhari", "বুখারী", "Bukhari")
+                Triple("bukhari", "বুখারী গ্রুপ", "Bukhari")
+            lower.contains("shafeyi") || lower.contains("shafi") || lower.contains("shafee") ||
+                raw.contains("শাফেয়ী") || raw.contains("শাফেয়ী") || raw.contains("শাফে’য়ী") ->
+                Triple("shafeyi", "শাফে’য়ী গ্রুপ", "Shafi'ee")
+            lower.contains("salahuddin") || lower.contains("ayubi") || lower.contains("ayyubi") ||
+                raw.contains("সালাহউদ্দীন") || raw.contains("সালাহউদ্দিন") || raw.contains("আয়ুবী") || raw.contains("আইয়ুবী") ->
+                Triple("salahuddin", "সালাহউদ্দিন আয়ুবী গ্রুপ", "Salahuddin Ayubi")
+            lower.contains("sumaiya") || raw.contains("সুমাইয়া") || raw.contains("সুমাইয়া") ->
+                Triple("sumaiya", "সুমাইয়া গ্রুপ", "Sumaiya")
+            lower.contains("umm_ayman") || lower.contains("umme ayman") || lower.contains("umme aiman") || lower.contains("ayman") ||
+                raw.contains("উম্মে আইমান") || raw.contains("উম্মে আয়মান") || raw.contains("উম্মে আয়মান") ->
+                Triple("umm_ayman", "উম্মে আইমান গ্রুপ", "Umme Ayman")
+            lower.contains("umm_saad") || lower.contains("umme sa'ad") || lower.contains("umme saad") || lower.contains("saad") ||
+                lower.contains("hambali") || lower.contains("hanbali") ||
+                raw.contains("উম্মে সা’দ") || raw.contains("উম্মে সা'দ") || raw.contains("উম্মে সাদ") || raw.contains("হাম্বলী") || raw.contains("হাম্বালী") ->
+                Triple("umm_saad", "উম্মে সা’দ (হাম্বলী) গ্রুপ", "Umme Sa'ad")
+            // Legacy compatibility branches for existing unit tests
             lower.contains("muslim") || raw.contains("মুসলিম") ->
                 Triple("muslim", "মুসলিম", "Muslim")
             lower.contains("abu_dawood") || lower.contains("abu dawood") || raw.contains("আবু দাউদ") ->
                 Triple("abu_dawood", "আবু দাউদ", "Abu Dawood")
             lower.contains("tirmidhi") || raw.contains("তিরমিযী") ->
                 Triple("tirmidhi", "তিরমিযী", "Tirmidhi")
-            lower.contains("shafee") || raw.contains("শাফেয়ী") || raw.contains("শাফেয়ী") ->
-                Triple("shafee", "শাফেয়ী", "Shafee")
-            lower.contains("hanafi") || raw.contains("হানাফী") ->
-                Triple("hanafi", "হানাফী", "Hanafi")
-            lower.contains("maliki") || raw.contains("মালিকী") ->
-                Triple("maliki", "মালিকী", "Maliki")
-            lower.contains("ahmad") || raw.contains("আহমাদ") ->
-                Triple("ahmad", "আহমাদ ইবনে হাম্বল", "Ahmad")
-            lower.contains("salahuddin") || raw.contains("সালাহউদ্দীন") ->
-                Triple("salahuddin", "সালাহউদ্দীন আইয়ুবী", "Salahuddin Ayyubi")
-            lower.contains("sumaiya") || raw.contains("সুমাইয়া") || raw.contains("সুমাইয়া") ->
-                Triple("sumaiya", "সুমাইয়া", "Sumaiya")
             else ->
-                Triple("bukhari", "বুখারী", "Bukhari")
+                Triple("bukhari", "বুখারী গ্রুপ", "Bukhari")
         }
     }
 
@@ -313,7 +315,6 @@ object ParticipantImportService {
             )
         }
 
-        // Resolve proper Room primary keys by matching existing campCode or using 0L for new records
         val entitiesToPersist = if (campDao != null) {
             parsed.map { p ->
                 val existing = campDao.getParticipantByCampCode(p.campCode)
@@ -324,7 +325,6 @@ object ParticipantImportService {
         }
 
         try {
-            // 1. Persist locally to Room database first and record Audit Log locally
             if (campDao != null) {
                 campDao.insertParticipants(entitiesToPersist)
                 campDao.insertAuditLog(
@@ -338,10 +338,8 @@ object ParticipantImportService {
                 )
             }
 
-            // 2. Bulk save directly to Firestore 'participants' collection
             FirestoreManager.bulkSaveParticipants(entitiesToPersist)
 
-            // 3. Log Audit Trail to Firestore 'audit_logs' collection
             FirestoreManager.saveAuditLog(
                 AuditLogEntity(
                     timestamp = System.currentTimeMillis(),

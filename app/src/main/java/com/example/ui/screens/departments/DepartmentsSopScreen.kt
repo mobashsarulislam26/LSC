@@ -47,9 +47,9 @@ fun DepartmentsSopScreen(
 
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
-    var expandedDeptId by remember { mutableStateOf<Int?>(1) } // Default expand first department
+    var expandedDeptId by remember { mutableStateOf<Int?>(1) }
+    var completedOnTimeSessions by remember { mutableIntStateOf(38) } // Out of 114 total official sessions
 
-    // Keep track of checked checklist items: "deptId_index" -> Boolean
     val checkedItems = remember { mutableStateMapOf<String, Boolean>() }
 
     val filteredDepartments = remember(searchQuery, selectedCategory) {
@@ -101,12 +101,12 @@ fun DepartmentsSopScreen(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = if (isBangla) "১২টি বিভাগ ও এসওপি নির্দেশিকা" else "12 Departments & SOPs",
+                            text = if (isBangla) "১৩টি বিভাগ ও ১৯টি কমিটি এসওপি নির্দেশিকা" else "13 Departments & 19 Committees SOPs",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = LscSlateDark
                         )
                         Text(
-                            text = if (isBangla) "ক্যাম্প কার্যপদ্ধতি, দায়িত্ব বণ্টন ও চেকলিস্ট (পৃ. ২৮-৩৩)" else "Standard Operating Procedures & Job Descriptions",
+                            text = if (isBangla) "ওয়ামী LSC ২০২৬ কার্যপদ্ধতি, স্টেশন ম্যানেজমেন্ট ও চেকলিস্ট" else "Official LSC 2026 Operational SOPs & Checklists",
                             fontSize = 11.sp,
                             color = Color.Gray
                         )
@@ -169,7 +169,7 @@ fun DepartmentsSopScreen(
                         FilterChip(
                             selected = selectedCategory == null,
                             onClick = { selectedCategory = null },
-                            label = { Text(if (isBangla) "সকল বিভাগ" else "All Departments", fontSize = 11.sp) }
+                            label = { Text(if (isBangla) "সকল (${allDepartments.size}টি)" else "All (${allDepartments.size})", fontSize = 11.sp) }
                         )
                     }
                     items(allDepartments) { dept ->
@@ -190,13 +190,84 @@ fun DepartmentsSopScreen(
             }
         }
 
-        // Department List
+        // Department List + 114-Session On-Time Punctuality Tracker
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            item {
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF0FDF4)),
+                    border = BorderStroke(1.dp, Color(0xFF86EFAC)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = if (isBangla)
+                                        "⏱ ১১৪টি সেশনের সময়ানুবর্তিতা ট্র্যাকার (On-Time KPI)"
+                                    else
+                                        "⏱ 114-Session On-Time Punctuality Tracker",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    color = Color(0xFF065F46)
+                                )
+                                Text(
+                                    text = if (isBangla)
+                                        "৫ দিনে মোট ১১৪টি নির্ধারিত সেশন যথাসময়ে শুরু ও সমাপ্তি মনিটরিং"
+                                    else
+                                        "Track punctual start/end across all 114 camp sessions",
+                                    fontSize = 10.5.sp,
+                                    color = Color(0xFF047857)
+                                )
+                            }
+
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                IconButton(
+                                    onClick = { if (completedOnTimeSessions > 0) completedOnTimeSessions-- },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(Icons.Default.RemoveCircleOutline, contentDescription = null, tint = Color(0xFF047857), modifier = Modifier.size(18.dp))
+                                }
+                                Text(
+                                    text = "$completedOnTimeSessions/114",
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 13.sp,
+                                    color = Color(0xFF065F46),
+                                    modifier = Modifier.padding(horizontal = 4.dp)
+                                )
+                                IconButton(
+                                    onClick = { if (completedOnTimeSessions < 114) completedOnTimeSessions++ },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(Icons.Default.AddCircleOutline, contentDescription = null, tint = Color(0xFF047857), modifier = Modifier.size(18.dp))
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        LinearProgressIndicator(
+                            progress = { (completedOnTimeSessions / 114f).coerceIn(0f, 1f) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(4.dp)),
+                            color = LscEmeraldPrimary,
+                            trackColor = Color(0xFFDCFCE7)
+                        )
+                    }
+                }
+            }
+
             items(filteredDepartments, key = { it.id }) { dept ->
                 val isExpanded = expandedDeptId == dept.id
 
@@ -247,7 +318,6 @@ private fun DepartmentCard(
             .testTag("dept_card_${dept.id}")
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Header Row
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
@@ -310,7 +380,6 @@ private fun DepartmentCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Quick Info Chips
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -344,17 +413,15 @@ private fun DepartmentCard(
                 }
             }
 
-            // Expanded Details Section
             AnimatedVisibility(
                 visible = isExpanded,
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically()
             ) {
                 Column(modifier = Modifier.padding(top = 14.dp)) {
-                    Divider(color = Color(0xFFF1F5F9))
+                    HorizontalDivider(color = Color(0xFFF1F5F9))
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Objective
                     Text(
                         text = if (isBangla) "মূল লক্ষ্য ও উদ্দেশ্য:" else "Core Objective:",
                         fontWeight = FontWeight.Bold,
@@ -369,7 +436,6 @@ private fun DepartmentCard(
                         modifier = Modifier.padding(top = 2.dp, bottom = 12.dp)
                     )
 
-                    // Responsibilities
                     Surface(
                         color = Color(0xFFF8FAFC),
                         shape = RoundedCornerShape(12.dp),
@@ -402,7 +468,6 @@ private fun DepartmentCard(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // SOP Steps
                     Surface(
                         color = Color(0xFFF0FDF4),
                         shape = RoundedCornerShape(12.dp),
@@ -435,7 +500,6 @@ private fun DepartmentCard(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Action Checklist
                     Surface(
                         color = Color(0xFFFFFBEB),
                         shape = RoundedCornerShape(12.dp),

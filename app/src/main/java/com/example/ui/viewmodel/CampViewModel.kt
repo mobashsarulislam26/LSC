@@ -96,7 +96,7 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
     private val _selectedGroupFilter = MutableStateFlow<String?>(null)
     val selectedGroupFilter: StateFlow<String?> = _selectedGroupFilter.asStateFlow()
 
-    private val _selectedDay = MutableStateFlow(1)
+    private val _selectedDay = MutableStateFlow(2)
     val selectedDay: StateFlow<Int> = _selectedDay.asStateFlow()
 
     // Detail & Dialog States
@@ -129,7 +129,6 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
         val currentAccount = _currentUserAccount.value
         val currentRole = _currentRole.value
 
-        // 1. Authorize if currently authenticated user already has an administrative role
         val isRoleAdmin = currentRole == UserRole.SUPER_ADMIN ||
                 currentRole == UserRole.CAMP_CHIEF ||
                 (currentAccount != null && (
@@ -146,7 +145,6 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
             return true
         }
 
-        // 2. Verify entered password against authorized admin accounts (SUPER_ADMIN / CAMP_CHIEF)
         if (cleanPass.isNotEmpty()) {
             val candidateAdminAccounts = (userAccounts.value + SeedData.staffAccounts)
                 .filter {
@@ -208,6 +206,7 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
     val vehicles = repository.vehicles.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     val dutyRosters = repository.dutyRosters.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     val volunteerShifts = repository.volunteerShifts.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    val kitDistributions = repository.kitDistributions.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     val goalMetrics = repository.goalMetrics.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     val auditLogs = repository.auditLogs.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
@@ -246,7 +245,8 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
                     p.id.toString().contains(cleanQuery) ||
                     p.districtBn.contains(cleanQuery, ignoreCase = true) ||
                     p.districtEn.contains(cleanQuery, ignoreCase = true) ||
-                    p.subgroup.contains(cleanQuery, ignoreCase = true)
+                    p.subgroup.contains(cleanQuery, ignoreCase = true) ||
+                    p.organization.contains(cleanQuery, ignoreCase = true)
 
             val matchesGroup = groupFilter == null || p.groupId == groupFilter
             matchesQuery && matchesGroup
@@ -259,7 +259,6 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
             repository.ensureStaffAccountsSeeded()
             repository.ensureSeeded()
         }
-        // Auto-sync listener: automatically syncs when network is restored and low-connectivity mode is inactive
         viewModelScope.launch {
             isNetworkAvailable.collect { online ->
                 if (online && !_isLowConnectivityMode.value && _isAutoSyncEnabled.value) {
@@ -297,7 +296,6 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
         _loginErrorMessage.value = null
 
         return try {
-            // 1. Check local Room database salted SHA-256 hash verification first for fast & reliable auth
             val localAccount = repository.authenticateUser(cleanEmail, cleanPass)
             if (localAccount != null) {
                 val resolvedRole = localAccount.toUserRole()
@@ -315,7 +313,6 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
                 return true
             }
 
-            // 2. Attempt Firebase Authentication token verification for cloud-registered accounts
             val fbAuth = try { com.google.firebase.auth.FirebaseAuth.getInstance() } catch (e: Exception) { null }
             var fbUser: com.google.firebase.auth.FirebaseUser? = null
             var firestoreRole: UserRole? = null
@@ -332,7 +329,6 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
 
-            // 3. If Firebase Auth succeeded, resolve account and role from Firestore document or custom claims
             if (fbUser != null) {
                 val existingSeed = SeedData.staffAccounts.find { it.email.equals(cleanEmail, ignoreCase = true) }
                 val assignedRole = firestoreRole ?: existingSeed?.toUserRole() ?: UserRole.VOLUNTEER
@@ -350,7 +346,6 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
                     lastLoginTime = System.currentTimeMillis()
                 )
 
-                // Save or merge Firestore role document and local Room cache
                 FirestoreManager.saveUserRole(fbUser.uid, cleanEmail, assignedRole, fullName)
                 repository.insertUserAccount(authenticatedUser)
 
@@ -413,7 +408,6 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
         try {
             com.google.firebase.auth.FirebaseAuth.getInstance().signOut()
         } catch (_: Exception) {
-            // Ignore when Firebase is not initialized in unit tests or offline
         }
         _currentUserAccount.value = null
         _isLoggedIn.value = false
@@ -487,7 +481,6 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
             lastRegisteredEmail.value = user.email
             lastGeneratedPassword.value = password
 
-            // Optional cloud sync with Firebase Auth & Firestore if online
             try {
                 val fbAuth = com.google.firebase.auth.FirebaseAuth.getInstance()
                 val firebasePass = if (password.length >= 6) password else "${password}#26"
@@ -496,7 +489,6 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
                     FirestoreManager.saveUserRole(fbUser.uid, cleanEmail, user.toUserRole(), cleanName)
                 }
             } catch (_: Exception) {
-                // Local Room account is primary and already persisted
             }
 
             val msg = if (_language.value == CampLanguage.BANGLA)
@@ -534,11 +526,12 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
                 lastGeneratedPassword.value = result.second
                 Pair(true, result.second)
             } else {
-                // If not found, auto register and generate password
-                val (user, pass) = repository.signUpUser("স্টাফ সদস্য", cleanEmail, "VOLUNTEER")
-                lastRegisteredEmail.value = user.email
-                lastGeneratedPassword.value = pass
-                Pair(true, pass)
+                val notFoundMsg = if (_language.value == CampLanguage.BANGLA)
+                    "এই ইমেইলে কোনো নিবন্ধিত অ্যাকাউন্ট পাওয়া যায়নি! অনুগ্রহ করে আগে সাইন আপ করুন।"
+                else
+                    "No registered account found with this email! Please sign up first."
+                _loginErrorMessage.value = notFoundMsg
+                Pair(false, notFoundMsg)
             }
         } catch (e: Exception) {
             Pair(false, e.localizedMessage ?: "Error")
@@ -546,8 +539,8 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setRole(role: UserRole) {
+        if (!_isLoggedIn.value || _currentUserAccount.value == null) return
         _currentRole.value = role
-        // If Group Leader or Mentor, optionally auto-filter group
         if (role == UserRole.GROUP_LEADER) {
             _selectedGroupFilter.value = "bukhari"
         }
@@ -604,7 +597,7 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _isSyncing.value = true
             try {
-                kotlinx.coroutines.delay(400) // Realistic brief delay for visual synchronization indicator
+                kotlinx.coroutines.delay(400)
                 val result = repository.syncPendingCachedItems()
                 _lastSyncTime.value = System.currentTimeMillis()
                 if (result.totalSynced > 0) {
@@ -672,6 +665,21 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
         _statusNotification.value = null
     }
 
+    private fun extractStationNumberFromArg(extraArg: String): Int {
+        val normalized = extraArg.map { ch ->
+            when (ch) {
+                '১' -> '1'
+                '২' -> '2'
+                '৩' -> '3'
+                '৪' -> '4'
+                '৫' -> '5'
+                '৬' -> '6'
+                else -> ch
+            }
+        }.joinToString("")
+        return Regex("[1-6]").find(normalized)?.value?.toIntOrNull() ?: 1
+    }
+
     // Universal QR Scan Simulation / Handling
     fun processUniversalScan(campCode: String, mode: String, extraArg: String = "") {
         viewModelScope.launch {
@@ -714,33 +722,45 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
                     val offlineNote = if (offline) " [📦 অফলাইন ক্যাশে সংরক্ষিত]" else ""
                     _scanFeedback.value = ScanResult.Success(
                         title = if (offline) "হাজিরা গৃহীত (অফলাইন ক্যাশ)" else "হাজিরা গৃহীত (Attendance Marked)",
-                        message = "${participant.nameBn} - সময়মতো উপস্থিত হয়েছে।$offlineNote\nগ্রুপ: ${participant.groupNameBn}",
+                        message = "${participant.nameBn} - সময়মতো উপস্থিত হয়েছে।$offlineNote\nগ্রুপ: ${participant.groupNameBn} (${participant.subgroup})",
                         participant = participant
                     )
                 }
                 "STATION" -> {
-                    val stationName = extraArg.ifEmpty { "স্টেশন কার্যক্রম" }
+                    val stationName = extraArg.ifEmpty { "স্টেশন-১" }
+                    val stationNo = extractStationNumberFromArg(stationName)
+                    val activeDay = when (_selectedDay.value) {
+                        2, 4, 5 -> _selectedDay.value
+                        else -> 2
+                    }
+                    val eventId = when (activeDay) {
+                        4 -> 401L
+                        5 -> 501L
+                        else -> 4L
+                    }
                     val offline = isOffline.value
-                    repository.recordAttendance(4L, participant, "PRESENT", "QR_SCAN", "Station: $stationName", isOfflineMode = offline)
-                    syncManager.syncStationCheckIn(participant.campCode, 4, 10.0, "STATION_LEADER")
-                    val offlineNote = if (offline) "\n[📦 কম কানেক্টিভিটি মোড: লোকাল ক্যাশে সংরক্ষিত]" else ""
+                    repository.recordAttendance(eventId, participant, "PRESENT", "QR_SCAN", "Station: $stationName", isOfflineMode = offline)
+                    val stamped = repository.stampParticipantStationSeal(participant.id, stationNo, activeDay) ?: participant
+                    syncManager.syncStationCheckIn(participant.campCode, stationNo, 10.0, "STATION_LEADER")
+                    val sealCount = stamped.completedStationSeals.split(',').count { it.isNotBlank() }
+                    val offlineNote = if (offline) "\n[📦 অফলাইন ক্যাশে সংরক্ষিত]" else ""
                     _scanFeedback.value = ScanResult.Success(
-                        title = if (offline) "স্টেশন হাজিরা গৃহীত (অফলাইন ক্যাশ)" else "স্টেশন হাজিরা গৃহীত (Station Attendance)",
-                        message = "${participant.nameBn} (${participant.campCode})\nস্টেশন হাজিরা সফলভাবে সিঙ্ক হয়েছে।$offlineNote\nগ্রুপ: ${participant.groupNameBn} (${participant.subgroup})",
-                        participant = participant
+                        title = "★ স্টেশন হাজিরা ও স্টার সিল সংযুক্ত ($sealCount/18)",
+                        message = "${stamped.nameBn} (${stamped.subgroup})\nস্টেশন-$stationNo (দিন-$activeDay) ★ সিল সম্পন্ন!$offlineNote",
+                        participant = stamped
                     )
                 }
                 "AWARD" -> {
                     _scanFeedback.value = ScanResult.Success(
-                        title = "পুরস্কার গ্রহীতা যাচাই (Award Verified)",
-                        message = "${participant.nameBn} ($campCode)\nপুরস্কার ইস্যু করার জন্য অনুমোদিত।",
+                        title = "পুরস্কার ও গিফট গ্রহীতা যাচাই (Verified)",
+                        message = "${participant.nameBn} ($campCode)\nসাব-গ্রুপ: ${participant.subgroup} | সংস্থা: ${participant.organization}",
                         participant = participant
                     )
                 }
                 else -> {
                     _scanFeedback.value = ScanResult.Success(
                         title = "আইডি কার্ড ভেরিফাইড (ID Verified)",
-                        message = "${participant.nameBn}\n${participant.groupNameBn} | ${participant.districtBn}",
+                        message = "${participant.nameBn}\n${participant.groupNameBn} (${participant.subgroup}) | রুম: ${participant.roomNo}",
                         participant = participant
                     )
                 }
@@ -760,13 +780,41 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /**
+     * 1-Tap Batch Subgroup Attendance + Optional 18-Star Station Seal Stamper!
+     */
+    fun markSubgroupBatchAttendance(
+        eventId: Long,
+        eventTitleBn: String,
+        dayNo: Int,
+        subgroupKey: String,
+        absentParticipantIds: Set<Long>,
+        stationSealCode: String? = null
+    ) {
+        viewModelScope.launch {
+            val offline = isOffline.value
+            val (present, absent) = repository.markSubgroupBatchAttendance(
+                eventId = eventId,
+                eventTitleBn = eventTitleBn,
+                dayNo = dayNo,
+                subgroupKey = subgroupKey,
+                absentParticipantIds = absentParticipantIds,
+                stationSealCode = stationSealCode,
+                isOfflineMode = offline
+            )
+            val sealMsg = if (!stationSealCode.isNullOrBlank()) " • ★ সিল ($stationSealCode) যুক্ত!" else ""
+            _statusNotification.value = "✅ $subgroupKey: উপস্থিত $present জন, অনুপস্থিত $absent জন রেকর্ড সম্পন্ন$sealMsg"
+        }
+    }
+
     fun submitJudgeScore(
         competitionId: Long,
         participant: ParticipantEntity,
         accuracy: Double,
         presentation: Double,
         discipline: Double,
-        remarks: String
+        remarks: String,
+        isPrizeHandedOver: Boolean = false
     ) {
         viewModelScope.launch {
             val total = accuracy + presentation + discipline
@@ -783,10 +831,54 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
                 totalScore = total,
                 remarks = remarks,
                 rank = if (total >= 90) 1 else if (total >= 80) 2 else 3,
-                isAwardEligible = total >= 80
+                isAwardEligible = total >= 80,
+                isPrizeHandedOver = isPrizeHandedOver
             )
             repository.submitCompetitionScore(score)
             _statusNotification.value = "স্কোর সফলভাবে সংরক্ষিত: $total/100 (${participant.nameBn})"
+        }
+    }
+
+    fun awardPodiumWinner(
+        competitionId: Long,
+        participant: ParticipantEntity,
+        rank: Int,
+        isPrizeHandedOver: Boolean,
+        remarks: String = ""
+    ) {
+        viewModelScope.launch {
+            repository.awardPodiumWinner(
+                competitionId = competitionId,
+                participant = participant,
+                rank = rank,
+                isPrizeHandedOver = isPrizeHandedOver,
+                remarks = remarks
+            )
+            val medal = when (rank) { 1 -> "🥇 ১ম"; 2 -> "🥈 ২য়"; else -> "🥉 ৩য়" }
+            val handoverNote = if (isPrizeHandedOver) " (🎁 পুরস্কার প্রদান সম্পন্ন)" else ""
+            _statusNotification.value = "$medal নির্বাচিত: ${participant.nameBn} [${participant.subgroup}]$handoverNote"
+        }
+    }
+
+    fun toggleCompetitionPrizeHandedOver(score: CompetitionScoreEntity) {
+        viewModelScope.launch {
+            repository.toggleCompetitionPrizeHandedOver(score)
+            val stateLabel = if (!score.isPrizeHandedOver) "হস্তান্তর সম্পন্ন ✓" else "হস্তান্তর অপেক্ষমাণ"
+            _statusNotification.value = "🎁 পুরস্কার স্ট্যাটাস আপডেট (${score.participantName}): $stateLabel"
+        }
+    }
+
+    fun updateRoomInspection(room: RoomEntity, cleanlinessScore: Int, notes: String) {
+        viewModelScope.launch {
+            repository.updateRoomInspection(room, cleanlinessScore, notes)
+            _statusNotification.value = "★ রুম পরিদর্শন স্কোর সংরক্ষিত: ${room.buildingName} (${room.roomNo}) — $cleanlinessScore/10"
+        }
+    }
+
+    fun updateKitDistribution(kit: KitDistributionEntity) {
+        viewModelScope.launch {
+            repository.updateKitDistribution(kit)
+            _statusNotification.value = "🎁 উপহার ও মায়েদের চাদর তথ্য আপডেট: ${kit.participantName}"
         }
     }
 
@@ -856,7 +948,7 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
         titleEn: String = "",
         summaryBn: String,
         summaryEn: String = "",
-        author: String = "ক্যাম্প প্রশাসন",
+        author: String = "আমিনুল ইসলাম বুলবুল (সম্পাদক)",
         groupSpotlight: String = "ক্যাম্পের সার্বিক কার্যক্রম",
         dayNo: Int = 1,
         dateStr: String = ""
@@ -886,7 +978,6 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
         for (line in lines) {
             val tokens = splitCsvOrTsv(line)
             if (tokens.isEmpty()) continue
-            // Skip header if present
             if (tokens[0].contains("নাম") || tokens[0].equals("name", ignoreCase = true)) continue
             val nameBn = tokens.getOrNull(0) ?: continue
             val designation = tokens.getOrNull(1) ?: "সম্মানিত বিচারক"
@@ -984,7 +1075,12 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
         vitals: String,
         diagnosis: String,
         advice: String,
-        isEmergency: Boolean
+        isEmergency: Boolean,
+        heightCm: Double = 0.0,
+        weightKg: Double = 0.0,
+        dentalBusReferred: Boolean = false,
+        visionNotes: String = "",
+        photoDocumented: Boolean = false
     ) {
         viewModelScope.launch {
             val offline = isOffline.value
@@ -1000,14 +1096,26 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
                 adviceAndMeds = advice,
                 isEmergencyFlag = isEmergency,
                 priority = if (isEmergency) "HIGH" else "NORMAL",
-                status = if (isEmergency) "PENDING" else "RESOLVED"
+                status = if (isEmergency) "PENDING" else "RESOLVED",
+                heightCm = if (heightCm > 0.0) heightCm.toString() else "",
+                weightKg = if (weightKg > 0.0) weightKg.toString() else "",
+                dentalBusReferred = dentalBusReferred,
+                visionNotes = visionNotes,
+                photoDocumented = photoDocumented
             )
             repository.submitHealthRecord(record, isOfflineMode = offline)
+            // Also stamp Station 6 seal for the corresponding day (General->Day2, Dental->Day4, Eye->Day5)
+            val sealDay = when (checkupType.uppercase()) {
+                "DENTAL" -> 4
+                "EYE" -> 5
+                else -> 2
+            }
+            repository.stampParticipantStationSeal(participant.id, 6, sealDay)
             syncManager.syncHealthReport(record)
             if (offline) {
-                _statusNotification.value = "স্বাস্থ্য স্ক্রিনিং অফলাইন ক্যাশে সংরক্ষিত (${participant.nameBn}) - অনলাইনে সিঙ্ক হবে"
+                _statusNotification.value = "স্বাস্থ্য স্ক্রিনিং অফলাইন ক্যাশে সংরক্ষিত (${participant.nameBn}) • ★ স্টেশন-৬ সিল সংযুক্ত"
             } else {
-                _statusNotification.value = "স্বাস্থ্য স্ক্রিনিং সফলভাবে যুক্ত হয়েছে (${participant.nameBn})"
+                _statusNotification.value = "স্বাস্থ্য স্ক্রিনিং সফলভাবে যুক্ত হয়েছে (${participant.nameBn}) • ★ স্টেশন-৬ সিল সংযুক্ত"
             }
         }
     }
@@ -1430,11 +1538,15 @@ class CampViewModel(application: Application) : AndroidViewModel(application) {
 
     fun recordStationCheckIn(participantCampCode: String, stationId: Int, score: Double = 0.0) {
         viewModelScope.launch {
+            val p = repository.getParticipantByCampCode(participantCampCode)
+            if (p != null) {
+                repository.stampParticipantStationSeal(p.id, stationId, _selectedDay.value)
+            }
             val success = syncManager.syncStationCheckIn(participantCampCode, stationId, score)
             if (success) {
-                _statusNotification.value = "ক্যামেরা/QR স্ক্যানের মাধ্যমে স্টেশন চেক-ইন সফল: $participantCampCode"
+                _statusNotification.value = "ক্যামেরা/QR স্ক্যানের মাধ্যমে স্টেশন চেক-ইন ও ★ সিল সফল: $participantCampCode"
             } else {
-                _statusNotification.value = "স্টেশন চেক-ইন ব্যর্থ হয়েছে"
+                _statusNotification.value = "স্টেশন চেক-ইন লোকাল ক্যাশে সংরক্ষিত: $participantCampCode"
             }
         }
     }

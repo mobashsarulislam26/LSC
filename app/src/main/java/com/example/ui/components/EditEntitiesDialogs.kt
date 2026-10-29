@@ -352,6 +352,8 @@ fun AddEditParticipantDialog(
     var mealPref by remember { mutableStateOf(participant?.mealPref ?: "নিয়মিত") }
     var guardianName by remember { mutableStateOf(participant?.guardianName ?: "") }
     var guardianPhone by remember { mutableStateOf(participant?.guardianPhone ?: "") }
+    var classLevel by remember { mutableStateOf(participant?.classLevel ?: "৪র্থ শ্রেণি") }
+    var organization by remember { mutableStateOf(participant?.organization ?: "WAMY-OSP") }
     var medicalFlag by remember { mutableStateOf(participant?.medicalFlag ?: "") }
 
     var groupExpanded by remember { mutableStateOf(false) }
@@ -542,6 +544,26 @@ fun AddEditParticipantDialog(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                // Class Level & Organization
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = classLevel,
+                        onValueChange = { classLevel = it },
+                        label = { Text("শ্রেণি (Class)") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f).testTag("input_participant_class")
+                    )
+                    OutlinedTextField(
+                        value = organization,
+                        onValueChange = { organization = it },
+                        label = { Text("সংস্থা (Org)") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f).testTag("input_participant_org")
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
                 // Room & Bed
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
@@ -633,6 +655,8 @@ fun AddEditParticipantDialog(
                                     groupNameBn = selectedGroup?.nameBn ?: "কাফেলা",
                                     groupNameEn = selectedGroup?.nameEn ?: "Group",
                                     subgroup = subgroup.trim(),
+                                    classLevel = classLevel.trim(),
+                                    organization = organization.trim(),
                                     roomNo = roomNo.trim(),
                                     bedNo = bedNo.trim(),
                                     mealPref = mealPref.trim(),
@@ -652,6 +676,8 @@ fun AddEditParticipantDialog(
                                     groupNameBn = selectedGroup?.nameBn ?: (participant?.groupNameBn ?: "কাফেলা"),
                                     groupNameEn = selectedGroup?.nameEn ?: (participant?.groupNameEn ?: "Group"),
                                     subgroup = subgroup.trim(),
+                                    classLevel = classLevel.trim(),
+                                    organization = organization.trim(),
                                     roomNo = roomNo.trim(),
                                     bedNo = bedNo.trim(),
                                     mealPref = mealPref.trim(),

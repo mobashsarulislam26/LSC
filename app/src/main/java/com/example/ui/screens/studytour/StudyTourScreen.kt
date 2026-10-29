@@ -7,8 +7,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -16,7 +16,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -38,21 +37,34 @@ fun StudyTourScreen(
 ) {
     val isBangla = language == CampLanguage.BANGLA
     val context = LocalContext.current
+    var activeTourDay by remember { mutableIntStateOf(3) } // 3 = Dhaka & Metro Rail, 4 = Nandan Park
 
-    // Safety rules checklist
     val tourChecklist = remember {
         mutableStateMapOf(
-            0 to true,  // বাসের যান্ত্রিক ফিটনেস ও জ্বালানি পরীক্ষা
-            1 to true,  // চালকদের ওভারস্পিডিং নিষিদ্ধ লিখিত ব্রিফিং
-            2 to true,  // প্রতিটি বাসে ফার্স্ট এইড কিট ও পানীয় জল
-            3 to false, // বোর্ডিং হেডকাউন্ট ১০০% নিশ্চিতকরণ
-            4 to false  // শিক্ষা সফর শেষে প্রত্যাবর্তন হেডকাউন্ট
+            0 to true,  // সকল বাসের যান্ত্রিক ফিটনেস ও জ্বালানি পরীক্ষা
+            1 to true,  // প্রতিটি বাসে সাব-গ্রুপ ইন-চার্জ, ফার্স্ট এইড কিট ও পানীয় জল
+            2 to true,  // মেট্রোরেল গ্রুপ পাস ও র‍্যাপিড এন্ট্রি লাইন ব্রিফিং
+            3 to false, // বোর্ডিং হেডকাউন্ট ১০০% যাচাই (Zero-Lost-Child Protocol)
+            4 to false, // জ্ঞান অন্বেষণ কুইজ শিট ও ২৪টি পুরস্কার বিতরণ
+            5 to false  // সফর শেষে রিসোর্টে ১০০% নিরাপদ প্রত্যাবর্তন হেডকাউন্ট
         )
     }
+
+    // Track 4-stage checkpoint verification per bus: "${vehicleId}_${stageIdx}" -> Boolean
+    val busCheckpointState = remember { mutableStateMapOf<String, Boolean>() }
 
     val totalDeparture = vehicles.sumOf { it.departureHeadcount }
     val totalReturn = vehicles.sumOf { it.returnHeadcount }
     val totalCapacity = vehicles.sumOf { it.capacity }
+
+    val dhakaSpots = listOf(
+        "১. জাতীয় চিড়িয়াখানা (মিরপুর)",
+        "২. জাতীয় সংসদ ভবন প্রাঙ্গণ",
+        "৩. ঢাকা বিশ্ববিদ্যালয় ও জাতীয় কবির সমাধি",
+        "৪. বায়তুল মোকাররম জাতীয় মসজিদ",
+        "৫. সামরিক জাদুঘর (বিজয় সরণি)",
+        "৬. মেট্রোরেল ভ্রমণ (আগারগাঁও–উত্তরা) 🚝"
+    )
 
     Column(
         modifier = modifier
@@ -90,12 +102,15 @@ fun StudyTourScreen(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = if (isBangla) "শিক্ষা সফর ও পরিবহন ব্যবস্থাপনা" else "Study Tour & Travel Hub",
+                            text = if (isBangla) "শিক্ষা সফর, মেট্রোরেল ও নন্দন পার্ক বহর" else "Study Tour, Metro Rail & Nandan Park",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = LscSlateDark
                         )
                         Text(
-                            text = if (isBangla) "ঐতিহাসিক সোনারগাঁ শিক্ষা সফর ও বাস বহর নিরাপত্তা" else "Excursion Bus Fleet & Headcount Verification",
+                            text = if (isBangla)
+                                "৩য় দিন: ঢাকা ও মেট্রোরেল ভ্রমণ • ৪র্থ দিন: নন্দন পার্ক (ইন-চার্জ: মাহাদী হাসান)"
+                            else
+                                "Day 3: Dhaka & Metro Rail • Day 4: Nandan Park Fleet",
                             fontSize = 11.sp,
                             color = Color.Gray
                         )
@@ -115,12 +130,53 @@ fun StudyTourScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Day 3 vs Day 4 Selector
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = activeTourDay == 3,
+                        onClick = { activeTourDay = 3 },
+                        label = {
+                            Text(
+                                text = if (isBangla) "🚝 ৩য় দিন: ঢাকা সফর ও মেট্রোরেল" else "🚝 Day 3: Dhaka & Metro Rail",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = LscEmeraldPrimary,
+                            selectedLabelColor = Color.White
+                        ),
+                        modifier = Modifier.weight(1.15f)
+                    )
+                    FilterChip(
+                        selected = activeTourDay == 4,
+                        onClick = { activeTourDay = 4 },
+                        label = {
+                            Text(
+                                text = if (isBangla) "🎡 ৪র্থ দিন: নন্দন পার্ক ভ্রমণ" else "🎡 Day 4: Nandan Park",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Color(0xFFD97706),
+                            selectedLabelColor = Color.White
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
 
                 // Aggregate Metrics Cards
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Card(
                         shape = RoundedCornerShape(12.dp),
@@ -128,9 +184,9 @@ fun StudyTourScreen(
                         border = BorderStroke(1.dp, Color(0xFFBBF7D0)),
                         modifier = Modifier.weight(1f)
                     ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text(text = if (isBangla) "যাত্রা হেডকাউন্ট" else "Departure Count", fontSize = 10.sp, color = Color(0xFF166534))
-                            Text(text = "$totalDeparture / $totalCapacity", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF15803D))
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Text(text = if (isBangla) "যাত্রা হেডকাউন্ট" else "Departure", fontSize = 10.sp, color = Color(0xFF166534))
+                            Text(text = "$totalDeparture / $totalCapacity", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFF15803D))
                         }
                     }
 
@@ -140,9 +196,9 @@ fun StudyTourScreen(
                         border = BorderStroke(1.dp, Color(0xFFBFDBFE)),
                         modifier = Modifier.weight(1f)
                     ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text(text = if (isBangla) "প্রত্যাবর্তন হেডকাউন্ট" else "Return Count", fontSize = 10.sp, color = Color(0xFF1E40AF))
-                            Text(text = "$totalReturn / $totalCapacity", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1D4ED8))
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Text(text = if (isBangla) "প্রত্যাবর্তন হেডকাউন্ট" else "Return", fontSize = 10.sp, color = Color(0xFF1E40AF))
+                            Text(text = "$totalReturn / $totalCapacity", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1D4ED8))
                         }
                     }
 
@@ -152,9 +208,14 @@ fun StudyTourScreen(
                         border = BorderStroke(1.dp, Color(0xFFFDE68A)),
                         modifier = Modifier.weight(1f)
                     ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text(text = if (isBangla) "গন্তব্য স্থান" else "Destination", fontSize = 10.sp, color = Color(0xFF92400E))
-                            Text(text = "সোনারগাঁ", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFFB45309))
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Text(text = if (isBangla) "গন্তব্য" else "Destination", fontSize = 10.sp, color = Color(0xFF92400E))
+                            Text(
+                                text = if (activeTourDay == 3) "ঢাকা ও মেট্রোরেল" else "নন্দন পার্ক",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFB45309)
+                            )
                         }
                     }
                 }
@@ -167,6 +228,69 @@ fun StudyTourScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // Official Route & Quiz Highlight Card
+            item {
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (activeTourDay == 3) Color(0xFFF0FDF4) else Color(0xFFFFFBEB)
+                    ),
+                    border = BorderStroke(
+                        1.dp,
+                        if (activeTourDay == 3) Color(0xFF86EFAC) else Color(0xFFFDE68A)
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        if (activeTourDay == 3) {
+                            Text(
+                                text = "🗺 ৩য় দিনের অফিশিয়াল সফর রুট ও জ্ঞান অন্বেষণ কুইজ (২৪টি পুরস্কার)",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                color = Color(0xFF065F46)
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            dhakaSpots.forEach { spot ->
+                                Text(
+                                    text = "✓ $spot",
+                                    fontSize = 11.sp,
+                                    color = Color(0xFF047857),
+                                    modifier = Modifier.padding(vertical = 1.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Surface(
+                                color = Color.White,
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, Color(0xFFBBF7D0))
+                            ) {
+                                Text(
+                                    text = "🏆 সফর চলাকালীন 'জ্ঞান অন্বেষণ কুইজ' অনুষ্ঠিত হবে এবং ২৪টি সাব-গ্রুপে ২৪টি পুরস্কার প্রদান করা হবে।",
+                                    fontSize = 10.5.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF15803D),
+                                    modifier = Modifier.padding(8.dp)
+                                )
+                            }
+                        } else {
+                            Text(
+                                text = "🎡 ৪র্থ দিনের নন্দন পার্ক আনন্দ ভ্রমণ নির্দেশিকা",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                color = Color(0xFF92400E)
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "• সকালের নাস্তার পর সাব-গ্রুপ সারিবদ্ধভাবে নন্দন পার্কে প্রবেশ।\n• রাইড জোনে মেন্টরের তত্ত্বাবধানে নিরাপত্তা নিশ্চিতকরণ।\n• যোহর ও মধ্যাহ্নভোজের পূর্বে রিসোর্টে প্রত্যাবর্তন ও বৈকালিক স্টেশন সেশনে অংশগ্রহণ।",
+                                fontSize = 11.sp,
+                                color = Color(0xFFB45309),
+                                lineHeight = 16.sp
+                            )
+                        }
+                    }
+                }
+            }
+
             // Safety Checklist Section
             item {
                 Card(
@@ -180,19 +304,20 @@ fun StudyTourScreen(
                             Icon(Icons.Default.VerifiedUser, contentDescription = null, tint = LscEmeraldPrimary, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = if (isBangla) "সফর নিরাপত্তা ও প্রস্তুতি চেকলিস্ট" else "Study Tour Safety Checklist",
+                                text = if (isBangla) "জিরো-লস্ট-চাইল্ড ও সফর নিরাপত্তা চেকলিস্ট" else "Zero-Lost-Child Safety Checklist",
                                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                                 color = LscSlateDark
                             )
                         }
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
                         val checklistItems = listOf(
                             "সকল বাসের যান্ত্রিক ফিটনেস, ব্রেক, টায়ার ও জ্বালানি পরীক্ষা সম্পন্ন",
-                            "চালক ও সহকারীদের ট্রাফিক আইন ও গতিসীমা (ম্যাক্স ৫০ কিমি/ঘণ্টা) লিখিত ব্রিফিং",
                             "প্রতিটি বাসে সাব-গ্রুপ মেন্টর, ফার্স্ট এইড কিট ও নিরাপদ খাবার পানি নিশ্চিত",
+                            "মেট্রোরেল স্টেশন (আগারগাঁও–উত্তরা) গ্রুপ পাস ও সারিবদ্ধ বোর্ডিং ব্রিফিং",
                             "যাত্রা শুরুর প্রাক্কালে ১০০% নির্ভুল বোর্ডিং হেডকাউন্ট যাচাই",
-                            "ঐতিহাসিক স্থানে পরিদর্শন শেষে ফিরতি বাসে শতভাগ উপস্থিতি নিশ্চিতকরণ"
+                            "জ্ঞান অন্বেষণ কুইজ প্রশ্নপত্র ও ২৪টি তাৎক্ষণিক পুরস্কার সংরক্ষণ",
+                            "সফর শেষে ফিরতি বাসে শতভাগ উপস্থিতি মিলিয়ে রিসোর্টে প্রত্যাবর্তন"
                         )
 
                         checklistItems.forEachIndexed { idx, item ->
@@ -222,10 +347,9 @@ fun StudyTourScreen(
                 }
             }
 
-            // Buses List
             item {
                 Text(
-                    text = if (isBangla) "সংরক্ষিত বাস বহর ও হেডকাউন্ট নিয়ন্ত্রণ:" else "Assigned Buses & Fleet Control:",
+                    text = if (isBangla) "সংরক্ষিত বাস বহর ও ৪-ধাপ চেকপয়েন্ট হেডকাউন্ট:" else "Assigned Buses & 4-Stage Checkpoint Control:",
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
                     color = LscSlateDark,
@@ -237,6 +361,10 @@ fun StudyTourScreen(
                 BusCard(
                     vehicle = vehicle,
                     isBangla = isBangla,
+                    checkpointState = busCheckpointState,
+                    onToggleCheckpoint = { key ->
+                        busCheckpointState[key] = !(busCheckpointState[key] ?: false)
+                    },
                     onUpdateVehicle = onUpdateVehicle,
                     onCall = { phone ->
                         try {
@@ -254,9 +382,18 @@ fun StudyTourScreen(
 private fun BusCard(
     vehicle: TravelVehicleEntity,
     isBangla: Boolean,
+    checkpointState: Map<String, Boolean>,
+    onToggleCheckpoint: (String) -> Unit,
     onUpdateVehicle: (TravelVehicleEntity) -> Unit,
     onCall: (String) -> Unit
 ) {
+    val checkpoints = listOf(
+        "বাসে ওঠা",
+        "স্পট চেক",
+        "মেট্রোরেল এন্ট্রি",
+        "রিসোর্টে প্রত্যাবর্তন"
+    )
+
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -267,7 +404,6 @@ private fun BusCard(
             .testTag("bus_card_${vehicle.id}")
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
-            // Bus title and Status
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
@@ -302,7 +438,6 @@ private fun BusCard(
                     )
                 }
 
-                // Status chip dropdown / toggle
                 Surface(
                     color = when (vehicle.status) {
                         "BOARDING" -> Color(0xFFFEF3C7)
@@ -341,9 +476,42 @@ private fun BusCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Driver & In-Charge Contact
+            // 4-Stage Zero-Lost-Child Checkpoint Chips
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                items(checkpoints.indices.toList()) { idx ->
+                    val cpKey = "${vehicle.id}_$idx"
+                    val done = checkpointState[cpKey] ?: false
+                    Surface(
+                        color = if (done) Color(0xFFDCFCE7) else Color(0xFFF8FAFC),
+                        shape = RoundedCornerShape(6.dp),
+                        border = BorderStroke(
+                            1.dp,
+                            if (done) Color(0xFF86EFAC) else Color(0xFFE2E8F0)
+                        ),
+                        modifier = Modifier.clickable {
+                            onToggleCheckpoint(cpKey)
+                            if (idx == 0 && !done) {
+                                onUpdateVehicle(vehicle.copy(departureHeadcount = vehicle.capacity, status = "BOARDING"))
+                            } else if (idx == 3 && !done) {
+                                onUpdateVehicle(vehicle.copy(returnHeadcount = vehicle.capacity, status = "RETURNED"))
+                            }
+                        }
+                    ) {
+                        Text(
+                            text = "${if (done) "✓" else "○"} ${checkpoints[idx]}",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (done) Color(0xFF15803D) else LscSlateDark,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -387,17 +555,16 @@ private fun BusCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
-            Divider(color = Color(0xFFF1F5F9))
+            Spacer(modifier = Modifier.height(8.dp))
+            HorizontalDivider(color = Color(0xFFF1F5F9))
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Headcount Adjusters
+            // Headcount Adjusters + 1-Tap Full Count
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Departure Counter
                 Column {
                     Text(text = if (isBangla) "যাত্রা হেডকাউন্ট:" else "Departure:", fontSize = 10.sp, color = Color.Gray)
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -428,10 +595,15 @@ private fun BusCard(
                         ) {
                             Icon(Icons.Default.AddCircleOutline, contentDescription = "Add", modifier = Modifier.size(18.dp), tint = Color(0xFF15803D))
                         }
+                        TextButton(
+                            onClick = { onUpdateVehicle(vehicle.copy(departureHeadcount = vehicle.capacity, status = "BOARDING")) },
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
+                        ) {
+                            Text("১০০%", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF15803D))
+                        }
                     }
                 }
 
-                // Return Counter
                 Column {
                     Text(text = if (isBangla) "প্রত্যাবর্তন হেডকাউন্ট:" else "Return:", fontSize = 10.sp, color = Color.Gray)
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -461,6 +633,12 @@ private fun BusCard(
                             modifier = Modifier.size(28.dp)
                         ) {
                             Icon(Icons.Default.AddCircleOutline, contentDescription = "Add", modifier = Modifier.size(18.dp), tint = Color(0xFF1D4ED8))
+                        }
+                        TextButton(
+                            onClick = { onUpdateVehicle(vehicle.copy(returnHeadcount = vehicle.capacity, status = "RETURNED")) },
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
+                        ) {
+                            Text("১০০%", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1D4ED8))
                         }
                     }
                 }

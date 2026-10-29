@@ -1,8 +1,9 @@
 package com.example.ui.components
 
 import android.Manifest
-import android.content.Context
 import android.content.pm.PackageManager
+import android.media.AudioManager
+import android.media.ToneGenerator
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.Camera
@@ -34,7 +35,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -78,7 +81,6 @@ fun QrCodeCanvas(
                 }
             }
         } catch (_: Exception) {
-            // Reliable algorithm fallback
             val seed = abs(token.hashCode())
             fun isFinderPattern(r: Int, c: Int, size: Int): Boolean {
                 val inTL = (r in 0..6 && c in 0..6)
@@ -152,7 +154,6 @@ fun ParticipantQrDialog(
                     .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Header Row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -181,7 +182,7 @@ fun ParticipantQrDialog(
                                 color = LscSlateDark
                             )
                             Text(
-                                text = "LSC 2026 • Verified Pass",
+                                text = "WAMY Bangladesh • LSC 2026",
                                 fontSize = 11.sp,
                                 color = Color.Gray
                             )
@@ -198,7 +199,6 @@ fun ParticipantQrDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Large Scannable QR Code Frame
                 Surface(
                     color = Color.White,
                     shape = RoundedCornerShape(16.dp),
@@ -222,7 +222,6 @@ fun ParticipantQrDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Camp Code Badge
                 Surface(
                     color = Color(0xFFEFF6FF),
                     shape = RoundedCornerShape(8.dp),
@@ -240,7 +239,6 @@ fun ParticipantQrDialog(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Participant Info Card
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -287,7 +285,7 @@ fun ParticipantQrDialog(
 }
 
 /**
- * Digital ID Card with Scannable QR code.
+ * Digital ID Card with Scannable QR code and 18-Star Seal Progress Badge.
  */
 @Composable
 fun DigitalIdCard(
@@ -295,6 +293,10 @@ fun DigitalIdCard(
     language: CampLanguage,
     onClose: () -> Unit
 ) {
+    val sealCount = remember(participant.completedStationSeals) {
+        participant.completedStationSeals.split(",").count { it.isNotBlank() }
+    }
+
     Dialog(onDismissRequest = onClose) {
         Card(
             shape = RoundedCornerShape(20.dp),
@@ -311,7 +313,6 @@ fun DigitalIdCard(
                     .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Header Badge
                 Surface(
                     color = LscEmeraldPrimary,
                     shape = RoundedCornerShape(12.dp),
@@ -328,31 +329,30 @@ fun DigitalIdCard(
                         Spacer(modifier = Modifier.width(10.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = if (language == CampLanguage.BANGLA) "আবাসিক জীবন দক্ষতা ক্যাম্প ২০২৬" else "LIFE SKILLS CAMP 2026",
+                                text = if (language == CampLanguage.BANGLA) "লাইফ স্কিলস ক্যাম্পিং ২০২৬ — ওয়ামী বাংলাদেশ" else "LIFE SKILLS CAMPING 2026 — WAMY BD",
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp
+                                fontSize = 12.sp
                             )
                             Text(
-                                text = if (language == CampLanguage.BANGLA) "ডিজিটাল আইডি ও অ্যাক্সেস কার্ড" else "OFFICIAL PARTICIPANT ID CARD",
+                                text = if (language == CampLanguage.BANGLA) "নিজকে গড়ো, গড়তে শেখাও • ২২–২৬ অক্টোবর ২০২৬" else "OFFICIAL PARTICIPANT ID CARD",
                                 color = LscGoldLight,
-                                fontSize = 11.sp,
+                                fontSize = 10.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
-                // Avatar and Essential Tags
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(72.dp)
+                            .size(68.dp)
                             .clip(CircleShape)
                             .background(LscEmeraldLight)
                             .border(2.dp, LscEmeraldPrimary, CircleShape),
@@ -362,11 +362,11 @@ fun DigitalIdCard(
                             imageVector = Icons.Default.Person,
                             contentDescription = "Avatar",
                             tint = LscEmeraldPrimary,
-                            modifier = Modifier.size(44.dp)
+                            modifier = Modifier.size(40.dp)
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(14.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
 
                     Column {
                         Text(
@@ -379,7 +379,7 @@ fun DigitalIdCard(
                             style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
                         )
                         Spacer(modifier = Modifier.height(4.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Surface(
                                 color = Color(0xFFEFF6FF),
                                 shape = RoundedCornerShape(6.dp),
@@ -387,14 +387,13 @@ fun DigitalIdCard(
                             ) {
                                 Text(
                                     text = participant.campCode,
-                                    fontSize = 12.sp,
+                                    fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     fontFamily = FontFamily.Monospace,
                                     color = Color(0xFF1D4ED8),
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                 )
                             }
-                            Spacer(modifier = Modifier.width(6.dp))
                             Surface(
                                 color = Color(0xFFFEF3C7),
                                 shape = RoundedCornerShape(6.dp)
@@ -407,15 +406,26 @@ fun DigitalIdCard(
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                 )
                             }
+                            Surface(
+                                color = Color(0xFFECFDF5),
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text(
+                                    text = "★ $sealCount/18",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = LscEmeraldPrimary,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 HorizontalDivider(color = Color(0xFFE2E8F0))
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
-                // Detail Grid (Group, Sub-group, Dorm Room, District)
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -427,28 +437,28 @@ fun DigitalIdCard(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column {
-                            Text(text = if (language == CampLanguage.BANGLA) "গ্রুপ (Group)" else "Assigned Group", fontSize = 11.sp, color = Color.Gray)
-                            Text(text = "${participant.groupNameBn} (${participant.subgroup})", fontWeight = FontWeight.Bold, color = LscEmeraldPrimary, fontSize = 13.sp)
+                            Text(text = if (language == CampLanguage.BANGLA) "গ্রুপ ও সাব-গ্রুপ" else "Group & Subgroup", fontSize = 10.sp, color = Color.Gray)
+                            Text(text = "${participant.groupNameBn} (${participant.subgroup})", fontWeight = FontWeight.Bold, color = LscEmeraldPrimary, fontSize = 12.sp)
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            Text(text = if (language == CampLanguage.BANGLA) "আবাসন (Room)" else "Dorm Room", fontSize = 11.sp, color = Color.Gray)
-                            Text(text = "${participant.roomNo} | ${participant.bedNo}", fontWeight = FontWeight.Bold, color = LscSlateDark, fontSize = 13.sp)
+                            Text(text = if (language == CampLanguage.BANGLA) "কটেজ ও বেড" else "Room & Bed", fontSize = 10.sp, color = Color.Gray)
+                            Text(text = "${participant.roomNo} | ${participant.bedNo}", fontWeight = FontWeight.Bold, color = LscSlateDark, fontSize = 12.sp)
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column {
-                            Text(text = if (language == CampLanguage.BANGLA) "জেলা (District)" else "District", fontSize = 11.sp, color = Color.Gray)
-                            Text(text = "${participant.districtBn} (${participant.districtEn})", fontWeight = FontWeight.Medium, fontSize = 12.sp)
+                            Text(text = if (language == CampLanguage.BANGLA) "জেলা ও সংস্থা" else "District & Org", fontSize = 10.sp, color = Color.Gray)
+                            Text(text = "${participant.districtBn} • ${participant.organization}", fontWeight = FontWeight.Medium, fontSize = 11.sp)
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            Text(text = if (language == CampLanguage.BANGLA) "বয়স ও লিঙ্গ" else "Age & Gender", fontSize = 11.sp, color = Color.Gray)
-                            Text(text = "${participant.age} বছর | ${if (participant.gender == "Male") "ছেলে" else "মেয়ে"}", fontWeight = FontWeight.Medium, fontSize = 12.sp)
+                            Text(text = if (language == CampLanguage.BANGLA) "শ্রেণি ও লিঙ্গ" else "Class & Gender", fontSize = 10.sp, color = Color.Gray)
+                            Text(text = "${participant.classLevel} | ${if (participant.gender == "Male") "ছেলে" else "মেয়ে"}", fontWeight = FontWeight.Medium, fontSize = 11.sp)
                         }
                     }
 
@@ -475,12 +485,11 @@ fun DigitalIdCard(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                // High-resolution Canvas QR Code
                 Box(
                     modifier = Modifier
-                        .size(130.dp)
+                        .size(125.dp)
                         .background(Color.White)
                         .border(1.dp, Color(0xFFCBD5E1), RoundedCornerShape(12.dp))
                         .padding(10.dp)
@@ -489,11 +498,11 @@ fun DigitalIdCard(
                 ) {
                     QrCodeCanvas(
                         token = participant.campCode,
-                        modifier = Modifier.size(110.dp)
+                        modifier = Modifier.size(105.dp)
                     )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = "ID: ${participant.campCode} • VERIFIED",
                     fontSize = 11.sp,
@@ -502,7 +511,7 @@ fun DigitalIdCard(
                     color = Color.Gray
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Button(
                     onClick = onClose,
@@ -552,45 +561,59 @@ private class QrCodeAnalyzer(
                 onQrDetected(text)
             }
         } catch (_: Exception) {
-            // No QR in this frame (NotFoundException) or unreadable frame — ignore.
         } finally {
             image.close()
         }
     }
 }
 
+private val OFFICIAL_2026_STATION_OPTIONS = listOf(
+    "স্টেশন ১: সাহিত্য, সংস্কৃতি ও শিষ্টাচার",
+    "স্টেশন ২: লাইফ স্কিলস ও ক্রাফট প্রজেক্ট",
+    "স্টেশন ৩: শিশুতোষ বিষয়ক আলোচনা",
+    "স্টেশন ৪: ফিকাহ ও আমলী সালাত-ওযু",
+    "স্টেশন ৫: রিফ্রেকটিভ সেশন ও ক্যারিয়ার",
+    "স্টেশন ৬: মেডিকেল চেকআপ ও ডেন্টাল বাস"
+)
+
 /**
- * Camera-based scanner interface for station leaders to quickly log attendance.
- * Features:
- * - Runtime Camera permission handling
- * - Live CameraX viewfinder preview with animated laser reticle
- * - Station selection (Stations 1-6) and Session/Event selection
- * - Torch / Flashlight and Camera switch controls
- * - Quick simulation chips and manual code entry fallback
- * - Instant attendance logging and recent scans list
+ * Camera-based Continuous Rapid QR Gun Scanner for Station Manager, Moderators & Staff.
+ * Supports non-stop scanning (with 1.2s duplicate debounce, audio beep & haptic pulse)
+ * so 30 students can be scanned in ~35 seconds without reopening the camera!
  */
 @Composable
 fun UniversalScannerDialog(
     language: CampLanguage,
     initialMode: String = "STATION",
+    initialStationId: Int = 1,
+    continuousModeByDefault: Boolean = true,
     onDismiss: () -> Unit,
-    onScanCode: (campCode: String, mode: String) -> Unit
+    onScanCode: (campCode: String, mode: String) -> Unit,
+    onScanCodeWithExtra: ((campCode: String, mode: String, extraArg: String, keepScannerOpen: Boolean) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val haptic = LocalHapticFeedback.current
 
     var selectedMode by remember { mutableStateOf(initialMode) }
-    var selectedStation by remember { mutableStateOf("স্টেশন ১: ফার্স্ট এইড ও সারভাইভাল") }
+    var selectedStation by remember(initialStationId) {
+        mutableStateOf(
+            OFFICIAL_2026_STATION_OPTIONS.getOrElse((initialStationId - 1).coerceIn(0, 5)) {
+                OFFICIAL_2026_STATION_OPTIONS.first()
+            }
+        )
+    }
+    var continuousGunMode by remember { mutableStateOf(continuousModeByDefault) }
     var manualInput by remember { mutableStateOf("") }
     var isTorchOn by remember { mutableStateOf(false) }
     var useBackCamera by remember { mutableStateOf(true) }
     var cameraInstance by remember { mutableStateOf<Camera?>(null) }
     var cameraProvider by remember { mutableStateOf<ProcessCameraProvider?>(null) }
     var lastScannedCode by remember { mutableStateOf<String?>(null) }
+    var lastScanTimestampMs by remember { mutableLongStateOf(0L) }
     val recentScans = remember { mutableStateListOf<String>() }
     val analysisExecutor = remember { Executors.newSingleThreadExecutor() }
 
-    // Release the camera and analyzer thread when the scanner is dismissed.
     DisposableEffect(Unit) {
         onDispose {
             try {
@@ -602,7 +625,6 @@ fun UniversalScannerDialog(
         }
     }
 
-    // Camera permission state
     var hasCameraPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
@@ -627,17 +649,35 @@ fun UniversalScannerDialog(
     )
 
     fun handleScan(code: String) {
-        val trimmed = code.trim().uppercase()
+        val trimmed = code.trim()
         if (trimmed.isNotBlank()) {
+            val now = System.currentTimeMillis()
+            // Debounce identical QR code within 1.25 seconds in continuous camera frames
+            if (trimmed.equals(lastScannedCode, ignoreCase = true) && (now - lastScanTimestampMs) < 1250L) {
+                return
+            }
             lastScannedCode = trimmed
-            if (!recentScans.contains(trimmed)) {
+            lastScanTimestampMs = now
+
+            if (recentScans.none { it.equals(trimmed, ignoreCase = true) }) {
                 recentScans.add(0, trimmed)
-                // Keep only the last 20 scans to prevent unbounded growth
-                if (recentScans.size > 20) {
+                if (recentScans.size > 40) {
                     recentScans.removeAt(recentScans.size - 1)
                 }
             }
-            onScanCode(trimmed, selectedMode)
+
+            try {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                ToneGenerator(AudioManager.STREAM_NOTIFICATION, 85)
+                    .startTone(ToneGenerator.TONE_PROP_BEEP, 120)
+            } catch (_: Exception) {}
+
+            val extra = if (selectedMode == "STATION") selectedStation else ""
+            if (onScanCodeWithExtra != null) {
+                onScanCodeWithExtra(trimmed, selectedMode, extra, continuousGunMode)
+            } else {
+                onScanCode(trimmed, selectedMode)
+            }
         }
     }
 
@@ -664,7 +704,7 @@ fun UniversalScannerDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                         Box(
                             modifier = Modifier
                                 .size(36.dp)
@@ -677,12 +717,12 @@ fun UniversalScannerDialog(
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
                             Text(
-                                text = if (language == CampLanguage.BANGLA) "ক্যামেরা কিউআর স্ক্যানার" else "Camera QR Scanner",
+                                text = if (language == CampLanguage.BANGLA) "র‍্যাপিড কিউআর গান স্ক্যানার" else "Rapid QR Gun Scanner",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                 color = LscSlateDark
                             )
                             Text(
-                                text = if (language == CampLanguage.BANGLA) "স্টেশন লিডার হাজিরা ইন্টারফেস" else "Station Attendance Scanner",
+                                text = if (language == CampLanguage.BANGLA) "স্টেশন হাজিরা, ★ সিল ও ডাইনিং ইন্টারফেস" else "Station Attendance, ★ Seal & Dining",
                                 fontSize = 11.sp,
                                 color = LscEmeraldPrimary,
                                 fontWeight = FontWeight.SemiBold
@@ -697,16 +737,52 @@ fun UniversalScannerDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Continuous Non-Stop Gun Mode Toggle Strip
+                Surface(
+                    color = if (continuousGunMode) Color(0xFFECFDF5) else Color(0xFFF8FAFC),
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, if (continuousGunMode) Color(0xFFA7F3D0) else Color(0xFFE2E8F0)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { continuousGunMode = !continuousGunMode }
+                        .testTag("scanner_continuous_mode_toggle")
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = if (language == CampLanguage.BANGLA)
+                                "⚡ নন-স্টপ র‍্যাপিড গান মোড (ক্যামেরা খোলা থাকবে)"
+                            else
+                                "⚡ Non-Stop Rapid Gun Mode (Keep Open)",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (continuousGunMode) Color(0xFF065F46) else LscSlateDark
+                        )
+                        Switch(
+                            checked = continuousGunMode,
+                            onCheckedChange = { continuousGunMode = it },
+                            modifier = Modifier.height(24.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
 
                 // Scan Action Selector Chips
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
                     val modes = listOf(
-                        "STATION" to (if (language == CampLanguage.BANGLA) "স্টেশন হাজিরা" else "Station"),
-                        "ATTENDANCE" to (if (language == CampLanguage.BANGLA) "সাধারণ হাজিরা" else "General"),
+                        "STATION" to (if (language == CampLanguage.BANGLA) "স্টেশন ★" else "Station"),
+                        "ATTENDANCE" to (if (language == CampLanguage.BANGLA) "হাজিরা" else "General"),
                         "MEAL" to (if (language == CampLanguage.BANGLA) "খাবার" else "Meal"),
                         "CHECK_IN" to (if (language == CampLanguage.BANGLA) "চেক-ইন" else "Check-in")
                     )
@@ -715,7 +791,7 @@ fun UniversalScannerDialog(
                         FilterChip(
                             selected = selectedMode == modeKey,
                             onClick = { selectedMode = modeKey },
-                            label = { Text(text = label, fontSize = 11.sp) },
+                            label = { Text(text = label, fontSize = 10.sp) },
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = LscEmeraldPrimary,
                                 selectedLabelColor = Color.White
@@ -725,7 +801,7 @@ fun UniversalScannerDialog(
                     }
                 }
 
-                // Station Selection Dropdown / Selector (Active when mode is STATION)
+                // Station Selection Selector (Active when mode is STATION)
                 if (selectedMode == "STATION") {
                     Spacer(modifier = Modifier.height(8.dp))
                     Surface(
@@ -741,33 +817,26 @@ fun UniversalScannerDialog(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = if (language == CampLanguage.BANGLA) "নির্বাচিত স্টেশন:" else "Station:",
+                                    text = selectedStation,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF1E3A8A)
+                                    color = Color(0xFF1E3A8A),
+                                    modifier = Modifier.weight(1f)
                                 )
                                 Text(
-                                    text = "স্ক্যান সম্পন্ন: ${recentScans.size} জন",
+                                    text = "স্ক্যান: ${recentScans.size} জন",
                                     fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
+                                    fontWeight = FontWeight.ExtraBold,
                                     color = LscEmeraldPrimary
                                 )
                             }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            val stationOptions = listOf(
-                                "স্টেশন ১: ফার্স্ট এইড ও সারভাইভাল",
-                                "স্টেশন ২: ফায়ার সেফটি ও দুর্যোগ",
-                                "স্টেশন ৩: তাঁবু স্থাপন ও নট ক্রাফট",
-                                "স্টেশন ৪: ওরিয়েন্টিয়ারিং ও কম্পাস",
-                                "স্টেশন ৫: জীবন দক্ষতা ও নেতৃত্ব",
-                                "স্টেশন ৬: দলীয় সমস্যা সমাধান"
-                            )
+                            Spacer(modifier = Modifier.height(6.dp))
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 (1..3).forEach { stationNum ->
-                                    val opt = stationOptions[stationNum - 1]
+                                    val opt = OFFICIAL_2026_STATION_OPTIONS[stationNum - 1]
                                     val isSel = selectedStation.startsWith("স্টেশন $stationNum")
                                     Surface(
                                         color = if (isSel) Color(0xFF1D4ED8) else Color.White,
@@ -794,7 +863,7 @@ fun UniversalScannerDialog(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 (4..6).forEach { stationNum ->
-                                    val opt = stationOptions[stationNum - 1]
+                                    val opt = OFFICIAL_2026_STATION_OPTIONS[stationNum - 1]
                                     val isSel = selectedStation.startsWith("স্টেশন $stationNum")
                                     Surface(
                                         color = if (isSel) Color(0xFF1D4ED8) else Color.White,
@@ -821,19 +890,17 @@ fun UniversalScannerDialog(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Camera Scanner Box (with CameraX Preview or Permission Prompt)
+                // Camera Scanner Box
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(210.dp)
+                        .height(200.dp)
                         .clip(RoundedCornerShape(16.dp))
                         .background(Color(0xFF0F172A))
                         .testTag("scanner_viewfinder"),
                     contentAlignment = Alignment.Center
                 ) {
                     if (hasCameraPermission) {
-                        // Live CameraX Preview + QR frame analysis. `key` rebinds when the
-                        // selected camera changes so the front/back switch actually works.
                         key(useBackCamera) {
                             AndroidView(
                                 factory = { ctx ->
@@ -869,7 +936,6 @@ fun UniversalScannerDialog(
                                                     imageAnalysis
                                                 )
                                             } catch (_: Exception) {
-                                                // Fallback to back camera if preferred camera fails
                                                 useBackCamera = true
                                                 try {
                                                     provider.bindToLifecycle(
@@ -883,7 +949,6 @@ fun UniversalScannerDialog(
                                                 }
                                             }
                                         } catch (_: Exception) {
-                                            // Graceful fallback for devices/emulators without camera hardware
                                         }
                                     }, ContextCompat.getMainExecutor(ctx))
                                     previewView
@@ -892,7 +957,6 @@ fun UniversalScannerDialog(
                             )
                         }
                     } else {
-                        // Permission Request Prompt UI
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -904,23 +968,16 @@ fun UniversalScannerDialog(
                                 imageVector = Icons.Default.PhotoCamera,
                                 contentDescription = null,
                                 tint = LscEmeraldLight,
-                                modifier = Modifier.size(36.dp)
+                                modifier = Modifier.size(34.dp)
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 text = if (language == CampLanguage.BANGLA) "ক্যামেরা স্ক্যানার চালু করুন" else "Enable Camera Scanner",
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp
                             )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = if (language == CampLanguage.BANGLA) "অংশগ্রহণকারীদের কিউআর কোড স্ক্যান করতে ক্যামেরা অনুমতি দিন" else "Grant camera permission to scan QR badges",
-                                color = Color.White.copy(alpha = 0.7f),
-                                fontSize = 10.sp,
-                                textAlign = TextAlign.Center
-                            )
-                            Spacer(modifier = Modifier.height(10.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
                             Button(
                                 onClick = { cameraPermissionLauncher.launch(Manifest.permission.CAMERA) },
                                 colors = ButtonDefaults.buttonColors(containerColor = LscEmeraldPrimary),
@@ -934,23 +991,20 @@ fun UniversalScannerDialog(
                         }
                     }
 
-                    // Reticle Framing Overlay
                     Box(
                         modifier = Modifier
-                            .size(160.dp)
+                            .size(150.dp)
                             .border(2.dp, LscEmeraldLight.copy(alpha = 0.8f), RoundedCornerShape(12.dp))
                     )
 
-                    // Laser Line Animation
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(0.7f)
                             .height(2.dp)
-                            .graphicsLayer { translationY = (laserOffset - 90).dp.toPx() }
+                            .graphicsLayer { translationY = (laserOffset - 85).dp.toPx() }
                             .background(Color(0xFF10B981))
                     )
 
-                    // Top Camera Controls (Torch and Camera Switch)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -996,7 +1050,6 @@ fun UniversalScannerDialog(
                         }
                     }
 
-                    // Status Bar at Bottom of Viewfinder
                     Surface(
                         color = Color.Black.copy(alpha = 0.6f),
                         shape = RoundedCornerShape(6.dp),
@@ -1005,7 +1058,7 @@ fun UniversalScannerDialog(
                             .padding(bottom = 8.dp)
                     ) {
                         Text(
-                            text = if (language == CampLanguage.BANGLA) "কিউআর কোড ফ্রেমের মধ্যে রাখুন..." else "Align QR code within frame...",
+                            text = if (language == CampLanguage.BANGLA) "আইডি কার্ডের QR কোড ফ্রেমের মধ্যে ধরুন..." else "Align ID QR code within frame...",
                             color = Color.White.copy(alpha = 0.9f),
                             fontSize = 11.sp,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
@@ -1015,7 +1068,7 @@ fun UniversalScannerDialog(
 
                 // Recent Scan Feedback Banner
                 if (lastScannedCode != null) {
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     Surface(
                         color = Color(0xFFECFDF5),
                         shape = RoundedCornerShape(10.dp),
@@ -1032,7 +1085,7 @@ fun UniversalScannerDialog(
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {
                                 Text(
-                                    text = "✓ $lastScannedCode স্ক্যান সম্পন্ন!",
+                                    text = "✓ $lastScannedCode স্ক্যান ও ★ সিল সম্পন্ন! (মোট: ${recentScans.size})",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF059669)
@@ -1047,48 +1100,48 @@ fun UniversalScannerDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
-                // Fast Simulation Preset Chips (for Station Roll-call and Low-light Testing)
+                // Fast Simulation Preset Chips (Real 2026 Roster Codes)
                 Text(
-                    text = if (language == CampLanguage.BANGLA) "দ্রুত রোল-কল ট্যাপ সিমুলেশন:" else "Quick Roll-Call Presets:",
+                    text = if (language == CampLanguage.BANGLA) "দ্রুত রোল-কল ট্যাপ সিমুলেশন (২০২৬ রোস্টার):" else "Quick Roll-Call Presets (2026 Roster):",
                     fontSize = 11.sp,
                     color = Color.Gray,
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     OutlinedButton(
-                        onClick = { handleScan("LSC-2026-001") },
+                        onClick = { handleScan("Bukhari-1-1") },
                         modifier = Modifier.weight(1f).testTag("scan_sample_1_btn"),
                         contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
                     ) {
-                        Text("LSC-001", fontSize = 11.sp)
+                        Text("Bukhari-1-1", fontSize = 10.sp)
                     }
                     OutlinedButton(
-                        onClick = { handleScan("LSC-2026-029") },
+                        onClick = { handleScan("Shafi'ee-1-1") },
                         modifier = Modifier.weight(1f).testTag("scan_sample_29_btn"),
                         contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
                     ) {
-                        Text("LSC-029", fontSize = 11.sp)
+                        Text("Shafi'ee-1-1", fontSize = 10.sp)
                     }
                     OutlinedButton(
-                        onClick = { handleScan("LSC-2026-065") },
+                        onClick = { handleScan("Sumaiya-1-1") },
                         modifier = Modifier.weight(1f).testTag("scan_sample_65_btn"),
                         contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
                     ) {
-                        Text("LSC-065", fontSize = 11.sp)
+                        Text("Sumaiya-1-1", fontSize = 10.sp)
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                // Manual Input Fallback
+                // Manual Input Fallback (Supports Camp Code OR Orphan File No)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
@@ -1096,7 +1149,7 @@ fun UniversalScannerDialog(
                     OutlinedTextField(
                         value = manualInput,
                         onValueChange = { manualInput = it },
-                        placeholder = { Text("LSC-2026-xxx", fontSize = 12.sp) },
+                        placeholder = { Text("Bukhari-1-1 / ফাইল নং", fontSize = 12.sp) },
                         modifier = Modifier.weight(1f).testTag("manual_camp_code_input"),
                         singleLine = true
                     )

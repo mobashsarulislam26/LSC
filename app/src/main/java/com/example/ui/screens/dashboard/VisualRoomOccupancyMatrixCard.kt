@@ -30,7 +30,6 @@ import androidx.compose.ui.window.Dialog
 import com.example.data.model.CampLanguage
 import com.example.data.model.ParticipantEntity
 import com.example.data.model.RoomEntity
-import com.example.ui.theme.LscEmeraldLight
 import com.example.ui.theme.LscEmeraldPrimary
 import com.example.ui.theme.LscSlateDark
 
@@ -52,16 +51,25 @@ private val banglaDigitMap = mapOf(
 fun normalizeRoomDigits(raw: String): String =
     raw.map { banglaDigitMap[it] ?: it }.joinToString("").filter { it.isDigit() }
 
+private fun normalizeRoomAsciiLetters(raw: String): String =
+    raw.filter { it.isLetter() && it.code < 128 }.lowercase()
+
 fun matchParticipantsToRoom(
     room: RoomEntity,
     participants: List<ParticipantEntity>
 ): List<ParticipantEntity> {
-    val roomDigits = normalizeRoomDigits(room.roomNo)
+    val roomTrimmed = room.roomNo.trim()
+    val roomDigits = normalizeRoomDigits(roomTrimmed)
+    val roomLetters = normalizeRoomAsciiLetters(roomTrimmed)
     return participants.filter { p ->
-        val pRoomDigits = normalizeRoomDigits(p.roomNo)
-        p.roomNo.equals(room.roomNo, ignoreCase = true) ||
-            (roomDigits.isNotBlank() && pRoomDigits == roomDigits) ||
-            p.roomNo.contains(room.roomNo, ignoreCase = true)
+        val pTrimmed = p.roomNo.trim()
+        if (pTrimmed.isEmpty()) return@filter false
+        if (pTrimmed.equals(roomTrimmed, ignoreCase = true)) return@filter true
+        val pRoomDigits = normalizeRoomDigits(pTrimmed)
+        val pLetters = normalizeRoomAsciiLetters(pTrimmed)
+        // Match pure Bangla/English room numbers (e.g., "১০১" == "101") without colliding "P1-Down-A" vs "P1-Down-B"
+        (roomDigits.isNotBlank() && pRoomDigits == roomDigits && pLetters == roomLetters) ||
+            (roomLetters.isEmpty() && pLetters.isEmpty() && pTrimmed.contains(roomTrimmed, ignoreCase = true))
     }
 }
 
@@ -78,7 +86,11 @@ fun calculateRoomOccupancy(
 
     rooms.forEach { room ->
         val directMatches = matchParticipantsToRoom(room, participants)
-        val assigned = if (directMatches.isNotEmpty() || participants.isNotEmpty()) {
+        val assigned = if (directMatches.isNotEmpty()) {
+            directMatches.size
+        } else if (room.assignedGroupId.equals("staff", ignoreCase = true) || room.assignedGroupId.equals("guest", ignoreCase = true)) {
+            room.assignedCount
+        } else if (participants.isNotEmpty()) {
             directMatches.size
         } else {
             room.assignedCount
@@ -108,8 +120,9 @@ fun calculateRoomOccupancy(
 
 /**
  * Visual Room & Bed Occupancy Matrix Card.
- * Gives camp administrators a live layout of resort cottages, room capacity,
- * available beds, and bed allocation roster.
+ * Gives camp administrators & Evaluation Dept a live layout of Rangamati Waterfront Resort cottages
+ * (Platinum 1-6, Golden 1-7, Rajonigandha/Silver), room capacity, available beds, bed roster,
+ * and 1-tap Room Inspection Cleanliness Scoring (Table 25 & Day 2 Group Inspection).
  */
 @Composable
 fun VisualRoomOccupancyMatrixCard(
@@ -117,10 +130,12 @@ fun VisualRoomOccupancyMatrixCard(
     participants: List<ParticipantEntity>,
     language: CampLanguage,
     onNavigateToRooms: () -> Unit = {},
+    onUpdateRoomInspection: ((RoomEntity, Int, String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var selectedBuildingFilter by remember { mutableStateOf("ALL") }
     var selectedRoomForDetail by remember { mutableStateOf<RoomEntity?>(null) }
+    var showAllRoomsInSummary by remember { mutableStateOf(false) }
 
     val buildings = remember(rooms) {
         listOf("ALL") + rooms.map { it.buildingName }.distinct()
@@ -133,6 +148,14 @@ fun VisualRoomOccupancyMatrixCard(
     val filteredRooms = remember(rooms, selectedBuildingFilter) {
         if (selectedBuildingFilter == "ALL") rooms
         else rooms.filter { it.buildingName.equals(selectedBuildingFilter, ignoreCase = true) }
+    }
+
+    val displayedRooms = remember(filteredRooms, selectedBuildingFilter, showAllRoomsInSummary) {
+        if (selectedBuildingFilter == "ALL" && !showAllRoomsInSummary && filteredRooms.size > 12) {
+            filteredRooms.take(12)
+        } else {
+            filteredRooms
+        }
     }
 
     Card(
@@ -151,7 +174,7 @@ fun VisualRoomOccupancyMatrixCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                     Box(
                         modifier = Modifier
                             .size(38.dp)
@@ -171,9 +194,9 @@ fun VisualRoomOccupancyMatrixCard(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = if (language == CampLanguage.BANGLA)
-                                    "ডিজিটাল রুম ও বেড অকুপেন্সি গ্রিড"
+                                    "রিসোর্ট আবাসন ও রুম পরিদর্শন গ্রিড"
                                 else
-                                    "Visual Dormitory & Bed Allocation Matrix",
+                                    "Resort Dormitory & Inspection Matrix",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
                                 color = LscSlateDark
@@ -184,7 +207,7 @@ fun VisualRoomOccupancyMatrixCard(
                                 shape = RoundedCornerShape(4.dp)
                             ) {
                                 Text(
-                                    text = "Resort Grid",
+                                    text = "Platinum • Golden • Silver",
                                     fontSize = 9.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF1D4ED8),
@@ -194,9 +217,9 @@ fun VisualRoomOccupancyMatrixCard(
                         }
                         Text(
                             text = if (language == CampLanguage.BANGLA)
-                                "রাঙ্গামাটি রিসোর্টের কটেজ ও রুমভিত্তিক লাইভ বেড অকুপেন্সি"
+                                "রাঙামাটি ওয়াটারফ্রন্ট রিসোর্ট (শফিপুর, গাজীপুর) — ৭১টি রুমের লাইভ বেড ও পরিদর্শন নম্বর"
                             else
-                                "Rangamati Resort cottage & room capacity matrix",
+                                "Rangamati Waterfront Resort — 71 rooms live occupancy & inspection score",
                             fontSize = 11.sp,
                             color = Color.Gray
                         )
@@ -251,7 +274,7 @@ fun VisualRoomOccupancyMatrixCard(
                         color = Color(0xFF059669)
                     )
                     Text(
-                        text = if (language == CampLanguage.BANGLA) "পূর্ণ বেড" else "Occupied Beds",
+                        text = if (language == CampLanguage.BANGLA) "বরাদ্দ বেড" else "Occupied Beds",
                         fontSize = 10.sp,
                         color = Color.Gray
                     )
@@ -267,7 +290,7 @@ fun VisualRoomOccupancyMatrixCard(
                         color = if (summary.totalAvailableBeds > 0) Color(0xFF2563EB) else Color.Gray
                     )
                     Text(
-                        text = if (language == CampLanguage.BANGLA) "খালি বেড" else "Available Beds",
+                        text = if (language == CampLanguage.BANGLA) "অতিরিক্ত বেড" else "Spare Beds",
                         fontSize = 10.sp,
                         color = Color.Gray
                     )
@@ -300,7 +323,7 @@ fun VisualRoomOccupancyMatrixCard(
                 items(buildings) { building ->
                     val isSelected = selectedBuildingFilter == building
                     val label = when (building) {
-                        "ALL" -> if (language == CampLanguage.BANGLA) "সকল ভবন ও কটেজ" else "All Cottages"
+                        "ALL" -> if (language == CampLanguage.BANGLA) "সকল ভবন (${rooms.size})" else "All Cottages (${rooms.size})"
                         else -> building
                     }
                     FilterChip(
@@ -324,7 +347,7 @@ fun VisualRoomOccupancyMatrixCard(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.testTag("rooms_matrix_grid")
             ) {
-                filteredRooms.chunked(2).forEach { roomPair ->
+                displayedRooms.chunked(2).forEach { roomPair ->
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -333,7 +356,11 @@ fun VisualRoomOccupancyMatrixCard(
                             val directMatches = remember(room, participants) {
                                 matchParticipantsToRoom(room, participants)
                             }
-                            val assignedCount = if (directMatches.isNotEmpty() || participants.isNotEmpty()) {
+                            val assignedCount = if (directMatches.isNotEmpty()) {
+                                directMatches.size.coerceAtMost(room.capacity)
+                            } else if (room.assignedGroupId.equals("staff", ignoreCase = true) || room.assignedGroupId.equals("guest", ignoreCase = true)) {
+                                room.assignedCount.coerceAtMost(room.capacity)
+                            } else if (participants.isNotEmpty()) {
                                 directMatches.size.coerceAtMost(room.capacity)
                             } else {
                                 room.assignedCount.coerceAtMost(room.capacity)
@@ -359,14 +386,14 @@ fun VisualRoomOccupancyMatrixCard(
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(
-                                                text = if (language == CampLanguage.BANGLA) "রুম ${room.roomNo}" else "Room ${room.roomNo}",
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 13.sp,
-                                                color = LscSlateDark
-                                            )
-                                        }
+                                        Text(
+                                            text = room.roomNo,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 12.sp,
+                                            color = LscSlateDark,
+                                            maxLines = 1,
+                                            modifier = Modifier.weight(1f)
+                                        )
 
                                         // Full or Available Bed Badge
                                         Surface(
@@ -386,11 +413,33 @@ fun VisualRoomOccupancyMatrixCard(
                                         }
                                     }
 
-                                    Text(
-                                        text = "${room.buildingName} • ${room.floor}",
-                                        fontSize = 10.sp,
-                                        color = Color.Gray
-                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "${room.buildingName} • ${room.floor}",
+                                            fontSize = 10.sp,
+                                            color = Color.Gray,
+                                            maxLines = 1,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        if (room.cleanlinessScore > 0) {
+                                            Surface(
+                                                color = Color(0xFFFEF3C7),
+                                                shape = RoundedCornerShape(4.dp)
+                                            ) {
+                                                Text(
+                                                    text = "★ ${room.cleanlinessScore}/10",
+                                                    fontSize = 9.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color(0xFFB45309),
+                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                )
+                                            }
+                                        }
+                                    }
 
                                     Spacer(modifier = Modifier.height(6.dp))
 
@@ -413,7 +462,7 @@ fun VisualRoomOccupancyMatrixCard(
                                     }
                                     Spacer(modifier = Modifier.height(3.dp))
                                     LinearProgressIndicator(
-                                        progress = { (assignedCount.toFloat() / room.capacity.toFloat()).coerceIn(0f, 1f) },
+                                        progress = { (assignedCount.toFloat() / room.capacity.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f) },
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .height(5.dp)
@@ -440,47 +489,81 @@ fun VisualRoomOccupancyMatrixCard(
                     }
                 }
             }
+
+            if (selectedBuildingFilter == "ALL" && filteredRooms.size > 12) {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = { showAllRoomsInSummary = !showAllRoomsInSummary },
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = if (showAllRoomsInSummary) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = if (showAllRoomsInSummary) {
+                            if (language == CampLanguage.BANGLA) "সংক্ষিপ্ত ভিউ দেখুন" else "Collapse Rooms"
+                        } else {
+                            if (language == CampLanguage.BANGLA) "বাকি ${filteredRooms.size - 12}টি রুম দেখুন (মোট ${filteredRooms.size}টি)" else "Show All ${filteredRooms.size} Rooms"
+                        },
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
         }
     }
 
-    // Interactive Room Bed Roster Detail Dialog
+    // Interactive Room Bed Roster & Evaluation Inspection Dialog
     selectedRoomForDetail?.let { room ->
-        val roomOccupants = remember(room, participants, rooms) {
-            val directMatches = matchParticipantsToRoom(room, participants)
+        val latestRoom = rooms.find { it.id == room.id } ?: room
+        val roomOccupants = remember(latestRoom, participants, rooms) {
+            val directMatches = matchParticipantsToRoom(latestRoom, participants)
 
             if (directMatches.isNotEmpty()) {
-                directMatches.take(room.capacity)
-            } else if (room.assignedGroupId.isNotBlank()) {
-                val groupParticipants = participants.filter { it.groupId == room.assignedGroupId }
-                val roomsInSameGroup = rooms.filter { it.assignedGroupId == room.assignedGroupId }
-                val roomIndex = roomsInSameGroup.indexOf(room).coerceAtLeast(0)
-                val startIndex = roomIndex * room.capacity
-                groupParticipants.drop(startIndex).take(room.capacity)
+                directMatches.take(latestRoom.capacity)
+            } else if (latestRoom.assignedGroupId.isNotBlank() &&
+                !latestRoom.assignedGroupId.equals("staff", ignoreCase = true) &&
+                !latestRoom.assignedGroupId.equals("guest", ignoreCase = true)
+            ) {
+                val groupParticipants = participants.filter { it.groupId == latestRoom.assignedGroupId }
+                val roomsInSameGroup = rooms.filter { it.assignedGroupId == latestRoom.assignedGroupId }
+                val roomIndex = roomsInSameGroup.indexOf(latestRoom).coerceAtLeast(0)
+                val startIndex = roomIndex * latestRoom.capacity
+                groupParticipants.drop(startIndex).take(latestRoom.capacity)
             } else {
                 emptyList()
             }
         }
 
         RoomBedRosterDialog(
-            room = room,
+            room = latestRoom,
             occupants = roomOccupants,
             language = language,
+            onSaveInspection = onUpdateRoomInspection,
             onDismiss = { selectedRoomForDetail = null }
         )
     }
 }
 
 /**
- * Modal Dialog showing detailed bed-by-bed allocation matrix for a selected room.
+ * Modal Dialog showing detailed bed-by-bed allocation matrix & 1-tap Room Inspection Score
+ * (Evaluation & Monitoring Committee — Table 25, Duty #7).
  */
 @Composable
 fun RoomBedRosterDialog(
     room: RoomEntity,
     occupants: List<ParticipantEntity>,
     language: CampLanguage,
+    onSaveInspection: ((RoomEntity, Int, String) -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
+    var inspectionScore by remember(room.id, room.cleanlinessScore) { mutableIntStateOf(room.cleanlinessScore) }
+    var inspectionNote by remember(room.id, room.notes) { mutableStateOf(room.notes) }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -503,12 +586,12 @@ fun RoomBedRosterDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Hotel, contentDescription = null, tint = Color(0xFF2563EB), modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = if (language == CampLanguage.BANGLA) "রুম ${room.roomNo} - ${room.buildingName}" else "Room ${room.roomNo} - ${room.buildingName}",
+                                text = "${room.roomNo} • ${room.buildingName}",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                 color = LscSlateDark
                             )
@@ -542,9 +625,9 @@ fun RoomBedRosterDialog(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column {
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = if (language == CampLanguage.BANGLA) "রুম লিডার / ইনচার্জ" else "Room In-Charge",
+                                    text = if (language == CampLanguage.BANGLA) "সাব-গ্রুপ / রুম ইনচার্জ" else "Room In-Charge",
                                     fontSize = 10.sp,
                                     color = Color(0xFF1D4ED8),
                                     fontWeight = FontWeight.Bold
@@ -584,6 +667,70 @@ fun RoomBedRosterDialog(
                     }
                 }
 
+                // 1-Tap Room Cleanliness & Inspection Scoring (Table 25 — Evaluation Dept)
+                if (onSaveInspection != null) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Surface(
+                        color = Color(0xFFFFFBEB),
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, Color(0xFFFDE68A)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = if (language == CampLanguage.BANGLA) "গ্রুপ আবাসন পরিদর্শন নম্বর (০–১০)" else "Room Inspection Score (0–10)",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF92400E)
+                                )
+                                Text(
+                                    text = "★ $inspectionScore / 10",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color(0xFFB45309)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                listOf(6, 7, 8, 9, 10).forEach { scoreOpt ->
+                                    val selected = inspectionScore == scoreOpt
+                                    Surface(
+                                        color = if (selected) Color(0xFFD97706) else Color.White,
+                                        shape = RoundedCornerShape(6.dp),
+                                        border = BorderStroke(1.dp, if (selected) Color(0xFFD97706) else Color(0xFFFCD34D)),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable {
+                                                inspectionScore = scoreOpt
+                                                onSaveInspection(room, scoreOpt, inspectionNote)
+                                            }
+                                    ) {
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier.padding(vertical = 6.dp)
+                                        ) {
+                                            Text(
+                                                text = "$scoreOpt",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (selected) Color.White else Color(0xFF92400E)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(14.dp))
 
                 Text(
@@ -615,7 +762,7 @@ fun RoomBedRosterDialog(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                                     Surface(
                                         color = if (occupant != null) Color(0xFFEFF6FF) else Color(0xFFF1F5F9),
                                         shape = RoundedCornerShape(4.dp)
@@ -640,18 +787,26 @@ fun RoomBedRosterDialog(
                                             )
                                             Text(
                                                 text = if (language == CampLanguage.BANGLA)
-                                                    "${occupant.campCode} • ${occupant.groupNameBn} (${occupant.subgroup})"
+                                                    "${occupant.campCode} • ${occupant.subgroup} (${occupant.districtBn})"
                                                 else
-                                                    "${occupant.campCode} • ${occupant.groupNameEn.ifBlank { occupant.groupNameBn }} (${occupant.subgroup})",
+                                                    "${occupant.campCode} • ${occupant.subgroup} (${occupant.districtEn})",
                                                 fontSize = 10.sp,
                                                 color = Color.Gray
                                             )
                                         }
                                     } else {
+                                        val specialNote = when {
+                                            room.assignedGroupId.equals("staff", ignoreCase = true) ->
+                                                if (language == CampLanguage.BANGLA) "স্টাফ আবাসন (Golden-1)" else "Staff Accommodation"
+                                            room.assignedGroupId.equals("guest", ignoreCase = true) ->
+                                                if (language == CampLanguage.BANGLA) "অতিথি আবাসন (Golden-7)" else "Guest Accommodation"
+                                            else ->
+                                                if (language == CampLanguage.BANGLA) "খালি বেড (Available)" else "Vacant Bed"
+                                        }
                                         Text(
-                                            text = if (language == CampLanguage.BANGLA) "খালি বেড (Available)" else "Vacant Bed",
+                                            text = specialNote,
                                             fontSize = 11.sp,
-                                            color = Color.LightGray,
+                                            color = Color.Gray,
                                             fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                                         )
                                     }

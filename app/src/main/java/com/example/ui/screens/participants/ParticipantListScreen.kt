@@ -63,9 +63,9 @@ fun ParticipantListScreen(
                 placeholder = {
                     Text(
                         text = if (language == CampLanguage.BANGLA)
-                            "নাম অথবা আইডি দিয়ে খুঁজুন (উদাঃ LSC-2026-001)..."
+                            "নাম অথবা আইডি দিয়ে খুঁজুন (উদাঃ Bukhari-1-1, Sumaiya-1-1)..."
                         else
-                            "Search by participant name or ID...",
+                            "Search by participant name or ID (e.g. Bukhari-1-1)...",
                         fontSize = 12.sp,
                         color = Color.Gray
                     )
@@ -534,6 +534,15 @@ fun ParticipantCard(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
                         color = LscEmeraldPrimary
+                    )
+                }
+
+                if (participant.classLevel.isNotBlank() || participant.organization.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(1.dp))
+                    Text(
+                        text = listOf(participant.classLevel, participant.organization).filter { it.isNotBlank() }.joinToString(" • "),
+                        fontSize = 10.sp,
+                        color = Color(0xFF475569)
                     )
                 }
 

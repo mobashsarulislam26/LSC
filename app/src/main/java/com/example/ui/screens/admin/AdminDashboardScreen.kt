@@ -79,6 +79,9 @@ fun AdminDashboardScreen(
     onDeleteRoom: (RoomEntity) -> Unit,
     onAssignUserRole: (String, UserRole) -> Unit,
     auditLogs: List<AuditLogEntity> = emptyList(),
+    participants: List<ParticipantEntity> = emptyList(),
+    onSelectParticipant: ((ParticipantEntity) -> Unit)? = null,
+    onBatchSubgroupAttendance: ((Long, String, Int, String, Set<Long>, String?) -> Unit)? = null,
     onBulkUploadSchedules: ((List<ScheduleEventEntity>) -> Unit)? = null,
     onImportParticipantsCsvJson: ((String) -> Unit)? = null,
     onBackToMain: (() -> Unit)? = null,
@@ -234,7 +237,7 @@ fun AdminDashboardScreen(
                     Tab(
                         selected = currentRoute == AdminRoutes.DEPARTMENTS,
                         onClick = { navController.navigate(AdminRoutes.DEPARTMENTS) },
-                        text = { Text(if (isBangla) "১২টি বিভাগ ও এসওপি" else "12 Depts & SOPs", fontSize = 12.sp) },
+                        text = { Text(if (isBangla) "১৩টি বিভাগ ও এসওপি" else "13 Depts & SOPs", fontSize = 12.sp) },
                         icon = { Icon(Icons.Default.CorporateFare, contentDescription = null, modifier = Modifier.size(16.dp)) },
                         modifier = Modifier.testTag("admin_nav_departments")
                     )
@@ -414,8 +417,11 @@ fun AdminDashboardScreen(
                 SubgroupsDirectoryScreen(
                     language = language,
                     groups = groups,
-                    participants = emptyList(),
-                    onSelectParticipant = {}
+                    participants = participants,
+                    onSelectParticipant = { onSelectParticipant?.invoke(it) },
+                    onBatchSubgroupAttendance = { evId, title, dNo, sg, abs, seal ->
+                        onBatchSubgroupAttendance?.invoke(evId, title, dNo, sg, abs, seal)
+                    }
                 )
             }
 
@@ -731,7 +737,7 @@ private fun AdminOverviewView(
                 AdminMetricCard(
                     title = if (isBangla) "সময়সূচী ইভেন্ট" else "Schedule Events",
                     count = "$schedulesCount টি",
-                    subtitle = if (isBangla) "৪ দিনের ইভেন্ট রুটিন" else "4-Day Routine",
+                    subtitle = if (isBangla) "৫ দিনের ইভেন্ট রুটিন" else "5-Day Routine",
                     icon = Icons.Default.Event,
                     containerColor = Color(0xFFECFDF5),
                     contentColor = Color(0xFF047857),
@@ -776,8 +782,8 @@ private fun AdminOverviewView(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 AdminMetricCard(
-                    title = if (isBangla) "১২টি বিভাগ ও এসওপি" else "12 Depts & SOPs",
-                    count = "১২টি বিভাগ",
+                    title = if (isBangla) "১৩টি বিভাগ ও এসওপি" else "13 Depts & SOPs",
+                    count = "১৩টি বিভাগ",
                     subtitle = if (isBangla) "কার্যপদ্ধতি ও চেকলিস্ট" else "SOPs & Checklists",
                     icon = Icons.Default.CorporateFare,
                     containerColor = Color(0xFFDCFCE7),

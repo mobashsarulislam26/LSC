@@ -122,11 +122,15 @@ object CsvExportHelper {
      * Builds an Intent to share the CSV file via FileProvider.
      */
     fun getShareIntent(context: Context, file: File, chooserTitle: String = "Export Participant List CSV"): Intent {
-        val uri = FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            file
-        )
+        val uri = try {
+            FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                file
+            )
+        } catch (_: Exception) {
+            android.net.Uri.fromFile(file)
+        }
 
         val sendIntent = Intent(Intent.ACTION_SEND).apply {
             type = "text/csv"
@@ -265,11 +269,15 @@ object CsvExportHelper {
         file: File,
         chooserTitle: String = "Export Attendance Records CSV"
     ): Intent {
-        val uri = FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            file
-        )
+        val uri = try {
+            FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                file
+            )
+        } catch (_: Exception) {
+            android.net.Uri.fromFile(file)
+        }
 
         val sendIntent = Intent(Intent.ACTION_SEND).apply {
             type = "text/csv"

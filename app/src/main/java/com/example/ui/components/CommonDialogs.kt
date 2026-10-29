@@ -49,6 +49,10 @@ fun ParticipantDetailDialog(
     var showQuickLogDialog by remember { mutableStateOf(false) }
     var showFullscreenQr by remember { mutableStateOf(false) }
 
+    val completedSealsCount = remember(participant.completedStationSeals) {
+        participant.completedStationSeals.split(',').count { it.isNotBlank() }
+    }
+
     Dialog(onDismissRequest = onDismiss) {
         Card(
             shape = RoundedCornerShape(20.dp),
@@ -353,6 +357,17 @@ fun ParticipantDetailDialog(
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(text = if (language == CampLanguage.BANGLA) "ফাইল নং:" else "File No:", fontSize = 12.sp, color = Color.Gray)
                             Text(text = participant.fileNo, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                        if (participant.classLevel.isNotBlank() || participant.organization.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(text = if (language == CampLanguage.BANGLA) "শ্রেণি ও সংস্থা:" else "Class & Org:", fontSize = 12.sp, color = Color.Gray)
+                                Text(
+                                    text = listOf(participant.classLevel, participant.organization).filter { it.isNotBlank() }.joinToString(" • "),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

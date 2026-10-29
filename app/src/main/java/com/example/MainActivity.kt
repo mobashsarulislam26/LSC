@@ -42,6 +42,7 @@ import com.example.ui.screens.studytour.StudyTourScreen
 import com.example.ui.screens.subgroups.SubgroupsDirectoryScreen
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.*
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -69,7 +70,6 @@ fun LscMainApp(
         }
     }
 
-    val context = androidx.compose.ui.platform.LocalContext.current
     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
         val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
             androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
@@ -119,6 +119,7 @@ fun LscMainApp(
 
     var currentTab by remember { mutableIntStateOf(0) }
     var showUniversalScanner by remember { mutableStateOf(false) }
+    var scannerInitialStationId by remember { mutableIntStateOf(1) }
     var showQuickAlertDialog by remember { mutableStateOf(false) }
     var showDigitalIdCard by remember { mutableStateOf<ParticipantEntity?>(null) }
     var showCertificateDialog by remember { mutableStateOf<ParticipantEntity?>(null) }
@@ -130,7 +131,7 @@ fun LscMainApp(
     var showBatchUploadDialog by remember { mutableStateOf(false) }
     var showBackupDatabaseDialog by remember { mutableStateOf(false) }
     var showLowConnectivityDialog by remember { mutableStateOf(false) }
-    var selectedMoreModule by remember { mutableStateOf("COMPETITION") } // "COMPETITION", "HEALTH", "INVENTORY", "BULLETIN", "EMERGENCY"
+    var selectedMoreModule by remember { mutableStateOf("COMPETITION") }
 
     // Dynamic Options & Control Center State
     var showAdminControlCenterDialog by remember { mutableStateOf(false) }
@@ -143,8 +144,16 @@ fun LscMainApp(
     var showCreateNoticeDialog by remember { mutableStateOf(false) }
     var showLogIncidentDialog by remember { mutableStateOf(false) }
 
-    // Authentication Guard: The app CANNOT be used without login ("login ছাড়া ব্যবহার করা যাবে না")
-    if (!isLoggedIn) {
+    // Auto-clear success scan feedback during Rapid Gun Mode so camera stays non-blocking
+    LaunchedEffect(scanFeedback, showUniversalScanner) {
+        if (showUniversalScanner && scanFeedback is ScanResult.Success) {
+            delay(1800)
+            campViewModel.clearScanFeedback()
+        }
+    }
+
+    // Strict Authentication Guard: The app CANNOT be used without valid login ("login ছাড়া ব্যবহার করা যাবে না")
+    if (!isLoggedIn || currentUser == null || currentUser?.email.isNullOrBlank() || currentUser?.isActive != true) {
         LoginScreen(
             campViewModel = campViewModel,
             language = language,
@@ -320,6 +329,9 @@ fun LscMainApp(
                             } else if (tabIndex == 4) {
                                 currentTab = 4
                                 selectedMoreModule = "COMPETITION"
+                            } else if (tabIndex == 5 || tabIndex == 14) {
+                                currentTab = 4
+                                selectedMoreModule = "HEALTH"
                             } else if (tabIndex == 6) {
                                 currentTab = 4
                                 selectedMoreModule = "INVENTORY"
@@ -364,7 +376,10 @@ fun LscMainApp(
                         competitionScores = competitionScores,
                         attendanceRecords = attendanceRecords,
                         mealDistributions = mealDistributions,
-                        rooms = rooms
+                        rooms = rooms,
+                        onUpdateRoomInspection = { rm, score, notes ->
+                            campViewModel.updateRoomInspection(rm, score, notes)
+                        }
                     )
                 }
                 1 -> {
@@ -391,19 +406,20 @@ fun LscMainApp(
                     )
                 }
                 2 -> {
-                    val participants by campViewModel.participants.collectAsStateWithLifecycle()
-
                     AttendanceScreen(
                         language = language,
                         attendanceEvents = attendanceEvents,
                         attendanceRecords = attendanceRecords,
                         stations = stations,
-                        participants = participants,
+                        participants = allParticipants,
                         groups = groups,
                         onMarkAttendance = { evId, p, st ->
                             campViewModel.markAttendanceDirect(evId, p, st)
                         },
-                        onOpenScanner = { showUniversalScanner = true }
+                        onOpenScanner = { showUniversalScanner = true },
+                        onBatchSubgroupAttendance = { evId, titleBn, dNo, sgKey, absentIds, seal ->
+                            campViewModel.markSubgroupBatchAttendance(evId, titleBn, dNo, sgKey, absentIds, seal)
+                        }
                     )
                 }
                 3 -> {
@@ -418,13 +434,21 @@ fun LscMainApp(
                         onDaySelect = { campViewModel.setSelectedDay(it) },
                         onUpdateScheduleEvent = { campViewModel.updateScheduleEvent(it) },
                         onUpdateGroup = { campViewModel.updateGroup(it) },
-                        onOpenScanner = { showUniversalScanner = true }
+                        onOpenScanner = { showUniversalScanner = true },
+                        currentRole = currentRole,
+                        participants = allParticipants,
+                        onOpenScannerForStation = { stationId ->
+                            scannerInitialStationId = stationId
+                            showUniversalScanner = true
+                        },
+                        onBatchSubgroupAttendance = { evId, titleBn, dNo, sgKey, absentIds, seal ->
+                            campViewModel.markSubgroupBatchAttendance(evId, titleBn, dNo, sgKey, absentIds, seal)
+                        }
                     )
                 }
                 4 -> {
                     // Modules Hub (Competitions, Health, Inventory, Bulletin, Emergency, LSC 2026 Modules)
                     Column(modifier = Modifier.fillMaxSize()) {
-                        // Module switcher bar with uniform icons and indicator mapping
                         ScrollableTabRow(
                             selectedTabIndex = when (selectedMoreModule) {
                                 "CHARTS" -> 0
@@ -468,7 +492,7 @@ fun LscMainApp(
                             Tab(
                                 selected = selectedMoreModule == "INVENTORY",
                                 onClick = { selectedMoreModule = "INVENTORY" },
-                                text = { Text(if (language == CampLanguage.BANGLA) "পুরস্কার ইনভেন্টরি" else "Awards Stock", fontSize = 11.sp, fontWeight = if (selectedMoreModule == "INVENTORY") FontWeight.Bold else FontWeight.Normal) },
+                                text = { Text(if (language == CampLanguage.BANGLA) "পুরস্কার ও উপহার" else "Gifts & Awards", fontSize = 11.sp, fontWeight = if (selectedMoreModule == "INVENTORY") FontWeight.Bold else FontWeight.Normal) },
                                 icon = { Icon(Icons.Default.Inventory2, contentDescription = null, modifier = Modifier.size(16.dp)) },
                                 modifier = Modifier.testTag("module_tab_inventory")
                             )
@@ -489,7 +513,7 @@ fun LscMainApp(
                             Tab(
                                 selected = selectedMoreModule == "DEPARTMENTS",
                                 onClick = { selectedMoreModule = "DEPARTMENTS" },
-                                text = { Text(if (language == CampLanguage.BANGLA) "১২টি বিভাগ ও এসওপি" else "12 Depts & SOPs", fontSize = 11.sp, fontWeight = if (selectedMoreModule == "DEPARTMENTS") FontWeight.Bold else FontWeight.Normal) },
+                                text = { Text(if (language == CampLanguage.BANGLA) "১৩টি বিভাগ ও এসওপি" else "13 Depts & SOPs", fontSize = 11.sp, fontWeight = if (selectedMoreModule == "DEPARTMENTS") FontWeight.Bold else FontWeight.Normal) },
                                 icon = { Icon(Icons.Default.CorporateFare, contentDescription = null, modifier = Modifier.size(16.dp)) },
                                 modifier = Modifier.testTag("module_tab_departments")
                             )
@@ -537,7 +561,6 @@ fun LscMainApp(
                                 )
                             }
                             "COMPETITION" -> {
-                                val participants by campViewModel.participants.collectAsStateWithLifecycle()
                                 val competitions by campViewModel.competitions.collectAsStateWithLifecycle()
                                 val competitionScores by campViewModel.competitionScores.collectAsStateWithLifecycle()
                                 val judges by campViewModel.judges.collectAsStateWithLifecycle()
@@ -547,7 +570,7 @@ fun LscMainApp(
                                     competitions = competitions,
                                     competitionScores = competitionScores,
                                     groups = groups,
-                                    participants = participants,
+                                    participants = allParticipants,
                                     judges = judges,
                                     isAdminUnlocked = isAdminUnlocked,
                                     onRequestAdminUnlock = { showAdminAuthDialog = true },
@@ -566,20 +589,41 @@ fun LscMainApp(
                                     onBatchImportJudges = { campViewModel.batchImportJudges(it) },
                                     onBatchImportVolunteers = { campViewModel.batchImportVolunteers(it) },
                                     onBatchImportDutyOfficers = { campViewModel.batchImportDutyOfficers(it) },
+                                    onAwardPodiumWinner = { cId, p, rank, handedOver, rem ->
+                                        campViewModel.awardPodiumWinner(cId, p, rank, handedOver, rem)
+                                    },
+                                    onTogglePrizeHandedOver = { score ->
+                                        campViewModel.toggleCompetitionPrizeHandedOver(score)
+                                    },
                                     onSubmitScore = { cId, p, acc, pres, disc, rem ->
                                         campViewModel.submitJudgeScore(cId, p, acc, pres, disc, rem)
                                     }
                                 )
                             }
                             "HEALTH" -> {
-                                val participants by campViewModel.participants.collectAsStateWithLifecycle()
                                 val healthRecords by campViewModel.healthRecords.collectAsStateWithLifecycle()
 
                                 HealthScreen(
                                     language = language,
                                     currentRole = currentRole,
                                     healthRecords = healthRecords,
-                                    participants = participants,
+                                    participants = allParticipants,
+                                    onSubmitStation6Record = { p, t, doc, v, diag, adv, isEm, hCm, wKg, dentalRef, vis, photo ->
+                                        campViewModel.submitHealthCheckup(
+                                            participant = p,
+                                            checkupType = t,
+                                            doctor = doc,
+                                            vitals = v,
+                                            diagnosis = diag,
+                                            advice = adv,
+                                            isEmergency = isEm,
+                                            heightCm = hCm,
+                                            weightKg = wKg,
+                                            dentalBusReferred = dentalRef,
+                                            visionNotes = vis,
+                                            photoDocumented = photo
+                                        )
+                                    },
                                     onSubmitRecord = { p, t, doc, v, diag, adv, isEm ->
                                         campViewModel.submitHealthCheckup(p, t, doc, v, diag, adv, isEm)
                                     }
@@ -587,10 +631,16 @@ fun LscMainApp(
                             }
                             "INVENTORY" -> {
                                 val inventoryItems by campViewModel.inventoryItems.collectAsStateWithLifecycle()
+                                val kitDistributions by campViewModel.kitDistributions.collectAsStateWithLifecycle()
 
                                 InventoryScreen(
                                     language = language,
                                     inventoryItems = inventoryItems,
+                                    participants = allParticipants,
+                                    kitDistributions = kitDistributions,
+                                    onUpdateKitDistribution = { kit ->
+                                        campViewModel.updateKitDistribution(kit)
+                                    },
                                     onIssueItem = { itemId, qty, recipient, officer ->
                                         campViewModel.issueAwardInventory(itemId, qty, recipient, officer)
                                     }
@@ -623,12 +673,15 @@ fun LscMainApp(
                                 )
                             }
                             "SUBGROUPS" -> {
-                                val participants by campViewModel.participants.collectAsStateWithLifecycle()
                                 SubgroupsDirectoryScreen(
                                     language = language,
                                     groups = groups,
-                                    participants = participants,
+                                    participants = allParticipants,
                                     onSelectParticipant = { campViewModel.selectParticipant(it) },
+                                    onBatchSubgroupAttendance = { evId, titleBn, dNo, sgKey, absentIds, seal ->
+                                        campViewModel.markSubgroupBatchAttendance(evId, titleBn, dNo, sgKey, absentIds, seal)
+                                    },
+                                    activeDay = selectedDay,
                                     onBack = { currentTab = 0 }
                                 )
                             }
@@ -700,38 +753,40 @@ fun LscMainApp(
                 }
             }
 
-            // Scan Result Dialog
+            // Scan Result Dialog (Non-blocking during continuous Rapid Gun camera mode for Success, modal for Warnings/Errors or single-scan)
             scanFeedback?.let { res ->
-                AlertDialog(
-                    onDismissRequest = { campViewModel.clearScanFeedback() },
-                    title = {
-                        Text(
-                            text = when (res) {
-                                is ScanResult.Success -> res.title
-                                is ScanResult.Warning -> res.title
-                                is ScanResult.Error -> res.title
-                            },
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
-                    text = {
-                        Text(
-                            text = when (res) {
-                                is ScanResult.Success -> res.message
-                                is ScanResult.Warning -> res.message
-                                is ScanResult.Error -> res.message
+                if (!showUniversalScanner || res !is ScanResult.Success) {
+                    AlertDialog(
+                        onDismissRequest = { campViewModel.clearScanFeedback() },
+                        title = {
+                            Text(
+                                text = when (res) {
+                                    is ScanResult.Success -> res.title
+                                    is ScanResult.Warning -> res.title
+                                    is ScanResult.Error -> res.title
+                                },
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        text = {
+                            Text(
+                                text = when (res) {
+                                    is ScanResult.Success -> res.message
+                                    is ScanResult.Warning -> res.message
+                                    is ScanResult.Error -> res.message
+                                }
+                            )
+                        },
+                        confirmButton = {
+                            Button(
+                                onClick = { campViewModel.clearScanFeedback() },
+                                colors = ButtonDefaults.buttonColors(containerColor = LscEmeraldPrimary)
+                            ) {
+                                Text(if (language == CampLanguage.BANGLA) "ঠিক আছে" else "OK")
                             }
-                        )
-                    },
-                    confirmButton = {
-                        Button(
-                            onClick = { campViewModel.clearScanFeedback() },
-                            colors = ButtonDefaults.buttonColors(containerColor = LscEmeraldPrimary)
-                        ) {
-                            Text(if (language == CampLanguage.BANGLA) "ঠিক আছে" else "OK")
                         }
-                    }
-                )
+                    )
+                }
             }
         }
     }
@@ -740,11 +795,21 @@ fun LscMainApp(
     if (showUniversalScanner) {
         UniversalScannerDialog(
             language = language,
-            initialMode = if (currentTab == 3) "STATION" else "ATTENDANCE",
-            onDismiss = { showUniversalScanner = false },
+            initialMode = if (currentTab == 3 || currentRole == UserRole.STATION_MANAGER || currentRole == UserRole.STATION_MODERATOR) "STATION" else "ATTENDANCE",
+            initialStationId = scannerInitialStationId,
+            onDismiss = {
+                showUniversalScanner = false
+                campViewModel.clearScanFeedback()
+            },
             onScanCode = { code, mode ->
                 campViewModel.processUniversalScan(code, mode)
                 showUniversalScanner = false
+            },
+            onScanCodeWithExtra = { code, mode, extraArg, keepOpen ->
+                campViewModel.processUniversalScan(code, mode, extraArg)
+                if (!keepOpen) {
+                    showUniversalScanner = false
+                }
             }
         )
     }
@@ -857,6 +922,11 @@ fun LscMainApp(
                 rooms = roomsList,
                 groups = groups,
                 userAccounts = usersList,
+                participants = allParticipants,
+                onSelectParticipant = { campViewModel.selectParticipant(it) },
+                onBatchSubgroupAttendance = { evId, titleBn, dNo, sgKey, absentIds, seal ->
+                    campViewModel.markSubgroupBatchAttendance(evId, titleBn, dNo, sgKey, absentIds, seal)
+                },
                 onAddStation = { campViewModel.addStation(it) },
                 onUpdateStation = { campViewModel.updateStation(it) },
                 onDeleteStation = { campViewModel.deleteStation(it) },
@@ -981,7 +1051,6 @@ fun LscMainApp(
     }
 
     if (showExportParticipantsDialog) {
-        val allParticipants by campViewModel.allParticipants.collectAsStateWithLifecycle()
         val filteredParticipants by campViewModel.participants.collectAsStateWithLifecycle()
         val searchQuery by campViewModel.searchQuery.collectAsStateWithLifecycle()
 

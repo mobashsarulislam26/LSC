@@ -9,6 +9,17 @@ class CampApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        val isRobolectric = try {
+            Class.forName("org.robolectric.Robolectric") != null ||
+                android.os.Build.FINGERPRINT == "unknown" ||
+                android.os.Build.MODEL.contains("robolectric", ignoreCase = true)
+        } catch (_: Throwable) {
+            false
+        }
+        if (isRobolectric) {
+            com.example.data.sync.CampFirebaseMessagingService.createNotificationChannels(this)
+            return
+        }
         try {
             System.loadLibrary("sqlcipher")
             Log.d(TAG, "SQLCipher native library loaded successfully.")

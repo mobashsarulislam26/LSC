@@ -40,14 +40,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.example.data.model.ParticipantEntity
+import com.example.ui.screens.competitions.deriveEighteenStarSeals
 import com.example.ui.theme.*
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStream
 
 /**
- * Printable & Exportable Participant Achievement / Graduation Certificate Dialog.
- * Supports saving as Image to local storage (Pictures/LifeSkillsCamp) and intent-based sharing.
+ * Printable & Exportable WAMY Bangladesh LSC 2026 Participant Graduation Certificate Dialog.
+ * Includes the Official 18-Star Station Seal Grid and Official Dual Signatories.
  */
 @Composable
 fun CertificateGeneratorDialog(
@@ -56,7 +57,8 @@ fun CertificateGeneratorDialog(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    var awardTitle by remember { mutableStateOf("অসামান্য পারফরম্যান্স ও নেতৃত্ব") }
+    var awardTitle by remember { mutableStateOf("অসামান্য দক্ষতা, শৃঙ্খলা ও নৈতিক নেতৃত্ব") }
+    val sealProgress = remember(participant) { deriveEighteenStarSeals(participant) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -70,9 +72,9 @@ fun CertificateGeneratorDialog(
                     Icon(Icons.Default.CardMembership, contentDescription = null, tint = LscGoldSecondary)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isBangla) "অংশগ্রহণকারী সনদপত্র (Certificate)" else "Participant Certificate",
+                        text = if (isBangla) "অফিশিয়াল সনদপত্র (LSC 2026 Certificate)" else "Participant Certificate",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
+                        fontSize = 15.sp
                     )
                 }
                 IconButton(onClick = onDismiss) {
@@ -86,7 +88,6 @@ fun CertificateGeneratorDialog(
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
             ) {
-                // Award Title Selector
                 OutlinedTextField(
                     value = awardTitle,
                     onValueChange = { awardTitle = it },
@@ -112,68 +113,78 @@ fun CertificateGeneratorDialog(
                             .padding(18.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Header Gold Emblem
                         Box(
                             modifier = Modifier
-                                .size(48.dp)
+                                .size(46.dp)
                                 .clip(CircleShape)
                                 .background(LscGoldSecondary.copy(alpha = 0.2f))
                                 .border(1.dp, LscGoldSecondary, CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.WorkspacePremium, contentDescription = null, tint = LscGoldDark, modifier = Modifier.size(28.dp))
+                            Icon(Icons.Default.WorkspacePremium, contentDescription = null, tint = LscGoldDark, modifier = Modifier.size(26.dp))
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
 
                         Text(
-                            text = "লাইফ স্কিলস ক্যাম্প ২০২৬",
+                            text = "ওয়ামী বাংলাদেশ (WAMY Bangladesh)",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
+                            fontSize = 11.sp,
+                            color = Color(0xFF047857)
+                        )
+
+                        Text(
+                            text = "লাইফ স্কিলস ক্যাম্পিং ২০২৬",
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 17.sp,
                             color = LscEmeraldPrimary
                         )
 
                         Text(
-                            text = "Life Skills Residential Camp 2026",
-                            fontSize = 11.sp,
-                            color = Color.Gray,
-                            fontWeight = FontWeight.Medium
+                            text = "“নিজকে গড়ো, গড়তে শেখাও” • ২২–২৬ অক্টোবর ২০২৬",
+                            fontSize = 10.sp,
+                            color = Color(0xFF92400E),
+                            fontWeight = FontWeight.SemiBold
                         )
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "রাঙামাটি ওয়াটারফ্রন্ট রিসোর্ট, শফিপুর, গাজীপুর",
+                            fontSize = 9.sp,
+                            color = Color.Gray
+                        )
 
+                        Spacer(modifier = Modifier.height(10.dp))
                         HorizontalDivider(color = LscGoldSecondary.copy(alpha = 0.5f), thickness = 1.dp)
-
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
 
                         Text(
                             text = "সম্মাননা ও প্রশিক্ষণ সনদপত্র",
-                            fontSize = 18.sp,
+                            fontSize = 17.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = LscSlateDark
                         )
 
                         Text(
                             text = "CERTIFICATE OF ACHIEVEMENT",
-                            fontSize = 10.sp,
+                            fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
                             color = LscGoldDark,
-                            letterSpacing = 1.5.sp
+                            letterSpacing = 1.4.sp
                         )
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
                         Text(
                             text = "এতদ্বারা সগৌরবে প্রত্যয়ন করা যাচ্ছে যে,",
-                            fontSize = 12.sp,
+                            fontSize = 11.sp,
                             color = Color.DarkGray
                         )
 
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
                             text = participant.nameBn,
-                            fontSize = 20.sp,
+                            fontSize = 19.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = LscEmeraldPrimary,
                             textAlign = TextAlign.Center
@@ -181,41 +192,86 @@ fun CertificateGeneratorDialog(
 
                         Text(
                             text = "আইডি: ${participant.campCode} | দল: ${participant.groupNameBn} (${participant.subgroup})",
-                            fontSize = 11.sp,
+                            fontSize = 10.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color.Gray
+                            color = Color.Gray,
+                            textAlign = TextAlign.Center
                         )
 
                         Text(
-                            text = "জেলা: ${participant.districtBn}",
-                            fontSize = 11.sp,
+                            text = "সংস্থা: ${participant.organization} | জেলা: ${participant.districtBn}",
+                            fontSize = 10.sp,
                             color = Color.Gray
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Text(
+                            text = "সফলভাবে ৫ দিনব্যাপী আবাসিক ক্যাম্পের ৬টি দক্ষতা স্টেশন (১৮টি সেশন), ঢাকা ও মেট্রোরেল শিক্ষা সফর এবং জীবন গঠনমূলক প্রশিক্ষণে অংশগ্রহণ করেছেন এবং '$awardTitle' অর্জনে কৃতিত্ব প্রদর্শন করেছেন।",
+                            fontSize = 11.sp,
+                            textAlign = TextAlign.Center,
+                            lineHeight = 17.sp,
+                            color = LscSlateDark
                         )
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        Text(
-                            text = "সফলভাবে ৪ দিনব্যাপী আবাসিক ক্যাম্পের সকল দক্ষতা স্টেশন, জীবন গঠনমূলক কর্মশালা ও শারীরিক প্রশিক্ষণে অংশগ্রহণ করেছেন এবং '$awardTitle' অর্জনে কৃতিত্ব প্রদর্শন করেছেন।",
-                            fontSize = 12.sp,
-                            textAlign = TextAlign.Center,
-                            lineHeight = 18.sp,
-                            color = LscSlateDark
-                        )
+                        // 18-Star Station Seal Grid Box
+                        Surface(
+                            color = Color.White,
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, Color(0xFFFDE68A)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "★ স্টেশন অংশগ্রহণ স্টার সিল: ${sealProgress.earnedCount}/১৮ (৬ স্টেশন × ৩ দিন)",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF92400E)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceEvenly
+                                ) {
+                                    (1..6).forEach { stNo ->
+                                        val s2 = if (sealProgress.hasSeal(stNo, 2)) "★" else "☆"
+                                        val s4 = if (sealProgress.hasSeal(stNo, 4)) "★" else "☆"
+                                        val s5 = if (sealProgress.hasSeal(stNo, 5)) "★" else "☆"
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text(text = "S$stNo", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = LscSlateDark)
+                                            Text(text = "$s2$s4$s5", fontSize = 10.sp, color = Color(0xFFD97706))
+                                        }
+                                    }
+                                }
+                            }
+                        }
 
-                        Spacer(modifier = Modifier.height(20.dp))
+                        Spacer(modifier = Modifier.height(18.dp))
 
-                        // Signatures
+                        // Official Dual Signatories (WAMY Country Director & Camp Chief)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("হাফেজ মাওলানা শিব্বীর আহমদ", fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                                Text("ক্যাম্প প্রধান ও পরিচালক", fontSize = 9.sp, color = Color.Gray)
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("ড. মুহাম্মদ রেদওয়ানুর রহমান", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                                Text("কান্ট্রি ডিরেক্টর, ওয়ামী বাংলাদেশ", fontSize = 8.5.sp, color = Color.Gray, textAlign = TextAlign.Center)
                             }
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("আকরাম হোসেন রাজু", fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                                Text("আহবায়ক, লাইফ স্কিলস ক্যাম্প", fontSize = 9.sp, color = Color.Gray)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("এয়ার কমোডোর মো: শওকত আলী (অব:)", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                                Text("ক্যাম্প প্রধান, লাইফ স্কিলস ক্যাম্পিং ২০২৬", fontSize = 8.5.sp, color = Color.Gray, textAlign = TextAlign.Center)
                             }
                         }
                     }
@@ -242,7 +298,6 @@ fun CertificateGeneratorDialog(
                             color = LscEmeraldPrimary
                         )
 
-                        // 1. Save Image to Storage (Pictures/LifeSkillsCamp)
                         Button(
                             onClick = {
                                 saveCertificateImageToGallery(context, participant, awardTitle)
@@ -262,7 +317,6 @@ fun CertificateGeneratorDialog(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            // 2. Share Image Intent
                             OutlinedButton(
                                 onClick = {
                                     shareCertificateImageIntent(context, participant, awardTitle)
@@ -277,7 +331,6 @@ fun CertificateGeneratorDialog(
                                 Text(if (isBangla) "ছবি শেয়ার" else "Share Image", fontSize = 12.sp)
                             }
 
-                            // 3. Print / PDF
                             OutlinedButton(
                                 onClick = {
                                     printCertificatePdf(context, participant, awardTitle)
@@ -293,7 +346,6 @@ fun CertificateGeneratorDialog(
                             }
                         }
 
-                        // 4. Share Text Description
                         TextButton(
                             onClick = {
                                 shareCertificateText(context, participant, awardTitle)
@@ -322,15 +374,15 @@ fun CertificateGeneratorDialog(
 }
 
 /**
- * Creates a high-resolution Bitmap rendering of the participant certificate.
+ * Creates a high-resolution Bitmap rendering of the WAMY LSC 2026 participant certificate.
  */
 fun createCertificateBitmap(p: ParticipantEntity, awardTitle: String): Bitmap {
+    val sealProgress = deriveEighteenStarSeals(p)
     val width = 1200
-    val height = 850
+    val height = 880
     val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
 
-    // Background Color
     canvas.drawColor(AndroidColor.parseColor("#FFFBEB"))
 
     val paint = Paint().apply { isAntiAlias = true }
@@ -350,74 +402,90 @@ fun createCertificateBitmap(p: ParticipantEntity, awardTitle: String): Bitmap {
     paint.style = Paint.Style.FILL
     paint.textAlign = Paint.Align.CENTER
 
-    paint.textSize = 34f
+    paint.textSize = 20f
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    paint.color = AndroidColor.parseColor("#047857")
+    canvas.drawText("ওয়ামী বাংলাদেশ (WAMY Bangladesh) — ইয়াতিম তত্ত্বাবধান প্রকল্প", width / 2f, 90f, paint)
+
+    paint.textSize = 34f
     paint.color = AndroidColor.parseColor("#064E3B")
-    canvas.drawText("লাইফ স্কিলস ক্যাম্প ২০২৬ (Life Skills Camp)", width / 2f, 110f, paint)
+    canvas.drawText("লাইফ স্কিলস ক্যাম্পিং ২০২৬ (Life Skills Camping 2026)", width / 2f, 132f, paint)
 
     paint.textSize = 20f
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-    paint.color = AndroidColor.parseColor("#64748B")
-    canvas.drawText("আবাসিক কওমী তরুণদের চরিত্র গঠন ও দক্ষতা উন্নয়ন কোর্স", width / 2f, 150f, paint)
+    paint.color = AndroidColor.parseColor("#92400E")
+    canvas.drawText("“নিজকে গড়ো, গড়তে শেখাও” • ২২–২৬ অক্টোবর ২০২৬ • রাঙামাটি ওয়াটারফ্রন্ট রিসোর্ট, গাজীপুর", width / 2f, 166f, paint)
 
     // Gold Divider Line
     paint.strokeWidth = 3f
     paint.color = AndroidColor.parseColor("#F59E0B")
-    canvas.drawLine(150f, 180f, width - 150f, 180f, paint)
+    canvas.drawLine(150f, 190f, width - 150f, 190f, paint)
 
     // Title
-    paint.textSize = 38f
+    paint.textSize = 36f
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     paint.color = AndroidColor.parseColor("#0F172A")
-    canvas.drawText("সম্মাননা ও প্রশিক্ষণ সনদপত্র", width / 2f, 240f, paint)
+    canvas.drawText("সম্মাননা ও প্রশিক্ষণ সনদপত্র", width / 2f, 242f, paint)
 
-    paint.textSize = 18f
+    paint.textSize = 17f
     paint.color = AndroidColor.parseColor("#B45309")
-    canvas.drawText("CERTIFICATE OF ACHIEVEMENT", width / 2f, 275f, paint)
+    canvas.drawText("CERTIFICATE OF ACHIEVEMENT", width / 2f, 272f, paint)
 
-    // Subtitle
-    paint.textSize = 22f
+    paint.textSize = 21f
+    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
     paint.color = AndroidColor.parseColor("#334155")
-    canvas.drawText("এতদ্বারা সগৌরবে প্রত্যয়ন করা যাচ্ছে যে,", width / 2f, 330f, paint)
+    canvas.drawText("এতদ্বারা সগৌরবে প্রত্যয়ন করা যাচ্ছে যে,", width / 2f, 318f, paint)
 
     // Participant Name
-    paint.textSize = 46f
+    paint.textSize = 44f
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     paint.color = AndroidColor.parseColor("#059669")
-    canvas.drawText(p.nameBn, width / 2f, 400f, paint)
+    canvas.drawText(p.nameBn, width / 2f, 382f, paint)
 
     // ID & Details
-    paint.textSize = 22f
+    paint.textSize = 21f
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
     paint.color = AndroidColor.parseColor("#475569")
-    val detailsStr = "ক্যাম্প আইডি: ${p.campCode}   |   দল: ${p.groupNameBn} (${p.subgroup})   |   জেলা: ${p.districtBn}"
-    canvas.drawText(detailsStr, width / 2f, 450f, paint)
+    val detailsStr = "ক্যাম্প আইডি: ${p.campCode}  |  দল: ${p.groupNameBn} (${p.subgroup})  |  সংস্থা: ${p.organization}  |  জেলা: ${p.districtBn}"
+    canvas.drawText(detailsStr, width / 2f, 426f, paint)
 
     // Award / Honor Description
-    paint.textSize = 22f
+    paint.textSize = 21f
     paint.color = AndroidColor.parseColor("#1E293B")
-    val desc1 = "সফলভাবে ৪ দিনব্যাপী আবাসিক ক্যাম্পের সকল দক্ষতা স্টেশন, জীবন গঠনমূলক কর্মশালা"
-    val desc2 = "ও শারীরিক প্রশিক্ষণে অংশগ্রহণ করেছেন এবং '$awardTitle' অর্জনে বিশেষ কৃতিত্ব প্রদর্শন করেছেন।"
-    canvas.drawText(desc1, width / 2f, 520f, paint)
-    canvas.drawText(desc2, width / 2f, 560f, paint)
+    val desc1 = "সফলভাবে ৫ দিনব্যাপী আবাসিক ক্যাম্পের ৬টি দক্ষতা স্টেশন (১৮টি সেশন), ঢাকা ও মেট্রোরেল শিক্ষা সফর"
+    val desc2 = "এবং জীবন গঠনমূলক কর্মশালায় অংশগ্রহণ করেছেন ও '$awardTitle' অর্জনে কৃতিত্ব প্রদর্শন করেছেন।"
+    canvas.drawText(desc1, width / 2f, 485f, paint)
+    canvas.drawText(desc2, width / 2f, 520f, paint)
+
+    // 18-Star Seal Summary Strip
+    val starSummary = (1..6).joinToString("   |   ") { st ->
+        val s2 = if (sealProgress.hasSeal(st, 2)) "★" else "☆"
+        val s4 = if (sealProgress.hasSeal(st, 4)) "★" else "☆"
+        val s5 = if (sealProgress.hasSeal(st, 5)) "★" else "☆"
+        "স্টেশন-$st: $s2$s4$s5"
+    }
+    paint.textSize = 20f
+    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    paint.color = AndroidColor.parseColor("#B45309")
+    canvas.drawText("অর্জিত স্টেশন স্টার সিল (${sealProgress.earnedCount}/১৮):   $starSummary", width / 2f, 590f, paint)
 
     // Signatures / Footer line
     paint.strokeWidth = 2f
     paint.color = AndroidColor.parseColor("#CBD5E1")
-    canvas.drawLine(120f, 690f, 480f, 690f, paint)
-    canvas.drawLine(width - 480f, 690f, width - 120f, 690f, paint)
+    canvas.drawLine(120f, 720f, 480f, 720f, paint)
+    canvas.drawLine(width - 480f, 720f, width - 120f, 720f, paint)
 
     paint.textSize = 20f
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     paint.color = AndroidColor.parseColor("#0F172A")
-    canvas.drawText("হাফেজ মাওলানা শিব্বীর আহমদ", 300f, 725f, paint)
-    canvas.drawText("আকরাম হোসেন রাজু", width - 300f, 725f, paint)
+    canvas.drawText("ড. মুহাম্মদ রেদওয়ানুর রহমান", 300f, 755f, paint)
+    canvas.drawText("এয়ার কমোডোর মো: শওকত আলী (অব:)", width - 300f, 755f, paint)
 
     paint.textSize = 16f
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
     paint.color = AndroidColor.parseColor("#64748B")
-    canvas.drawText("ক্যাম্প প্রধান ও পরিচালক", 300f, 755f, paint)
-    canvas.drawText("আহবায়ক, লাইফ স্কিলস ক্যাম্প", width - 300f, 755f, paint)
+    canvas.drawText("কান্ট্রি ডিরেক্টর, ওয়ামী বাংলাদেশ", 300f, 785f, paint)
+    canvas.drawText("ক্যাম্প প্রধান, লাইফ স্কিলস ক্যাম্পিং ২০২৬", width - 300f, 785f, paint)
 
     return bitmap
 }
@@ -492,7 +560,7 @@ fun shareCertificateImageIntent(context: Context, p: ParticipantEntity, awardTit
             putExtra(Intent.EXTRA_SUBJECT, "সনদপত্র - ${p.nameBn}")
             putExtra(
                 Intent.EXTRA_TEXT,
-                "🎓 লাইফ স্কিলস ক্যাম্প ২০২৬ - ${p.nameBn} এর অর্জিত সনদপত্র ('$awardTitle')"
+                "🎓 লাইফ স্কিলস ক্যাম্পিং ২০২৬ (ওয়ামী বাংলাদেশ) - ${p.nameBn} এর অর্জিত সনদপত্র ('$awardTitle')"
             )
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
@@ -508,40 +576,55 @@ fun shareCertificateImageIntent(context: Context, p: ParticipantEntity, awardTit
  */
 private fun printCertificatePdf(context: Context, p: ParticipantEntity, awardTitle: String) {
     try {
+        val sealProgress = deriveEighteenStarSeals(p)
+        val starRowHtml = (1..6).joinToString("") { st ->
+            val s2 = if (sealProgress.hasSeal(st, 2)) "★" else "☆"
+            val s4 = if (sealProgress.hasSeal(st, 4)) "★" else "☆"
+            val s5 = if (sealProgress.hasSeal(st, 5)) "★" else "☆"
+            "<span style='margin:0 8px;'><strong>স্টেশন-$st:</strong> <span style='color:#D97706;'>$s2$s4$s5</span></span>"
+        }
+
         val htmlContent = """
             <!DOCTYPE html>
             <html>
             <head>
                 <meta charset="utf-8">
                 <style>
-                    body { font-family: 'SolaimanLipi', 'Kalpurush', sans-serif; text-align: center; padding: 30px; background: #FFFBEB; border: 10px solid #D97706; }
-                    .header { font-size: 28px; color: #064E3B; font-weight: bold; margin-bottom: 5px; }
-                    .subheader { font-size: 16px; color: #64748B; margin-bottom: 20px; }
-                    .title { font-size: 32px; color: #0F172A; font-weight: bold; text-transform: uppercase; margin: 20px 0; }
-                    .name { font-size: 36px; color: #059669; font-weight: bold; margin: 15px 0; border-bottom: 2px solid #D97706; display: inline-block; padding-bottom: 5px; }
-                    .details { font-size: 18px; color: #334155; margin: 20px 0; line-height: 1.6; }
-                    .signatures { margin-top: 50px; display: flex; justify-content: space-between; padding: 0 40px; }
-                    .sig-box { display: inline-block; width: 40%; text-align: center; }
+                    body { font-family: 'SolaimanLipi', 'Kalpurush', sans-serif; text-align: center; padding: 28px; background: #FFFBEB; border: 10px solid #D97706; }
+                    .org { font-size: 16px; color: #047857; font-weight: bold; }
+                    .header { font-size: 28px; color: #064E3B; font-weight: bold; margin: 4px 0; }
+                    .subheader { font-size: 15px; color: #92400E; margin-bottom: 16px; }
+                    .title { font-size: 30px; color: #0F172A; font-weight: bold; margin: 16px 0; }
+                    .name { font-size: 34px; color: #059669; font-weight: bold; margin: 12px 0; border-bottom: 2px solid #D97706; display: inline-block; padding-bottom: 4px; }
+                    .details { font-size: 17px; color: #334155; margin: 16px 0; line-height: 1.6; }
+                    .seals { background: #FFFFFF; border: 1px solid #FDE68A; border-radius: 8px; padding: 10px; margin: 16px auto; font-size: 15px; }
+                    .signatures { margin-top: 44px; display: flex; justify-content: space-between; padding: 0 36px; }
+                    .sig-box { display: inline-block; width: 44%; text-align: center; }
                 </style>
             </head>
             <body>
-                <div class="header">লাইফ স্কিলস ক্যাম্প ২০২৬ (Life Skills Camp)</div>
-                <div class="subheader">আবাসিক কওমী তরুণদের চরিত্র গঠন ও দক্ষতা উন্নয়ন কোর্স</div>
-                <div class="title">সনদপত্র (CERTIFICATE OF ACHIEVEMENT)</div>
+                <div class="org">ওয়ামী বাংলাদেশ (WAMY Bangladesh) — ইয়াতিম তত্ত্বাবধান প্রকল্প</div>
+                <div class="header">লাইফ স্কিলস ক্যাম্পিং ২০২৬ (Life Skills Camping 2026)</div>
+                <div class="subheader">“নিজকে গড়ো, গড়তে শেখাও” • ২২–২৬ অক্টোবর ২০২৬ • রাঙামাটি ওয়াটারফ্রন্ট রিসোর্ট, শফিপুর, গাজীপুর</div>
+                <div class="title">সম্মাননা ও প্রশিক্ষণ সনদপত্র (CERTIFICATE OF ACHIEVEMENT)</div>
                 <p>এতদ্বারা সগৌরবে প্রত্যয়ন করা যাচ্ছে যে,</p>
                 <div class="name">${p.nameBn}</div>
-                <p><strong>ক্যাম্প আইডি:</strong> ${p.campCode} | <strong>দল:</strong> ${p.groupNameBn} (${p.subgroup}) | <strong>জেলা:</strong> ${p.districtBn}</p>
+                <p><strong>ক্যাম্প আইডি:</strong> ${p.campCode} | <strong>দল:</strong> ${p.groupNameBn} (${p.subgroup}) | <strong>সংস্থা:</strong> ${p.organization} | <strong>জেলা:</strong> ${p.districtBn}</p>
                 <div class="details">
-                    সফলভাবে ৪ দিনব্যাপী আবাসিক ক্যাম্পের সকল দক্ষতা স্টেশন, জীবন গঠনমূলক কর্মশালা ও শারীরিক প্রশিক্ষণে অংশগ্রহণ করেছেন এবং <strong>'$awardTitle'</strong> অর্জনে বিশেষ কৃতিত্ব প্রদর্শন করেছেন।
+                    সফলভাবে ৫ দিনব্যাপী আবাসিক ক্যাম্পের ৬টি দক্ষতা স্টেশন (১৮টি সেশন), ঢাকা ও মেট্রোরেল শিক্ষা সফর এবং জীবন গঠনমূলক কর্মশালায় অংশগ্রহণ করেছেন ও <strong>'$awardTitle'</strong> অর্জনে বিশেষ কৃতিত্ব প্রদর্শন করেছেন।
+                </div>
+                <div class="seals">
+                    <div><strong>★ অর্জিত স্টেশন স্টার সিল: ${sealProgress.earnedCount}/১৮</strong></div>
+                    <div style="margin-top:6px;">$starRowHtml</div>
                 </div>
                 <div class="signatures">
                     <div class="sig-box">
                         <br>___________________________<br>
-                        <strong>হাফেজ মাওলানা শিব্বীর আহমদ</strong><br>ক্যাম্প প্রধান ও পরিচালক
+                        <strong>ড. মুহাম্মদ রেদওয়ানুর রহমান</strong><br>কান্ট্রি ডিরেক্টর, ওয়ামী বাংলাদেশ
                     </div>
                     <div class="sig-box">
                         <br>___________________________<br>
-                        <strong>আকরাম হোসেন রাজু</strong><br>আহবায়ক, লাইফ স্কিলস ক্যাম্প
+                        <strong>এয়ার কমোডোর মো: শওকত আলী (অব:)</strong><br>ক্যাম্প প্রধান, লাইফ স্কিলস ক্যাম্পিং ২০২৬
                     </div>
                 </div>
             </body>
@@ -564,20 +647,24 @@ private fun printCertificatePdf(context: Context, p: ParticipantEntity, awardTit
 
 private fun shareCertificateText(context: Context, p: ParticipantEntity, awardTitle: String) {
     try {
+        val sealProgress = deriveEighteenStarSeals(p)
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
             putExtra(
                 Intent.EXTRA_TEXT,
                 """
-                🎓 লাইফ স্কিলস ক্যাম্প ২০২৬ - শিক্ষার্থী অর্জন সনদপত্র 🏆
+                🎓 লাইফ স্কিলস ক্যাম্পিং ২০২৬ (ওয়ামী বাংলাদেশ) - অর্জন সনদপত্র 🏆
+                “নিজকে গড়ো, গড়তে শেখাও” (২২–২৬ অক্টোবর ২০২৬)
                 --------------------------------------------------
                 অংশগ্রহণকারীর নাম: ${p.nameBn} (${p.nameEn})
                 ক্যাম্প আইডি: ${p.campCode}
-                দল: ${p.groupNameBn} (${p.subgroup})
-                জেলা: ${p.districtBn}
-                অর্জন: $awardTitle
+                দল ও সাব-গ্রুপ: ${p.groupNameBn} (${p.subgroup})
+                সংস্থা ও জেলা: ${p.organization}, ${p.districtBn}
+                অর্জিত স্টেশন স্টার সিল: ★ ${sealProgress.earnedCount}/১৮
+                বিশেষ অর্জন: $awardTitle
                 --------------------------------------------------
-                লাইফ স্কিলস ক্যাম্প ২০২৬ পরিচালনা পর্ষদ
+                ড. মুহাম্মদ রেদওয়ানুর রহমান (কান্ট্রি ডিরেক্টর, ওয়ামী বাংলাদেশ)
+                এয়ার কমোডোর মো: শওকত আলী (অব:) (ক্যাম্প প্রধান, LSC ২০২৬)
                 """.trimIndent()
             )
         }

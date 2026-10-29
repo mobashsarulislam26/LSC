@@ -1,5 +1,6 @@
 package com.example.ui.screens.competitions
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -45,16 +46,30 @@ fun CompetitionScreen(
     onBatchImportJudges: (String) -> Int = { 0 },
     onBatchImportVolunteers: (String) -> Int = { 0 },
     onBatchImportDutyOfficers: (String) -> Int = { 0 },
+    onAwardPodiumWinner: (competitionId: Long, participant: ParticipantEntity, rank: Int, isPrizeHandedOver: Boolean, remarks: String) -> Unit = { _, _, _, _, _ -> },
+    onTogglePrizeHandedOver: (CompetitionScoreEntity) -> Unit = {},
     onSubmitScore: (competitionId: Long, participant: ParticipantEntity, accuracy: Double, pres: Double, disc: Double, remarks: String) -> Unit
 ) {
     var selectedTab by remember { mutableStateOf("LEADERBOARD") } // "LEADERBOARD", "MILESTONES", "JUDGING", "JUDGES"
-    var selectedCompId by remember { mutableStateOf(competitions.firstOrNull()?.id ?: 1L) }
+    var selectedCompId by remember(competitions) { mutableStateOf(competitions.firstOrNull()?.id ?: 1L) }
     var showScoreDialog by remember { mutableStateOf(false) }
+    var showQuickPodiumSheet by remember { mutableStateOf(false) }
     var showAddJudgeDialog by remember { mutableStateOf(false) }
     var showBatchImportDialog by remember { mutableStateOf(false) }
     var judgeToEdit by remember { mutableStateOf<JudgeEntity?>(null) }
     var judgeToDelete by remember { mutableStateOf<JudgeEntity?>(null) }
     var judgeCategoryFilter by remember { mutableStateOf("ALL") }
+
+    val totalPlannedPrizes = remember(competitions) {
+        val sum = competitions.sumOf { it.prizeCount }
+        if (sum > 0) sum else 835
+    }
+    val handedOverCount = remember(competitionScores) {
+        competitionScores.count { it.isPrizeHandedOver }
+    }
+    val activeCompetition = remember(competitions, selectedCompId) {
+        competitions.find { it.id == selectedCompId } ?: competitions.firstOrNull()
+    }
 
     Column(
         modifier = Modifier
@@ -86,25 +101,25 @@ fun CompetitionScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.MilitaryTech, contentDescription = null, modifier = Modifier.size(12.dp))
                         Spacer(modifier = Modifier.width(2.dp))
-                        Text(if (language == CampLanguage.BANGLA) "মাইলস্টোন" else "Milestones", fontSize = 10.sp)
+                        Text(if (language == CampLanguage.BANGLA) "১৮ স্টার ও মাইলস্টোন" else "18★ & Milestones", fontSize = 10.sp)
                     }
                 },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = Color(0xFF7C3AED),
                     selectedLabelColor = Color.White
                 ),
-                modifier = Modifier.weight(1.1f).testTag("tab_milestones")
+                modifier = Modifier.weight(1.25f).testTag("tab_milestones")
             )
 
             FilterChip(
                 selected = selectedTab == "JUDGING",
                 onClick = { selectedTab = "JUDGING" },
-                label = { Text(if (language == CampLanguage.BANGLA) "স্কোর" else "Scoring", fontSize = 10.sp) },
+                label = { Text(if (language == CampLanguage.BANGLA) "স্কোর ও পুরস্কার" else "Scoring", fontSize = 10.sp) },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = LscEmeraldPrimary,
                     selectedLabelColor = Color.White
                 ),
-                modifier = Modifier.weight(0.9f).testTag("tab_judging")
+                modifier = Modifier.weight(1f).testTag("tab_judging")
             )
 
             FilterChip(
@@ -121,11 +136,11 @@ fun CompetitionScreen(
                     selectedContainerColor = Color(0xFF1D4ED8),
                     selectedLabelColor = Color.White
                 ),
-                modifier = Modifier.weight(0.9f).testTag("tab_judges")
+                modifier = Modifier.weight(0.85f).testTag("tab_judges")
             )
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         when (selectedTab) {
             "LEADERBOARD" -> {
@@ -134,9 +149,63 @@ fun CompetitionScreen(
                     contentPadding = PaddingValues(bottom = 96.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    // Official 2026 835 Prizes Banner
+                    item {
+                        Card(
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFBEB)),
+                            border = BorderStroke(1.dp, Color(0xFFFDE68A)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = if (language == CampLanguage.BANGLA)
+                                            "🏆 ওয়ামী LSC ২০২৬ অফিশিয়াল প্রতিযোগিতা ও পুরস্কার"
+                                        else
+                                            "🏆 WAMY LSC 2026 Competitions & Awards",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        color = Color(0xFF92400E)
+                                    )
+                                    Text(
+                                        text = if (language == CampLanguage.BANGLA)
+                                            "${competitions.size}টি ইভেন্ট • মোট বরাদ্দ: $totalPlannedPrizes টি পুরস্কার • হস্তান্তরকৃত: $handedOverCount টি"
+                                        else
+                                            "${competitions.size} Events • Planned: $totalPlannedPrizes Prizes • Handed over: $handedOverCount",
+                                        fontSize = 11.sp,
+                                        color = Color(0xFFB45309)
+                                    )
+                                }
+
+                                Button(
+                                    onClick = {
+                                        selectedTab = "JUDGING"
+                                        showQuickPodiumSheet = true
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706)),
+                                    shape = RoundedCornerShape(8.dp),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Text(
+                                        text = if (language == CampLanguage.BANGLA) "⚡ ১ম/২য়/৩য়" else "⚡ Podium",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     item {
                         Text(
-                            text = if (language == CampLanguage.BANGLA) "গ্রুপ সার্বিক পয়েন্ট তালিকা" else "Group Overall Standings",
+                            text = if (language == CampLanguage.BANGLA) "গ্রুপ সার্বিক পয়েন্ট তালিকা (৬টি অফিশিয়াল গ্রুপ)" else "Group Overall Standings",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = LscSlateDark
                         )
@@ -147,16 +216,20 @@ fun CompetitionScreen(
                     }
 
                     item {
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = if (language == CampLanguage.BANGLA) "সেরা পারফর্মার ও অ্যাওয়ার্ড তালিকা" else "Top Participants & Award Winners",
+                            text = if (language == CampLanguage.BANGLA) "সেরা পারফর্মার ও অ্যাওয়ার্ড বিজয়ী তালিকা" else "Top Participants & Award Winners",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = LscSlateDark
                         )
                     }
 
                     items(competitionScores.sortedByDescending { it.totalScore }) { score ->
-                        ParticipantScoreCard(score = score, language = language)
+                        ParticipantScoreCard(
+                            score = score,
+                            language = language,
+                            onToggleHandover = { onTogglePrizeHandedOver(score) }
+                        )
                     }
                 }
             }
@@ -167,16 +240,16 @@ fun CompetitionScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(competitions) { comp ->
+                        items(competitions, key = { it.id }) { comp ->
                             val isSelected = comp.id == selectedCompId
                             Surface(
                                 color = if (isSelected) LscEmeraldPrimary else Color.White,
                                 shape = RoundedCornerShape(10.dp),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) LscEmeraldPrimary else Color(0xFFCBD5E1)),
+                                border = BorderStroke(1.dp, if (isSelected) LscEmeraldPrimary else Color(0xFFCBD5E1)),
                                 modifier = Modifier.clickable { selectedCompId = comp.id }
                             ) {
                                 Text(
-                                    text = if (language == CampLanguage.BANGLA) comp.nameBn else comp.nameEn,
+                                    text = "${if (language == CampLanguage.BANGLA) comp.nameBn else comp.nameEn} (${comp.prizeCount})",
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = if (isSelected) Color.White else LscSlateDark,
@@ -186,23 +259,107 @@ fun CompetitionScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
-                    Button(
-                        onClick = { showScoreDialog = true },
-                        colors = ButtonDefaults.buttonColors(containerColor = LscEmeraldPrimary),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth().testTag("open_score_entry_btn")
-                    ) {
-                        Icon(Icons.Default.AddModerator, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(if (language == CampLanguage.BANGLA) "নতুন স্কোর এন্ট্রি করুন" else "Enter New Score")
+                    // Active Event Summary Card
+                    activeCompetition?.let { comp ->
+                        val scopeLabel = when (comp.selectionScope) {
+                            "SUBGROUP_TOP3" -> "সেশনেই প্রতি সাব-গ্রুপে ১ম/২য়/৩য়"
+                            "GROUP_BEST" -> "গ্রুপ ভিত্তিক সেরা"
+                            "PARADE" -> "প্যারেড ও কুচকাওয়াজ"
+                            "TEAM" -> "দলীয় পুরস্কার"
+                            "OUTING" -> "শিক্ষা সফর কুইজ"
+                            else -> comp.selectionScope
+                        }
+                        Card(
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF0FDF4)),
+                            border = BorderStroke(1.dp, Color(0xFFBBF7D0)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = if (language == CampLanguage.BANGLA) comp.nameBn else comp.nameEn,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        color = Color(0xFF065F46)
+                                    )
+                                    Text(
+                                        text = "দিন-${comp.dayNo} • $scopeLabel • বিচারক: ${comp.judgeName}",
+                                        fontSize = 10.sp,
+                                        color = Color(0xFF047857)
+                                    )
+                                }
+                                Surface(
+                                    color = Color(0xFFFEF3C7),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text(
+                                        text = "🎁 ${comp.prizeCount}টি পুরস্কার",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF92400E),
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    // Dual Fast Entry Buttons: 3-Tap Podium Picker + Detailed 100-pt Rubric
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = { showQuickPodiumSheet = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706)),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.weight(1.15f)
+                        ) {
+                            Icon(Icons.Default.EmojiEvents, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (language == CampLanguage.BANGLA) "⚡ ১ম/২য়/৩য় বিজয়ী নির্বাচন" else "⚡ Quick 1st/2nd/3rd",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Button(
+                            onClick = { showScoreDialog = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = LscEmeraldPrimary),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.weight(1f).testTag("open_score_entry_btn")
+                        ) {
+                            Icon(Icons.Default.AddModerator, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (language == CampLanguage.BANGLA) "নতুন স্কোর এন্ট্রি" else "Enter Score",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    val compScores = competitionScores.filter { it.competitionId == selectedCompId }
+                        .sortedByDescending { it.totalScore }
 
                     Text(
-                        text = if (language == CampLanguage.BANGLA) "এই প্রতিযোগিতার জমাকৃত স্কোরসমূহ:" else "Submitted Scores for this Event:",
+                        text = if (language == CampLanguage.BANGLA)
+                            "এই প্রতিযোগিতার বিজয়ী ও জমাকৃত স্কোর (${compScores.size} জন):"
+                        else
+                            "Submitted Scores & Winners (${compScores.size}):",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.Gray
@@ -210,7 +367,6 @@ fun CompetitionScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    val compScores = competitionScores.filter { it.competitionId == selectedCompId }
                     if (compScores.isEmpty()) {
                         Box(
                             modifier = Modifier
@@ -219,7 +375,7 @@ fun CompetitionScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = if (language == CampLanguage.BANGLA) "এখনও কোনো স্কোর জমা দেওয়া হয়নি।" else "No scores submitted yet.",
+                                text = if (language == CampLanguage.BANGLA) "এখনও কোনো স্কোর বা বিজয়ী যুক্ত করা হয়নি।" else "No scores submitted yet.",
                                 color = Color.Gray,
                                 fontSize = 13.sp
                             )
@@ -230,8 +386,12 @@ fun CompetitionScreen(
                             contentPadding = PaddingValues(bottom = 96.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            items(compScores) { s ->
-                                ParticipantScoreCard(score = s, language = language)
+                            items(compScores, key = { it.id }) { s ->
+                                ParticipantScoreCard(
+                                    score = s,
+                                    language = language,
+                                    onToggleHandover = { onTogglePrizeHandedOver(s) }
+                                )
                             }
                         }
                     }
@@ -240,11 +400,10 @@ fun CompetitionScreen(
 
             "JUDGES" -> {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    // Header Bar with "+ নতুন বিচারক" & "এক্সেল আপলোড"
                     Card(
                         shape = RoundedCornerShape(14.dp),
                         colors = CardDefaults.cardColors(containerColor = Color(0xFFEFF6FF)),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFBFDBFE)),
+                        border = BorderStroke(1.dp, Color(0xFFBFDBFE)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
@@ -315,15 +474,14 @@ fun CompetitionScreen(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    // Category Filter Chips
                     val categories = listOf(
                         "ALL" to (if (language == CampLanguage.BANGLA) "সকল বিচারক" else "All Judges"),
                         "Quran" to (if (language == CampLanguage.BANGLA) "ক্বিরাত ও তাজবীদ" else "Quran"),
-                        "Hadith" to (if (language == CampLanguage.BANGLA) "হাদিস মুখস্থ" else "Hadith"),
-                        "Quiz" to (if (language == CampLanguage.BANGLA) "সাধারণ জ্ঞান ও কুইজ" else "Quiz"),
-                        "Arts" to (if (language == CampLanguage.BANGLA) "ক্যালিগ্রাফি" else "Arts"),
-                        "Speech" to (if (language == CampLanguage.BANGLA) "বক্তৃতা ও বিতর্ক" else "Speech"),
-                        "Sports" to (if (language == CampLanguage.BANGLA) "ক্রীড়া ও স্কিল" else "Sports")
+                        "Hadith" to (if (language == CampLanguage.BANGLA) "হাদিস ও দোয়া" else "Hadith"),
+                        "Quiz" to (if (language == CampLanguage.BANGLA) "কুইজ ও আইকিউ" else "Quiz"),
+                        "Arts" to (if (language == CampLanguage.BANGLA) "দেয়ালিকা ও রচনা" else "Arts"),
+                        "Speech" to (if (language == CampLanguage.BANGLA) "বক্তৃতা ও কবিতা" else "Speech"),
+                        "Sports" to (if (language == CampLanguage.BANGLA) "ক্রীড়া ও ডিসিপ্লিন" else "Sports")
                     )
 
                     LazyRow(
@@ -335,7 +493,7 @@ fun CompetitionScreen(
                             Surface(
                                 color = if (isSel) Color(0xFF1D4ED8) else Color(0xFFF1F5F9),
                                 shape = RoundedCornerShape(8.dp),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, if (isSel) Color(0xFF1D4ED8) else Color(0xFFE2E8F0)),
+                                border = BorderStroke(1.dp, if (isSel) Color(0xFF1D4ED8) else Color(0xFFE2E8F0)),
                                 modifier = Modifier.clickable { judgeCategoryFilter = catKey }
                             ) {
                                 Text(
@@ -506,10 +664,24 @@ fun CompetitionScreen(
         )
     }
 
-    // Modal Dialog: Submit Judge Score
+    // Modal Dialog: 3-Tap Quick Podium Winner Picker (1st / 2nd / 3rd + Instant Prize Handover)
+    if (showQuickPodiumSheet) {
+        QuickPodiumWinnerDialog(
+            participants = participants,
+            competition = activeCompetition,
+            existingScores = competitionScores.filter { it.competitionId == selectedCompId },
+            language = language,
+            onDismiss = { showQuickPodiumSheet = false },
+            onAwardRank = { participant, rank, isHandedOver, note ->
+                onAwardPodiumWinner(selectedCompId, participant, rank, isHandedOver, note)
+            }
+        )
+    }
+
+    // Modal Dialog: Submit Detailed Judge Score (Full 609 Roster searchable!)
     if (showScoreDialog) {
         JudgeScoreEntryDialog(
-            participants = participants.take(30),
+            participants = participants,
             competitionId = selectedCompId,
             judges = judges,
             language = language,
@@ -519,6 +691,225 @@ fun CompetitionScreen(
                 showScoreDialog = false
             }
         )
+    }
+}
+
+/**
+ * 3-Tap Podium Winner Picker for Instant Session Awards (835 Official Prizes).
+ * Select Subgroup -> Tap 1st / 2nd / 3rd on any student -> Done!
+ */
+@Composable
+fun QuickPodiumWinnerDialog(
+    participants: List<ParticipantEntity>,
+    competition: CompetitionEntity?,
+    existingScores: List<CompetitionScoreEntity>,
+    language: CampLanguage,
+    onDismiss: () -> Unit,
+    onAwardRank: (participant: ParticipantEntity, rank: Int, isPrizeHandedOver: Boolean, remarks: String) -> Unit
+) {
+    val isBangla = language == CampLanguage.BANGLA
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedSubgroup by remember { mutableStateOf("ALL") }
+    var instantPrizeHandedOver by remember {
+        mutableStateOf(competition?.selectionScope == "SUBGROUP_TOP3" || competition?.selectionScope == "OUTING")
+    }
+
+    val subgroups = remember(participants) {
+        participants.map { it.subgroup }.filter { it.isNotBlank() }.distinct()
+    }
+
+    val filteredParticipants = remember(participants, searchQuery, selectedSubgroup) {
+        val q = searchQuery.trim()
+        participants.filter { p ->
+            val matchSub = selectedSubgroup == "ALL" || p.subgroup.equals(selectedSubgroup, ignoreCase = true)
+            val matchQuery = q.isBlank() ||
+                    p.nameBn.contains(q, ignoreCase = true) ||
+                    p.nameEn.contains(q, ignoreCase = true) ||
+                    p.campCode.contains(q, ignoreCase = true) ||
+                    p.fileNo.contains(q, ignoreCase = true)
+            matchSub && matchQuery
+        }.take(60)
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(4.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (isBangla) "⚡ দ্রুত ১ম / ২য় / ৩য় বিজয়ী নির্বাচন" else "⚡ Fast 1st / 2nd / 3rd Winner Picker",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = LscSlateDark
+                        )
+                        Text(
+                            text = competition?.nameBn ?: "প্রতিযোগিতা",
+                            fontSize = 11.sp,
+                            color = LscEmeraldPrimary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, contentDescription = "Close")
+                    }
+                }
+
+                // Instant Handover Switch
+                Surface(
+                    color = Color(0xFFFFFBEB),
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, Color(0xFFFDE68A)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp)
+                        .clickable { instantPrizeHandedOver = !instantPrizeHandedOver }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = if (isBangla) "🎁 সেশনেই তাৎক্ষণিক পুরস্কার হস্তান্তর সম্পন্ন" else "🎁 Mark Prize Handed Over Immediately",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF92400E),
+                            modifier = Modifier.weight(1f)
+                        )
+                        Switch(
+                            checked = instantPrizeHandedOver,
+                            onCheckedChange = { instantPrizeHandedOver = it }
+                        )
+                    }
+                }
+
+                // Subgroup Chips (24 Official Subgroups)
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    item {
+                        FilterChip(
+                            selected = selectedSubgroup == "ALL",
+                            onClick = { selectedSubgroup = "ALL" },
+                            label = { Text(if (isBangla) "সকল সাব-গ্রুপ" else "All", fontSize = 10.sp) }
+                        )
+                    }
+                    items(subgroups) { sg ->
+                        FilterChip(
+                            selected = selectedSubgroup == sg,
+                            onClick = { selectedSubgroup = sg },
+                            label = { Text(sg, fontSize = 10.sp) }
+                        )
+                    }
+                }
+
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text(if (isBangla) "নাম, ক্যাম্প আইডি বা ফাইল নম্বর খুঁজুন..." else "Search name or ID...", fontSize = 11.sp) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Box(modifier = Modifier.heightIn(max = 280.dp)) {
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        items(filteredParticipants, key = { it.id }) { p ->
+                            val currentRank = existingScores.find { it.participantId == p.id }?.rank ?: 0
+                            Surface(
+                                color = if (currentRank in 1..3) Color(0xFFF0FDF4) else Color(0xFFF8FAFC),
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (currentRank in 1..3) Color(0xFF86EFAC) else Color(0xFFE2E8F0)
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = p.nameBn,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 12.sp,
+                                            color = LscSlateDark
+                                        )
+                                        Text(
+                                            text = "${p.campCode} • ${p.subgroup}",
+                                            fontSize = 10.sp,
+                                            color = Color.Gray
+                                        )
+                                    }
+
+                                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        listOf(
+                                            1 to "🥇 ১ম",
+                                            2 to "🥈 ২য়",
+                                            3 to "🥉 ৩য়"
+                                        ).forEach { (rk, label) ->
+                                            val isPicked = currentRank == rk
+                                            Surface(
+                                                color = when {
+                                                    isPicked && rk == 1 -> Color(0xFFD97706)
+                                                    isPicked && rk == 2 -> Color(0xFF2563EB)
+                                                    isPicked -> Color(0xFF059669)
+                                                    else -> Color.White
+                                                },
+                                                shape = RoundedCornerShape(6.dp),
+                                                border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                                                modifier = Modifier.clickable {
+                                                    onAwardRank(p, rk, instantPrizeHandedOver, "")
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = label,
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (isPicked) Color.White else LscSlateDark,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Button(
+                    onClick = onDismiss,
+                    colors = ButtonDefaults.buttonColors(containerColor = LscEmeraldPrimary),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (isBangla) "সম্পন্ন" else "Done")
+                }
+            }
+        }
     }
 }
 
@@ -537,7 +928,7 @@ fun JudgeCard(
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
         modifier = Modifier
             .fillMaxWidth()
             .testTag("judge_card_${judge.id}")
@@ -636,7 +1027,7 @@ fun JudgeCard(
                     Surface(
                         color = Color(0xFFFEF3C7),
                         shape = RoundedCornerShape(6.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFDE68A))
+                        border = BorderStroke(1.dp, Color(0xFFFDE68A))
                     ) {
                         Text(
                             text = "ইভেন্ট: ${judge.assignedCategory}",
@@ -698,10 +1089,10 @@ fun EditJudgeDialog(
 
     val categories = listOf(
         "Quran" to "ক্বিরাত ও তাজবীদ",
-        "Hadith" to "হাদিস মুখস্থ",
+        "Hadith" to "হাদিস ও দোয়া",
         "Quiz" to "সাধারণ জ্ঞান ও কুইজ",
-        "Arts" to "ক্যালিগ্রাফি",
-        "Speech" to "বক্তৃতা ও বিতর্ক",
+        "Arts" to "দেয়ালিকা ও রচনা",
+        "Speech" to "বক্তৃতা ও কবিতা",
         "Sports" to "শারীরিক সক্ষমতা",
         "General" to "সার্বিক জুরিবোর্ড"
     )
@@ -858,10 +1249,10 @@ fun AddJudgeDialog(
 
     val categories = listOf(
         "Quran" to (if (language == CampLanguage.BANGLA) "ক্বিরাত ও তাজবীদ" else "Quran"),
-        "Hadith" to (if (language == CampLanguage.BANGLA) "হাদিস মুখস্থ" else "Hadith"),
+        "Hadith" to (if (language == CampLanguage.BANGLA) "হাদিস ও দোয়া" else "Hadith"),
         "Quiz" to (if (language == CampLanguage.BANGLA) "সাধারণ জ্ঞান ও কুইজ" else "Quiz"),
-        "Arts" to (if (language == CampLanguage.BANGLA) "ক্যালিগ্রাফি" else "Arts"),
-        "Speech" to (if (language == CampLanguage.BANGLA) "বক্তৃতা ও বিতর্ক" else "Speech"),
+        "Arts" to (if (language == CampLanguage.BANGLA) "দেয়ালিকা ও রচনা" else "Arts"),
+        "Speech" to (if (language == CampLanguage.BANGLA) "বক্তৃতা ও কবিতা" else "Speech"),
         "Sports" to (if (language == CampLanguage.BANGLA) "শারীরিক সক্ষমতা" else "Sports"),
         "General" to (if (language == CampLanguage.BANGLA) "সার্বিক জুরিবোর্ড" else "General")
     )
@@ -880,7 +1271,6 @@ fun AddJudgeDialog(
                     .fillMaxWidth()
                     .padding(18.dp)
             ) {
-                // Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -907,7 +1297,6 @@ fun AddJudgeDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Error Banner
                 if (errorMessage != null) {
                     Surface(
                         color = Color(0xFFFEE2E2),
@@ -923,7 +1312,6 @@ fun AddJudgeDialog(
                     }
                 }
 
-                // Inputs
                 OutlinedTextField(
                     value = nameBn,
                     onValueChange = {
@@ -1051,7 +1439,7 @@ fun GroupLeaderboardCard(group: CampGroupEntity, language: CampLanguage) {
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -1060,7 +1448,7 @@ fun GroupLeaderboardCard(group: CampGroupEntity, language: CampLanguage) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                     Box(
                         modifier = Modifier
                             .size(12.dp)
@@ -1069,7 +1457,7 @@ fun GroupLeaderboardCard(group: CampGroupEntity, language: CampLanguage) {
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "${group.nameBn} (${group.nameEn})",
+                        text = if (language == CampLanguage.BANGLA) group.nameBn else group.nameEn,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
                     )
@@ -1110,11 +1498,22 @@ fun GroupLeaderboardCard(group: CampGroupEntity, language: CampLanguage) {
 }
 
 @Composable
-fun ParticipantScoreCard(score: CompetitionScoreEntity, language: CampLanguage) {
+fun ParticipantScoreCard(
+    score: CompetitionScoreEntity,
+    language: CampLanguage,
+    onToggleHandover: (() -> Unit)? = null
+) {
+    val medalBadge = when (score.rank) {
+        1 -> "🥇 ১ম স্থান"
+        2 -> "🥈 ২য় স্থান"
+        3 -> "🥉 ৩য় স্থান"
+        else -> null
+    }
+
     Card(
         shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -1126,6 +1525,14 @@ fun ParticipantScoreCard(score: CompetitionScoreEntity, language: CampLanguage) 
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (medalBadge != null) {
+                        Text(
+                            text = "$medalBadge • ",
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 12.sp,
+                            color = Color(0xFFB45309)
+                        )
+                    }
                     Text(
                         text = score.participantName,
                         fontWeight = FontWeight.Bold,
@@ -1169,15 +1576,35 @@ fun ParticipantScoreCard(score: CompetitionScoreEntity, language: CampLanguage) 
                     Text(
                         text = "${"%.1f".format(score.totalScore)} / 100",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
+                        fontSize = 12.sp,
                         color = if (score.totalScore >= 90) Color(0xFFB45309) else LscSlateDark,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                     )
                 }
 
-                if (score.isAwardEligible) {
+                Spacer(modifier = Modifier.height(4.dp))
+
+                if (onToggleHandover != null) {
+                    Surface(
+                        color = if (score.isPrizeHandedOver) Color(0xFFDCFCE7) else Color(0xFFFFFBEB),
+                        shape = RoundedCornerShape(6.dp),
+                        border = BorderStroke(
+                            1.dp,
+                            if (score.isPrizeHandedOver) Color(0xFF86EFAC) else Color(0xFFFDE68A)
+                        ),
+                        modifier = Modifier.clickable { onToggleHandover() }
+                    ) {
+                        Text(
+                            text = if (score.isPrizeHandedOver) "🎁 হস্তান্তর সম্পন্ন ✓" else "🎁 পুরস্কার দিন",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (score.isPrizeHandedOver) Color(0xFF15803D) else Color(0xFFB45309),
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                } else if (score.isAwardEligible) {
                     Text(
-                        text = "মেডেল বিজয়ী ★",
+                        text = "পুরস্কার বিজয়ী ★",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = LscGoldDark
@@ -1197,7 +1624,27 @@ fun JudgeScoreEntryDialog(
     onDismiss: () -> Unit,
     onSubmit: (participant: ParticipantEntity, accuracy: Double, presentation: Double, discipline: Double, remarks: String) -> Unit
 ) {
-    var selectedParticipant by remember { mutableStateOf(participants.firstOrNull()) }
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedSubgroup by remember { mutableStateOf("ALL") }
+
+    val subgroups = remember(participants) {
+        participants.map { it.subgroup }.filter { it.isNotBlank() }.distinct()
+    }
+
+    val filteredParticipants = remember(participants, searchQuery, selectedSubgroup) {
+        val q = searchQuery.trim()
+        participants.filter { p ->
+            val matchSub = selectedSubgroup == "ALL" || p.subgroup.equals(selectedSubgroup, ignoreCase = true)
+            val matchQuery = q.isBlank() ||
+                    p.nameBn.contains(q, ignoreCase = true) ||
+                    p.nameEn.contains(q, ignoreCase = true) ||
+                    p.campCode.contains(q, ignoreCase = true) ||
+                    p.fileNo.contains(q, ignoreCase = true)
+            matchSub && matchQuery
+        }.take(80)
+    }
+
+    var selectedParticipant by remember(filteredParticipants) { mutableStateOf(filteredParticipants.firstOrNull()) }
     var selectedJudge by remember { mutableStateOf(judges.firstOrNull()?.nameBn ?: "") }
     var accuracy by remember { mutableStateOf(35f) }
     var presentation by remember { mutableStateOf(26f) }
@@ -1215,16 +1662,16 @@ fun JudgeScoreEntryDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(18.dp)
+                    .padding(16.dp)
             ) {
                 Text(
-                    text = if (language == CampLanguage.BANGLA) "বিচারক স্কোর প্রদান ফরম" else "Judge Score Submission",
+                    text = if (language == CampLanguage.BANGLA) "বিচারক স্কোর প্রদান ফরম (৬০৯ তালিকা)" else "Judge Score Submission",
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,
                     color = LscSlateDark
                 )
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 if (judges.isNotEmpty()) {
                     Text(text = "মূল্যায়নকারী বিচারক:", fontSize = 11.sp, color = Color.Gray)
@@ -1241,7 +1688,7 @@ fun JudgeScoreEntryDialog(
                                 modifier = Modifier.clickable { selectedJudge = j.nameBn }
                             ) {
                                 Text(
-                                    text = j.nameBn.take(12),
+                                    text = j.nameBn.take(14),
                                     fontSize = 10.sp,
                                     color = if (isSel) Color.White else LscSlateDark,
                                     fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
@@ -1250,15 +1697,45 @@ fun JudgeScoreEntryDialog(
                             }
                         }
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                 }
 
-                Text(text = "অংশগ্রহণকারী নির্বাচন:", fontSize = 11.sp, color = Color.Gray)
+                // Subgroup filter + Fast Search so all 609 participants are reachable
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    item {
+                        FilterChip(
+                            selected = selectedSubgroup == "ALL",
+                            onClick = { selectedSubgroup = "ALL" },
+                            label = { Text("সকল", fontSize = 10.sp) }
+                        )
+                    }
+                    items(subgroups) { sg ->
+                        FilterChip(
+                            selected = selectedSubgroup == sg,
+                            onClick = { selectedSubgroup = sg },
+                            label = { Text(sg, fontSize = 10.sp) }
+                        )
+                    }
+                }
+
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("শিক্ষার্থীর নাম বা আইডি খুঁজুন (উদা: Bukhari-1-1)...", fontSize = 11.sp) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
                 LazyRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    items(participants) { p ->
+                    items(filteredParticipants, key = { it.id }) { p ->
                         val isSel = p.id == selectedParticipant?.id
                         Surface(
                             color = if (isSel) LscEmeraldPrimary else Color(0xFFF1F5F9),
@@ -1266,7 +1743,7 @@ fun JudgeScoreEntryDialog(
                             modifier = Modifier.clickable { selectedParticipant = p }
                         ) {
                             Text(
-                                text = "${p.nameBn.take(10)} (${p.campCode})",
+                                text = "${p.nameBn.take(12)} (${p.campCode})",
                                 fontSize = 11.sp,
                                 color = if (isSel) Color.White else LscSlateDark,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
@@ -1275,7 +1752,7 @@ fun JudgeScoreEntryDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Text(text = "১. বিশুদ্ধতা ও নির্ভুলতা (সর্বোচ্চ ৪০): ${accuracy.toInt()}", fontSize = 11.sp)
                 Slider(value = accuracy, onValueChange = { accuracy = it }, valueRange = 0f..40f)
@@ -1300,7 +1777,7 @@ fun JudgeScoreEntryDialog(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 OutlinedTextField(
                     value = remarks,
@@ -1310,7 +1787,7 @@ fun JudgeScoreEntryDialog(
                     singleLine = true
                 )
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {

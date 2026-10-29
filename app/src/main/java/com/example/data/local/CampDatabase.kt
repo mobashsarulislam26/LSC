@@ -41,7 +41,7 @@ import java.security.SecureRandom
         CachedSyncItemEntity::class,
         VolunteerShiftEntity::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = false
 )
 abstract class CampDatabase : RoomDatabase() {
@@ -140,6 +140,33 @@ abstract class CampDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `participants` ADD COLUMN `classLevel` TEXT NOT NULL DEFAULT '৪র্থ শ্রেণি'")
+                db.execSQL("ALTER TABLE `participants` ADD COLUMN `organization` TEXT NOT NULL DEFAULT 'WAMY-OSP'")
+                db.execSQL("ALTER TABLE `participants` ADD COLUMN `completedStationSeals` TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE `stations` ADD COLUMN `day2TopicBn` TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE `stations` ADD COLUMN `day4TopicBn` TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE `stations` ADD COLUMN `day5TopicBn` TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE `stations` ADD COLUMN `subModerators` TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE `competitions` ADD COLUMN `prizeCount` INTEGER NOT NULL DEFAULT 72")
+                db.execSQL("ALTER TABLE `competitions` ADD COLUMN `isTeamEvent` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `competitions` ADD COLUMN `selectionScope` TEXT NOT NULL DEFAULT 'SUBGROUP_TOP3'")
+                db.execSQL("ALTER TABLE `competition_scores` ADD COLUMN `isPrizeHandedOver` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `health_records` ADD COLUMN `heightCm` TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE `health_records` ADD COLUMN `weightKg` TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE `health_records` ADD COLUMN `dentalBusReferred` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `health_records` ADD COLUMN `visionNotes` TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE `health_records` ADD COLUMN `photoDocumented` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `camp_rooms` ADD COLUMN `cleanlinessScore` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `camp_rooms` ADD COLUMN `lastInspectedAt` INTEGER")
+                db.execSQL("ALTER TABLE `kit_distributions` ADD COLUMN `clothingSize` TEXT NOT NULL DEFAULT 'M'")
+                db.execSQL("ALTER TABLE `kit_distributions` ADD COLUMN `shoeSize` TEXT NOT NULL DEFAULT '36'")
+                db.execSQL("ALTER TABLE `kit_distributions` ADD COLUMN `motherChadorStatus` TEXT NOT NULL DEFAULT 'DISTRIBUTED'")
+                db.execSQL("ALTER TABLE `kit_distributions` ADD COLUMN `distributedItemsCount` INTEGER NOT NULL DEFAULT 30")
+            }
+        }
+
         private val ALL_MIGRATIONS = arrayOf(
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -150,7 +177,8 @@ abstract class CampDatabase : RoomDatabase() {
             MIGRATION_7_8,
             MIGRATION_8_9,
             MIGRATION_9_10,
-            MIGRATION_10_11
+            MIGRATION_10_11,
+            MIGRATION_11_12
         )
 
         private fun isRobolectricTest(): Boolean {
@@ -175,7 +203,12 @@ abstract class CampDatabase : RoomDatabase() {
                         .fallbackToDestructiveMigration()
                         .fallbackToDestructiveMigrationOnDowngrade()
 
-                    if (!isRobolectricTest()) {
+                    if (isRobolectricTest()) {
+                        val testExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
+                        builder.setQueryExecutor(testExecutor)
+                        builder.setTransactionExecutor(testExecutor)
+                        builder.allowMainThreadQueries()
+                    } else {
                         val isSqlcipherAvailable = try {
                             System.loadLibrary("sqlcipher")
                             true
@@ -209,6 +242,7 @@ abstract class CampDatabase : RoomDatabase() {
                 } catch (_: Exception) {
                 } finally {
                     INSTANCE = null
+                    com.example.data.repository.CampRepository.resetInstance()
                 }
             }
         }

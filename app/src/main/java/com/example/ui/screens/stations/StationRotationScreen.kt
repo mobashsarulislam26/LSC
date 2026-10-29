@@ -1,7 +1,6 @@
 package com.example.ui.screens.stations
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,10 +19,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.model.CampGroupEntity
-import com.example.data.model.CampLanguage
-import com.example.data.model.ScheduleEventEntity
-import com.example.data.model.StationEntity
+import com.example.data.model.*
 import com.example.ui.components.EditGroupDialog
 import com.example.ui.components.EditScheduleDialog
 import com.example.ui.theme.*
@@ -40,10 +36,26 @@ fun StationRotationScreen(
     onDaySelect: (Int) -> Unit,
     onUpdateScheduleEvent: (ScheduleEventEntity) -> Unit = {},
     onUpdateGroup: (CampGroupEntity) -> Unit = {},
-    onOpenScanner: () -> Unit = {}
+    onOpenScanner: () -> Unit = {},
+    currentRole: UserRole = UserRole.CAMP_CHIEF,
+    participants: List<ParticipantEntity> = emptyList(),
+    onOpenScannerForStation: (Int) -> Unit = { onOpenScanner() },
+    onBatchSubgroupAttendance: (
+        eventId: Long,
+        eventTitleBn: String,
+        dayNo: Int,
+        subgroupKey: String,
+        absentIds: Set<Long>,
+        stationSealCode: String?
+    ) -> Unit = { _, _, _, _, _, _ -> }
 ) {
+    val defaultMode = if (currentRole == UserRole.STATION_MANAGER || currentRole == UserRole.STATION_MODERATOR) {
+        "CONSOLE"
+    } else {
+        "TIMELINE"
+    }
     var selectedGroupFilter by remember { mutableStateOf<String?>(null) }
-    var selectedViewMode by remember { mutableStateOf("TIMELINE") } // "TIMELINE", "STATIONS", "GROUPS"
+    var selectedViewMode by remember(currentRole) { mutableStateOf(defaultMode) }
     var eventToEdit by remember { mutableStateOf<ScheduleEventEntity?>(null) }
     var groupToEdit by remember { mutableStateOf<CampGroupEntity?>(null) }
 
@@ -89,12 +101,15 @@ fun StationRotationScreen(
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
                         Text(
-                            text = if (language == CampLanguage.BANGLA) "স্টেশন হাজিরা স্ক্যানার" else "Station Attendance Scanner",
+                            text = if (language == CampLanguage.BANGLA) "স্টেশন র‍্যাপিড হাজিরা স্ক্যানার ও ★ সিল" else "Station Rapid Attendance & ★ Seal",
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                             color = Color(0xFF1E3A8A)
                         )
                         Text(
-                            text = if (language == CampLanguage.BANGLA) "ক্যামেরা দিয়ে কিউআর কোড স্ক্যান করে দ্রুত উপস্থিতি নিন" else "Scan participant QR badges with camera to log attendance",
+                            text = if (language == CampLanguage.BANGLA)
+                                "নন-স্টপ ক্যামেরা কিউআর গান অথবা ১-ট্যাপ সাব-গ্রুপ হাজিরা নিন"
+                            else
+                                "Scan QR badges continuously or log 1-tap subgroup batch roll-call",
                             fontSize = 10.sp,
                             color = Color(0xFF3B82F6)
                         )
@@ -123,10 +138,11 @@ fun StationRotationScreen(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Day Selector Tabs (Day 1 to Day 5)
+        // Day Selector Tabs (Day 1 to Day 5: 22–26 October 2026)
+        val dayDatesBn = mapOf(1 to "২২ অক্টো", 2 to "২৩ অক্টো", 3 to "২৪ অক্টো", 4 to "২৫ অক্টো", 5 to "২৬ অক্টো")
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             (1..5).forEach { day ->
                 val isSelected = selectedDay == day
@@ -140,7 +156,7 @@ fun StationRotationScreen(
                         .testTag("day_${day}_selector")
                 ) {
                     Column(
-                        modifier = Modifier.padding(vertical = 8.dp),
+                        modifier = Modifier.padding(vertical = 6.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
@@ -149,54 +165,83 @@ fun StationRotationScreen(
                             fontSize = 12.sp,
                             color = if (isSelected) Color.White else LscSlateDark
                         )
+                        Text(
+                            text = dayDatesBn[day] ?: "",
+                            fontSize = 9.sp,
+                            color = if (isSelected) Color.White.copy(alpha = 0.85f) else Color.Gray
+                        )
                     }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        // View Mode Switcher
+        // View Mode Switcher (Live Console | Schedule | 6 Stations | Leaders)
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
         ) {
+            FilterChip(
+                selected = selectedViewMode == "CONSOLE",
+                onClick = { selectedViewMode = "CONSOLE" },
+                label = { Text(if (language == CampLanguage.BANGLA) "⚡ কনসোল" else "⚡ Console", fontSize = 10.sp, fontWeight = FontWeight.Bold) },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = Color(0xFF0F172A),
+                    selectedLabelColor = LscGoldLight
+                ),
+                modifier = Modifier.weight(1.05f).testTag("station_mode_console_chip")
+            )
             FilterChip(
                 selected = selectedViewMode == "TIMELINE",
                 onClick = { selectedViewMode = "TIMELINE" },
-                label = { Text(if (language == CampLanguage.BANGLA) "শিডিউল" else "Schedule", fontSize = 11.sp) },
+                label = { Text(if (language == CampLanguage.BANGLA) "শিডিউল" else "Schedule", fontSize = 10.sp) },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = LscEmeraldPrimary,
                     selectedLabelColor = Color.White
                 ),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(0.95f)
             )
             FilterChip(
                 selected = selectedViewMode == "STATIONS",
                 onClick = { selectedViewMode = "STATIONS" },
-                label = { Text(if (language == CampLanguage.BANGLA) "স্টেশন" else "Stations", fontSize = 11.sp) },
+                label = { Text(if (language == CampLanguage.BANGLA) "৬ স্টেশন" else "Stations", fontSize = 10.sp) },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = LscEmeraldPrimary,
                     selectedLabelColor = Color.White
                 ),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(0.95f)
             )
             FilterChip(
                 selected = selectedViewMode == "GROUPS",
                 onClick = { selectedViewMode = "GROUPS" },
-                label = { Text(if (language == CampLanguage.BANGLA) "লিডার ও মেন্টর" else "Leaders & Mentors", fontSize = 11.sp) },
+                label = { Text(if (language == CampLanguage.BANGLA) "লিডার ও ইনচার্জ" else "Leaders", fontSize = 10.sp) },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = Color(0xFF1D4ED8),
                     selectedLabelColor = Color.White
                 ),
-                modifier = Modifier.weight(1.3f)
+                modifier = Modifier.weight(1.2f)
             )
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         when (selectedViewMode) {
+            "CONSOLE" -> {
+                StationManagerConsoleScreen(
+                    language = language,
+                    stations = stations,
+                    groups = groups,
+                    participants = participants,
+                    scheduleEvents = scheduleEvents,
+                    selectedDay = selectedDay,
+                    onDaySelect = onDaySelect,
+                    onOpenScannerForStation = onOpenScannerForStation,
+                    onBatchSubgroupAttendance = onBatchSubgroupAttendance
+                )
+            }
+
             "TIMELINE" -> {
                 val daySchedule = scheduleEvents.filter { it.dayNo == selectedDay }.ifEmpty {
                     scheduleEvents.filter { it.dayNo == 1 }
@@ -241,7 +286,6 @@ fun StationRotationScreen(
             }
 
             "GROUPS" -> {
-                // Group Leaders and Sub-group Mentors Management
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 96.dp),
@@ -261,7 +305,7 @@ fun StationRotationScreen(
                                 Icon(Icons.Default.Info, contentDescription = null, tint = Color(0xFF1D4ED8), modifier = Modifier.size(20.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "গ্রুপ লিডার ও সাব-গ্রুপ মেন্টরদের নাম বা ফোন নম্বর এডিট করতে ডানপাশের এডিট বোতাম ব্যবহার করুন।",
+                                    text = "৬টি মূল গ্রুপের লিডার ও ২৪টি সাব-গ্রুপ ইনচার্জদের তালিকা (ডানপাশের এডিট বোতামে আপডেটযোগ্য)।",
                                     fontSize = 11.sp,
                                     color = Color(0xFF1E3A8A),
                                     lineHeight = 16.sp
@@ -314,6 +358,16 @@ fun StationRotationScreen(
             }
         )
     }
+}
+
+private fun shortGroupLabelBn(groupId: String): String = when (groupId.trim().lowercase()) {
+    "bukhari" -> "বুখারী"
+    "shafeyi" -> "শাফে’য়ী"
+    "salahuddin" -> "আয়ুবী"
+    "sumaiya" -> "সুমাইয়া"
+    "umm_ayman" -> "উম্মে আইমান"
+    "umm_saad" -> "উম্মে সা’দ"
+    else -> groupId.replaceFirstChar { it.uppercase() }
 }
 
 @Composable
@@ -412,7 +466,7 @@ fun ScheduleItemCard(
                 ) {
                     Column(modifier = Modifier.padding(8.dp)) {
                         Text(
-                            text = if (language == CampLanguage.BANGLA) "গ্রুপ স্টেশন বণ্টন ম্যাট্রিক্স (Station Matrix):" else "Assigned Rotation Matrix:",
+                            text = if (language == CampLanguage.BANGLA) "গ্রুপ স্টেশন বণ্টন ম্যাট্রিক্স (৬টি স্টেশন রোটেশন):" else "Assigned Rotation Matrix:",
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             color = LscEmeraldPrimary
@@ -426,10 +480,11 @@ fun ScheduleItemCard(
                         ) {
                             pairs.take(3).forEach { p ->
                                 if (p.size == 2) {
+                                    val label = if (language == CampLanguage.BANGLA) shortGroupLabelBn(p[0]) else p[0].replaceFirstChar { it.uppercase() }
                                     Text(
-                                        text = "${p[0].replaceFirstChar { it.uppercase() }} ➔ Stn ${p[1]}",
+                                        text = "$label ➔ S${p[1].trim()}",
                                         fontSize = 10.sp,
-                                        fontWeight = if (highlightGroup != null && p[0].contains(highlightGroup)) FontWeight.Bold else FontWeight.Normal,
+                                        fontWeight = if (highlightGroup != null && p[0].contains(highlightGroup)) FontWeight.Bold else FontWeight.Medium,
                                         color = if (highlightGroup != null && p[0].contains(highlightGroup)) LscGoldDark else Color.DarkGray
                                     )
                                 }
@@ -442,10 +497,11 @@ fun ScheduleItemCard(
                         ) {
                             pairs.drop(3).forEach { p ->
                                 if (p.size == 2) {
+                                    val label = if (language == CampLanguage.BANGLA) shortGroupLabelBn(p[0]) else p[0].replaceFirstChar { it.uppercase() }
                                     Text(
-                                        text = "${p[0].replaceFirstChar { it.uppercase() }} ➔ Stn ${p[1]}",
+                                        text = "$label ➔ S${p[1].trim()}",
                                         fontSize = 10.sp,
-                                        fontWeight = if (highlightGroup != null && p[0].contains(highlightGroup)) FontWeight.Bold else FontWeight.Normal,
+                                        fontWeight = if (highlightGroup != null && p[0].contains(highlightGroup)) FontWeight.Bold else FontWeight.Medium,
                                         color = if (highlightGroup != null && p[0].contains(highlightGroup)) LscGoldDark else Color.DarkGray
                                     )
                                 }
@@ -478,7 +534,7 @@ fun GroupLeaderInfoCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                     Box(
                         modifier = Modifier
                             .size(16.dp)
@@ -487,9 +543,9 @@ fun GroupLeaderInfoCard(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "${group.nameBn} (${group.nameEn})",
+                        text = "${group.nameBn} (${group.memberCount} জন)",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
+                        fontSize = 14.sp,
                         color = LscSlateDark
                     )
                 }
@@ -539,7 +595,7 @@ fun GroupLeaderInfoCard(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(8.dp)) {
-                        Text(text = "সাব-গ্রুপ ভিত্তিক দায়িত্বপ্রাপ্ত মেন্টর:", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                        Text(text = "৪টি সাব-গ্রুপ ইনচার্জ:", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(text = group.subgroupMentors, fontSize = 11.sp, color = Color(0xFF334155))
                     }
@@ -590,8 +646,16 @@ fun StationDetailCard(
                     Text(
                         text = "মডারেটর: ${station.moderatorName}",
                         fontSize = 11.sp,
-                        color = Color.Gray
+                        color = LscEmeraldPrimary,
+                        fontWeight = FontWeight.SemiBold
                     )
+                    if (station.subModerators.isNotBlank()) {
+                        Text(
+                            text = "সহযোগী ও সহ-মডারেটর: ${station.subModerators}",
+                            fontSize = 10.sp,
+                            color = Color.Gray
+                        )
+                    }
                 }
             }
 
@@ -600,18 +664,50 @@ fun StationDetailCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "ভেন্যু: ${station.location}",
+                text = "📍 ভেন্যু: ${station.location}",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = LscGoldDark
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "উদ্দেশ্য: ${station.objectiveBn}",
+                text = "লক্ষ্য ও উদ্দেশ্য: ${station.objectiveBn}",
                 fontSize = 11.sp,
                 color = Color.DarkGray,
                 lineHeight = 16.sp
             )
+
+            // 3-Day Official Curriculum Breakdown (Days 2, 4, 5)
+            if (station.day2TopicBn.isNotBlank() || station.day4TopicBn.isNotBlank() || station.day5TopicBn.isNotBlank()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    color = Color(0xFFF8FAFC),
+                    shape = RoundedCornerShape(8.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        Text(
+                            text = "📚 ৩ দিনের পাঠ্যক্রম ও প্রশিক্ষক সূচি:",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1E3A8A)
+                        )
+                        if (station.day2TopicBn.isNotBlank()) {
+                            Text(text = "• ২য় দিন (২৩ অক্টো): ${station.day2TopicBn}", fontSize = 10.sp, color = LscSlateDark)
+                        }
+                        if (station.day4TopicBn.isNotBlank()) {
+                            Text(text = "• ৪র্থ দিন (২৫ অক্টো): ${station.day4TopicBn}", fontSize = 10.sp, color = LscSlateDark)
+                        }
+                        if (station.day5TopicBn.isNotBlank()) {
+                            Text(text = "• ৫ম দিন (২৬ অক্টো): ${station.day5TopicBn}", fontSize = 10.sp, color = LscSlateDark)
+                        }
+                    }
+                }
+            }
         }
     }
 }

@@ -3,10 +3,10 @@ package com.example.ui.screens.competitions
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -56,6 +56,30 @@ data class ParticipantMilestoneProgress(
     val totalScoreEarned: Double,
     val milestones: List<StationCompetitionMilestone>
 )
+
+/**
+ * Official WAMY LSC 2026 18-Star Station Seal Passport Progress (6 Stations x Days 2, 4, 5).
+ */
+data class EighteenStarSealProgress(
+    val earnedCodes: Set<String>,
+    val earnedCount: Int,
+    val totalSeals: Int = 18
+) {
+    fun hasSeal(stationId: Int, dayNo: Int): Boolean = earnedCodes.contains("S${stationId}D$dayNo")
+}
+
+fun deriveEighteenStarSeals(participant: ParticipantEntity): EighteenStarSealProgress {
+    val codes = participant.completedStationSeals
+        .split(',')
+        .map { it.trim().uppercase() }
+        .filter { it.matches(Regex("S[1-6]D[245]")) }
+        .toSet()
+    return EighteenStarSealProgress(
+        earnedCodes = codes,
+        earnedCount = codes.size,
+        totalSeals = 18
+    )
+}
 
 /**
  * Helper to derive station milestones and completion progress for a participant.
@@ -128,13 +152,20 @@ fun StationMilestoneTracker(
     var filterStatus by remember { mutableStateOf("ALL") } // "ALL", "COMPLETED", "PENDING"
     var showParticipantPicker by remember { mutableStateOf(false) }
 
-    // Active participant: either passed from outside or defaults to first participant
     val activeParticipant = remember(selectedParticipant, participants) {
         selectedParticipant ?: participants.firstOrNull() ?: SeedData.generateParticipants().first()
     }
 
     val progress = remember(activeParticipant, competitions, competitionScores, stations) {
         deriveParticipantStationMilestones(activeParticipant, competitions, competitionScores, stations)
+    }
+
+    val starSealProgress = remember(activeParticipant) {
+        deriveEighteenStarSeals(activeParticipant)
+    }
+
+    val activeStations = remember(stations) {
+        if (stations.isNotEmpty()) stations.take(6) else SeedData.stations.take(6)
     }
 
     val displayedMilestones = remember(progress, filterStatus) {
@@ -210,7 +241,7 @@ fun StationMilestoneTracker(
                                     }
                                 }
                                 Text(
-                                    text = "${activeParticipant.groupNameBn} (${activeParticipant.groupNameEn}) • ${activeParticipant.subgroup}",
+                                    text = "${activeParticipant.groupNameBn} • ${activeParticipant.subgroup} • ★ ${starSealProgress.earnedCount}/18",
                                     fontSize = 11.sp,
                                     color = Color.Gray
                                 )
@@ -232,6 +263,122 @@ fun StationMilestoneTracker(
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Official 2026 18-Star Seal Passport Card (6 Stations x Day 2, Day 4, Day 5)
+        item {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFBEB)),
+                border = BorderStroke(1.5.dp, Color(0xFFF59E0B)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (language == CampLanguage.BANGLA)
+                                    "★ ১৮টি স্টার সিল সনদ পাসপোর্ট (৬ স্টেশন × ৩ দিন)"
+                                else
+                                    "★ 18-Star Station Seal Certificate Passport",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                color = Color(0xFF92400E)
+                            )
+                            Text(
+                                text = if (language == CampLanguage.BANGLA)
+                                    "২য়, ৪র্থ ও ৫ম দিনের স্টেশন উপস্থিতিতে আইডি ও সনদপত্রে স্বয়ংক্রিয় স্টার সিল যুক্ত হয়"
+                                else
+                                    "Stamped automatically via QR scan or batch roll-call on Days 2, 4 & 5",
+                                fontSize = 10.sp,
+                                color = Color(0xFFB45309)
+                            )
+                        }
+
+                        Surface(
+                            color = Color(0xFFD97706),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text(
+                                text = "★ ${starSealProgress.earnedCount}/18",
+                                color = Color.White,
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 13.sp,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Header Row: Station | Day 2 | Day 4 | Day 5
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = if (language == CampLanguage.BANGLA) "স্টেশন" else "Station",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF78350F),
+                            modifier = Modifier.weight(1.8f)
+                        )
+                        listOf("২য় দিন", "৪র্থ দিন", "৫ম দিন").forEach { dLabel ->
+                            Text(
+                                text = dLabel,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF78350F),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+
+                    activeStations.forEach { stn ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = stn.nameBn.substringBefore(" (").take(24),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = LscSlateDark,
+                                modifier = Modifier.weight(1.8f)
+                            )
+                            listOf(2, 4, 5).forEach { dayNo ->
+                                val earned = starSealProgress.hasSeal(stn.id, dayNo)
+                                Box(modifier = Modifier.weight(1f)) {
+                                    Surface(
+                                        color = if (earned) Color(0xFFFEF3C7) else Color.White,
+                                        shape = RoundedCornerShape(6.dp),
+                                        border = BorderStroke(
+                                            1.dp,
+                                            if (earned) Color(0xFFD97706) else Color(0xFFE2E8F0)
+                                        )
+                                    ) {
+                                        Text(
+                                            text = if (earned) "★ সম্পন্ন" else "☆ বাকি",
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (earned) Color(0xFFB45309) else Color.Gray,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -273,7 +420,6 @@ fun StationMilestoneTracker(
                             )
                         }
 
-                        // Percentage Badge
                         Surface(
                             color = if (progress.completionPercentage >= 80f) Color(0xFF10B981) else Color(0xFF7C3AED),
                             shape = RoundedCornerShape(10.dp)
@@ -290,7 +436,6 @@ fun StationMilestoneTracker(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // Linear Progress Bar
                     LinearProgressIndicator(
                         progress = { progress.completionPercentage / 100f },
                         modifier = Modifier
@@ -304,7 +449,6 @@ fun StationMilestoneTracker(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // 4 Metric Counters
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -452,7 +596,6 @@ fun StationMilestoneCard(
             .clickable { expanded = !expanded }
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
-            // Header: Station Badge, Status Pill, and Expand Icon
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -495,7 +638,6 @@ fun StationMilestoneCard(
                     }
                 }
 
-                // Completed vs Pending Status Badge
                 Surface(
                     color = if (isCompleted) Color(0xFFDCFCE7) else Color(0xFFFEF3C7),
                     shape = RoundedCornerShape(12.dp),
@@ -528,7 +670,6 @@ fun StationMilestoneCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Milestone Competition Title
             Text(
                 text = if (language == CampLanguage.BANGLA) milestone.milestoneTitleBn else milestone.milestoneTitleEn,
                 fontWeight = FontWeight.Bold,
@@ -538,14 +679,12 @@ fun StationMilestoneCard(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Station Name & Venue
             Text(
                 text = "${if (language == CampLanguage.BANGLA) milestone.stationNameBn else milestone.stationNameEn} • ${milestone.location}",
                 fontSize = 11.sp,
                 color = Color.Gray
             )
 
-            // Score Banner (If Completed)
             if (isCompleted && milestone.scoreRecord != null) {
                 val sc = milestone.scoreRecord
                 Spacer(modifier = Modifier.height(8.dp))
@@ -598,7 +737,6 @@ fun StationMilestoneCard(
                 }
             }
 
-            // Expandable details (Breakdown & Remarks)
             AnimatedVisibility(visible = expanded) {
                 Column(modifier = Modifier.padding(top = 10.dp)) {
                     HorizontalDivider(color = Color(0xFFE2E8F0))
@@ -632,14 +770,24 @@ fun StationMilestoneCard(
                         }
                     } else {
                         Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = if (language == CampLanguage.BANGLA)
-                                "এই স্টেশনে রোটেশনের সময় অংশগ্রহণকারী এই প্রতিযোগিতার চ্যালেঞ্জে অংশ নেবেন।"
-                            else
-                                "Participant will complete this challenge during rotation at this station.",
-                            fontSize = 11.sp,
-                            color = Color.Gray
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (language == CampLanguage.BANGLA)
+                                    "রোটেশনের সময় অংশগ্রহণকারী এই চ্যালেঞ্জে অংশ নেবেন।"
+                                else
+                                    "Participant completes this challenge during station rotation.",
+                                fontSize = 11.sp,
+                                color = Color.Gray,
+                                modifier = Modifier.weight(1f)
+                            )
+                            TextButton(onClick = onScoreClick) {
+                                Text(if (language == CampLanguage.BANGLA) "স্কোর দিন" else "Score", fontSize = 11.sp)
+                            }
+                        }
                     }
                 }
             }
@@ -682,42 +830,67 @@ fun MilestoneParticipantPickerDialog(
     onSelect: (ParticipantEntity) -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
+    var selectedSubgroup by remember { mutableStateOf("ALL") }
 
-    val filtered = remember(participants, searchQuery) {
+    val subgroups = remember(participants) {
+        participants.map { it.subgroup }.filter { it.isNotBlank() }.distinct()
+    }
+
+    val filtered = remember(participants, searchQuery, selectedSubgroup) {
         val q = searchQuery.trim()
-        if (q.isBlank()) {
-            participants.take(30)
-        } else {
-            participants.filter {
-                it.nameBn.contains(q, ignoreCase = true) ||
-                        it.nameEn.contains(q, ignoreCase = true) ||
-                        it.campCode.contains(q, ignoreCase = true) ||
-                        it.groupNameBn.contains(q, ignoreCase = true)
-            }.take(30)
-        }
+        participants.filter { p ->
+            val matchSub = selectedSubgroup == "ALL" || p.subgroup.equals(selectedSubgroup, ignoreCase = true)
+            val matchQuery = q.isBlank() ||
+                    p.nameBn.contains(q, ignoreCase = true) ||
+                    p.nameEn.contains(q, ignoreCase = true) ||
+                    p.campCode.contains(q, ignoreCase = true) ||
+                    p.fileNo.contains(q, ignoreCase = true) ||
+                    p.groupNameBn.contains(q, ignoreCase = true)
+            matchSub && matchQuery
+        }.take(100)
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = if (language == CampLanguage.BANGLA) "অংশগ্রহণকারী নির্বাচন" else "Select Participant",
+                text = if (language == CampLanguage.BANGLA) "অংশগ্রহণকারী নির্বাচন (৬০৯ তালিকা)" else "Select Participant",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
             )
         },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    item {
+                        FilterChip(
+                            selected = selectedSubgroup == "ALL",
+                            onClick = { selectedSubgroup = "ALL" },
+                            label = { Text("সকল", fontSize = 10.sp) }
+                        )
+                    }
+                    items(subgroups) { sg ->
+                        FilterChip(
+                            selected = selectedSubgroup == sg,
+                            onClick = { selectedSubgroup = sg },
+                            label = { Text(sg, fontSize = 10.sp) }
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(6.dp))
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = { Text(if (language == CampLanguage.BANGLA) "নাম বা ক্যাম্প কোড..." else "Search...", fontSize = 12.sp) },
+                    placeholder = { Text(if (language == CampLanguage.BANGLA) "নাম বা ক্যাম্প কোড (উদা: Bukhari-1-1)..." else "Search...", fontSize = 12.sp) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Box(modifier = Modifier.heightIn(max = 260.dp)) {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        items(filtered) { p ->
+                        items(filtered, key = { it.id }) { p ->
                             val isSel = p.id == currentSelected.id
                             Surface(
                                 color = if (isSel) Color(0xFFF3E8FF) else Color(0xFFF8FAFC),
@@ -734,7 +907,7 @@ fun MilestoneParticipantPickerDialog(
                                 ) {
                                     Column {
                                         Text(text = p.nameBn, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                        Text(text = "${p.campCode} • ${p.groupNameBn}", fontSize = 11.sp, color = Color.Gray)
+                                        Text(text = "${p.campCode} • ${p.subgroup}", fontSize = 11.sp, color = Color.Gray)
                                     }
                                     if (isSel) {
                                         Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF7C3AED), modifier = Modifier.size(18.dp))

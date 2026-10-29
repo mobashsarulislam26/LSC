@@ -19,7 +19,6 @@ import com.example.data.service.ScheduleBulkUploadService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
@@ -103,7 +102,11 @@ class CampRepository(
 
     suspend fun getParticipantByCampCode(code: String): ParticipantEntity? {
         return withContext(Dispatchers.IO) {
-            dao.getParticipantByCampCode(code)
+            dao.getParticipantByCampCode(code.trim())
+                ?: dao.getAllParticipantsList().firstOrNull {
+                    it.campCode.equals(code.trim(), ignoreCase = true) ||
+                        it.fileNo.equals(code.trim(), ignoreCase = true)
+                }
         }
     }
 
@@ -147,6 +150,155 @@ class CampRepository(
         return withContext(Dispatchers.IO) {
             dao.getRecordsForEvent(eventId)
         }
+    }
+
+    suspend fun stampParticipantStationSeal(
+        participantId: Long,
+        stationId: Int,
+        dayNo: Int
+    ): ParticipantEntity? = withContext(Dispatchers.IO) {
+        val current = dao.getParticipantById(participantId) ?: return@withContext null
+        val normalizedDay = when (dayNo) {
+            2, 4, 5 -> dayNo
+            1 -> 2
+            3 -> 4
+            else -> 2
+        }
+        val sealToken = "S${stationId.coerceIn(1, 6)}D$normalizedDay"
+        val updatedSeals = appendUniqueSeal(current.completedStationSeals, sealToken)
+        if (updatedSeals != current.completedStationSeals) {
+            val updated = current.copy(completedStationSeals = updatedSeals)
+            dao.updateParticipant(updated)
+            updated
+        } else {
+            current
+        }
+    }
+
+    private fun appendUniqueSeal(existingCsv: String, newSeal: String): String {
+        val cleanNew = newSeal.trim().uppercase()
+        if (cleanNew.isEmpty()) return existingCsv
+        val tokens = existingCsv.split(',')
+            .map { it.trim().uppercase() }
+            .filter { it.isNotEmpty() }
+            .toMutableSet()
+        tokens.add(cleanNew)
+        return tokens.sorted().joinToString(",")
+    }
+
+    /**
+     * 1-Tap Batch Subgroup Attendance + 18-Star Station Seal Stamper!
+     * Marks an entire subgroup (21–31 students) PRESENT/ABSENT in a single instant batch operation.
+     */
+    suspend fun markSubgroupBatchAttendance(
+        eventId: Long,
+        eventTitleBn: String,
+        dayNo: Int,
+        subgroupKey: String,
+        absentParticipantIds: Set<Long>,
+        stationSealCode: String? = null,
+        isOfflineMode: Boolean = false
+    ): Pair<Int, Int> = withContext(Dispatchers.IO) {
+        val allList = dao.getAllParticipantsList()
+        val cleanTargetKey = subgroupKey.lowercase().replace("[^a-z0-9]".toRegex(), "")
+        val subgroupMembers = allList.filter { p ->
+            p.subgroup.equals(subgroupKey, ignoreCase = true) ||
+                p.subgroup.lowercase().replace("[^a-z0-9]".toRegex(), "") == cleanTargetKey
+        }
+        if (subgroupMembers.isEmpty()) return@withContext Pair(0, 0)
+
+        // Ensure event exists if it's a dynamic slot event
+        val existingEvent = dao.getAttendanceEventById(eventId)
+        if (existingEvent == null) {
+            dao.insertAttendanceEvent(
+                AttendanceEventEntity(
+                    id = eventId,
+                    titleBn = eventTitleBn.ifBlank { "সাব-গ্রুপ সেশন হাজিরা ($subgroupKey)" },
+                    titleEn = "Subgroup Batch Session ($subgroupKey)",
+                    dayNo = dayNo.coerceIn(1, 5),
+                    timeLabel = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date()),
+                    targetCount = 609
+                )
+            )
+        }
+
+        val existingRecords = dao.getRecordsForEventImmediate(eventId).associateBy { it.participantId }
+        val now = System.currentTimeMillis()
+        val batchRecords = ArrayList<AttendanceRecordEntity>(subgroupMembers.size)
+        val updatedParticipants = ArrayList<ParticipantEntity>()
+        var presentCountInSubgroup = 0
+        var absentCountInSubgroup = 0
+
+        for (member in subgroupMembers) {
+            val isAbsent = absentParticipantIds.contains(member.id)
+            val status = if (isAbsent) "ABSENT" else "PRESENT"
+            if (isAbsent) absentCountInSubgroup++ else presentCountInSubgroup++
+
+            val prev = existingRecords[member.id]
+            batchRecords.add(
+                AttendanceRecordEntity(
+                    id = prev?.id ?: 0L,
+                    eventId = eventId,
+                    participantId = member.id,
+                    campCode = member.campCode,
+                    participantName = member.nameBn,
+                    groupName = member.groupNameBn,
+                    subgroup = member.subgroup,
+                    status = status,
+                    method = "BATCH_SUBGROUP",
+                    overrideReason = stationSealCode?.let { "Seal:$it" },
+                    scannedAt = now,
+                    isSynced = !isOfflineMode
+                )
+            )
+
+            if (!isAbsent && !stationSealCode.isNullOrBlank()) {
+                val newSeals = appendUniqueSeal(member.completedStationSeals, stationSealCode)
+                if (newSeals != member.completedStationSeals) {
+                    updatedParticipants.add(member.copy(completedStationSeals = newSeals))
+                }
+            }
+        }
+
+        dao.insertAttendanceRecords(batchRecords)
+        if (updatedParticipants.isNotEmpty()) {
+            dao.updateParticipants(updatedParticipants)
+        }
+
+        if (isOfflineMode) {
+            dao.insertCachedSyncItem(
+                CachedSyncItemEntity(
+                    itemType = CachedSyncItemEntity.TYPE_ATTENDANCE,
+                    participantId = subgroupMembers.first().id,
+                    campCode = subgroupKey,
+                    participantName = "$subgroupKey (${subgroupMembers.size} জন)",
+                    summary = "ব্যাচ সাব-গ্রুপ হাজিরা: $subgroupKey (উপস্থিত: $presentCountInSubgroup, অনুপস্থিত: $absentCountInSubgroup)",
+                    payloadJson = com.example.data.util.MoshiJsonUtils.toJson(
+                        mapOf(
+                            "eventId" to eventId,
+                            "subgroup" to subgroupKey,
+                            "present" to presentCountInSubgroup,
+                            "absent" to absentCountInSubgroup,
+                            "seal" to (stationSealCode ?: "")
+                        )
+                    ),
+                    status = CachedSyncItemEntity.STATUS_PENDING
+                )
+            )
+        }
+
+        val refreshedEvent = dao.getAttendanceEventById(eventId)
+        if (refreshedEvent != null) {
+            dao.updateAttendanceEvent(
+                refreshedEvent.copy(
+                    presentCount = dao.countPresentForEvent(eventId),
+                    lateCount = dao.countLateForEvent(eventId),
+                    absentCount = dao.countAbsentForEvent(eventId)
+                )
+            )
+        }
+
+        Pair(presentCountInSubgroup, absentCountInSubgroup)
     }
 
     suspend fun recordAttendance(
@@ -224,11 +376,68 @@ class CampRepository(
 
     suspend fun submitCompetitionScore(score: CompetitionScoreEntity) = withContext(Dispatchers.IO) {
         dao.insertCompetitionScore(score)
-        // Award points to group
         val group = dao.getParticipantById(score.participantId)?.groupId
         if (group != null) {
             dao.addGroupPoints(group, (score.totalScore / 10).toInt())
         }
+    }
+
+    /**
+     * 3-Tap Podium Winner Selection (1st / 2nd / 3rd) + Immediate Session Prize Handover!
+     */
+    suspend fun awardPodiumWinner(
+        competitionId: Long,
+        participant: ParticipantEntity,
+        rank: Int,
+        isPrizeHandedOver: Boolean,
+        remarks: String = ""
+    ) = withContext(Dispatchers.IO) {
+        val existingScores = dao.getScoresForCompetitionImmediate(competitionId)
+        val existingForParticipant = existingScores.firstOrNull { it.participantId == participant.id }
+        val (acc, pres, disc) = when (rank) {
+            1 -> Triple(39.0, 29.0, 28.0) // 96.0
+            2 -> Triple(37.0, 27.0, 27.0) // 91.0
+            else -> Triple(35.0, 26.0, 25.0) // 86.0
+        }
+        val total = acc + pres + disc
+        val entry = CompetitionScoreEntity(
+            id = existingForParticipant?.id ?: 0L,
+            competitionId = competitionId,
+            participantId = participant.id,
+            campCode = participant.campCode,
+            participantName = participant.nameBn,
+            groupName = participant.groupNameBn,
+            subgroup = participant.subgroup,
+            accuracyScore = acc,
+            presentationScore = pres,
+            disciplineScore = disc,
+            totalScore = total,
+            remarks = remarks.ifBlank {
+                when (rank) {
+                    1 -> "🥇 ১ম স্থান অর্জনকারী (${participant.subgroup})"
+                    2 -> "🥈 ২য় স্থান অর্জনকারী (${participant.subgroup})"
+                    else -> "🥉 ৩য় স্থান অর্জনকারী (${participant.subgroup})"
+                }
+            },
+            rank = rank.coerceIn(1, 3),
+            isAwardEligible = true,
+            isPrizeHandedOver = isPrizeHandedOver
+        )
+        dao.insertCompetitionScore(entry)
+        dao.addGroupPoints(participant.groupId, when (rank) { 1 -> 15; 2 -> 10; else -> 5 })
+    }
+
+    suspend fun toggleCompetitionPrizeHandedOver(score: CompetitionScoreEntity) = withContext(Dispatchers.IO) {
+        dao.updateCompetitionScore(score.copy(isPrizeHandedOver = !score.isPrizeHandedOver))
+    }
+
+    suspend fun updateRoomInspection(room: RoomEntity, cleanlinessScore: Int, notes: String) = withContext(Dispatchers.IO) {
+        val updated = room.copy(
+            cleanlinessScore = cleanlinessScore.coerceIn(0, 10),
+            lastInspectedAt = System.currentTimeMillis(),
+            notes = notes
+        )
+        dao.updateRoom(updated)
     }
 
     suspend fun addJudge(judge: JudgeEntity) = withContext(Dispatchers.IO) {
@@ -413,12 +622,12 @@ class CampRepository(
         lines.drop(1).forEachIndexed { index, line ->
             val cols = line.split(",").map { it.trim() }
             if (cols.size >= 4) {
-                val code = if (cols[0].startsWith("LSC")) cols[0] else "LSC-2026-%03d".format(604 + index)
-                val fileNo = if (cols.size > 1 && cols[1].startsWith("F-")) cols[1] else "F-%04d".format(1604 + index)
+                val code = if (cols[0].isNotBlank()) cols[0] else "Bukhari-1-${610 + index}"
+                val fileNo = if (cols.size > 1 && cols[1].isNotBlank()) cols[1] else "WAMY-${1610 + index}"
                 val name = cols.getOrElse(2) { "New Participant" }
                 val district = cols.getOrElse(3) { "ঢাকা" }
-                val group = cols.getOrElse(4) { "বুখারী" }
-                val sub = cols.getOrElse(5) { "Bukhari-1" }
+                val group = cols.getOrElse(4) { "বুখারী গ্রুপ" }
+                val sub = cols.getOrElse(5) { "Bukhari-01" }
                 val p = ParticipantEntity(
                     campCode = code,
                     fileNo = fileNo,
@@ -426,13 +635,13 @@ class CampRepository(
                     nameEn = name,
                     districtBn = district,
                     districtEn = district,
-                    gender = "Male",
+                    gender = if (group.contains("সুমাই") || group.contains("উম্মে")) "Female" else "Male",
                     age = 13,
                     groupId = "bukhari",
                     groupNameBn = group,
-                    groupNameEn = "Bukhari",
+                    groupNameEn = "Bukhari Group",
                     subgroup = sub,
-                    roomNo = "Block A Room 101",
+                    roomNo = "P1-Down-A",
                     bedNo = "Bed-01",
                     mealPref = "নিয়মিত",
                     guardianName = "অভিভাবক",
@@ -602,6 +811,13 @@ class CampRepository(
     suspend fun ensureStaffAccountsSeeded() = withContext(Dispatchers.IO) {
         if (dao.getUserAccountCount() == 0) {
             dao.insertUserAccounts(SeedData.staffAccounts)
+        } else if (dao.getUserAccount("stationmanager@lsc.org") == null) {
+            // Ensure new 2026 official roles (e.g., Station Manager) exist without overwriting user-created passwords
+            for (staff in SeedData.staffAccounts) {
+                if (dao.getUserAccount(staff.email) == null) {
+                    dao.insertUserAccount(staff)
+                }
+            }
         }
     }
 
@@ -658,8 +874,6 @@ class CampRepository(
         val cleanPhone = phone.trim()
         val cleanCustomPass = customPassword.trim()
 
-        // Generate a 4-digit numeric code combined with prefix for secure, memorable password
-        // or use customPassword if explicitly provided (at least 4 characters)
         val randomDigits = (1000..9999).random()
         val effectivePassword = if (cleanCustomPass.length >= 4) cleanCustomPass else "Lsc#$randomDigits"
         val hashedPassword = hashPasswordWithSalt(effectivePassword)
@@ -736,182 +950,205 @@ class CampRepository(
         seedMutex.withLock {
             ensureStaffAccountsSeeded()
             val count = dao.getParticipantCount()
-            if (count == 0) {
-            val pList = SeedData.generateParticipants()
-            val healthSamples = listOf(
-                HealthRecordEntity(
-                    participantId = 1,
-                    campCode = "LSC-2026-001",
-                    participantName = "আব্দুল্লাহ আল মামুন",
-                    groupName = "বুখারী",
-                    checkupType = "GENERAL",
-                    doctorName = "ডা. তারিকুল ইসলাম",
-                    vitals = "BP: 110/70, Temp: 98.4°F, Pulse: 78",
-                    diagnosis = "শারীরিক গঠন স্বাভাবিক ও প্রাণবন্ত। কোনো জটিলতা নেই।",
-                    adviceAndMeds = "পর্যাপ্ত পানি পান ও হাইড্রেটেড থাকার পরামর্শ।"
-                ),
-                HealthRecordEntity(
-                    participantId = 29,
-                    campCode = "LSC-2026-029",
-                    participantName = "জুনায়েদ হোসাইন",
-                    groupName = "বুখারী",
-                    checkupType = "EMERGENCY",
-                    doctorName = "ডা. ফারহানা চৌধুরী",
-                    vitals = "BP: 100/65, Temp: 98.8°F, Pulse: 84",
-                    diagnosis = "মৃদু শ্বাসকষ্ট (Mild Asthma Symptoms due to cold morning air)",
-                    adviceAndMeds = "সালবুটামল ইনহেলার ২ চাপ দেওয়া হয়েছে। ধুলোবালি পরিহারের পরামর্শ।",
-                    isEmergencyFlag = true,
-                    priority = "HIGH",
-                    status = "PENDING",
-                    followUpDate = "২৮ সেপ্টেম্বর সকাল ১০:০০"
-                ),
-                HealthRecordEntity(
-                    participantId = 15,
-                    campCode = "LSC-2026-015",
-                    participantName = "মরিয়ম আক্তার",
-                    groupName = "সুমাইয়া",
-                    checkupType = "DENTAL",
-                    doctorName = "ডা. সাইদুর রহমান (বিডিএস)",
-                    vitals = "দাঁতের মাড়ি সুস্থ",
-                    diagnosis = "প্রাথমিক ক্যারিজ (Dental Caries) শনাক্ত",
-                    adviceAndMeds = "প্রতিদিন দুইবার ব্রাশ করার নির্দেশ ও মেডিকেটেড পেস্ট।"
-                ),
-                HealthRecordEntity(
-                    participantId = 53,
-                    campCode = "LSC-2026-053",
-                    participantName = "সাকিব চৌধুরী",
-                    groupName = "শাফেয়ী",
-                    checkupType = "EYE",
-                    doctorName = "ডা. মোস্তাফিজুর রহমান (চক্ষু বিশেষজ্ঞ)",
-                    vitals = "দৃষ্টিশক্তি স্বাভাবিক (6/6)",
-                    diagnosis = "সামান্য চোখের শুষ্কতা (Dry Eyes)",
-                    adviceAndMeds = "লুব্রিকেটিং আই ড্রপ দিনে ২ বার।"
-                )
-            )
-
-            val scoreSamples = listOf(
-                CompetitionScoreEntity(
-                    competitionId = 1,
-                    participantId = 1,
-                    campCode = "LSC-2026-001",
-                    participantName = "আব্দুল্লাহ আল মামুন",
-                    groupName = "বুখারী",
-                    subgroup = "Bukhari-1",
-                    accuracyScore = 38.5,
-                    presentationScore = 28.0,
-                    disciplineScore = 29.0,
-                    totalScore = 95.5,
-                    remarks = "অসাধারণ বিশুদ্ধ উচ্চারণ ও সনদসহ মুখস্থ।",
-                    rank = 1,
-                    isAwardEligible = true
-                ),
-                CompetitionScoreEntity(
-                    competitionId = 1,
-                    participantId = 15,
-                    campCode = "LSC-2026-015",
-                    participantName = "মরিয়ম আক্তার",
-                    groupName = "সুমাইয়া",
-                    subgroup = "Sumaiya-2",
-                    accuracyScore = 37.0,
-                    presentationScore = 28.5,
-                    disciplineScore = 28.0,
-                    totalScore = 93.5,
-                    remarks = "মাখরাজ স্পষ্ট ও সাবলীল উপস্থাপনা।",
-                    rank = 2,
-                    isAwardEligible = true
-                ),
-                CompetitionScoreEntity(
-                    competitionId = 1,
-                    participantId = 65,
-                    campCode = "LSC-2026-065",
-                    participantName = "তাহমিদ ইসলাম",
-                    groupName = "সালাহউদ্দীন আইয়ুবী",
-                    subgroup = "Salahuddin-3",
-                    accuracyScore = 36.0,
-                    presentationScore = 27.5,
-                    disciplineScore = 28.0,
-                    totalScore = 91.5,
-                    remarks = "হাদিসের নম্বর ও রাবীর নাম নির্ভুল।",
-                    rank = 3,
-                    isAwardEligible = true
-                )
-            )
-
-            dao.seedDatabase(
-                groups = SeedData.groups,
-                stations = SeedData.stations,
-                participants = pList,
-                schedules = SeedData.scheduleEvents,
-                attendanceEvents = SeedData.attendanceEvents,
-                competitions = SeedData.competitions,
-                inventoryItems = SeedData.inventoryItems,
-                bulletins = SeedData.bulletins,
-                healthRecords = healthSamples,
-                competitionScores = scoreSamples,
-                judges = SeedData.judges,
-                rooms = SeedData.rooms,
-                vehicles = SeedData.travelVehicles,
-                dutyRosters = SeedData.dutyRosters,
-                kitDistributions = SeedData.generateKitDistributions(pList),
-                goalMetrics = SeedData.campGoals,
-                users = SeedData.staffAccounts,
-                volunteerShifts = SeedData.volunteerShifts
-            )
-        }
-
-        if (healthDao != null && healthDao.getHealthStatusCount() == 0) {
-            val participantsList = dao.getAllParticipantsList().ifEmpty { SeedData.generateParticipants() }
-            val bloodGroups = listOf("A+", "B+", "O+", "AB+", "A-", "B-", "O-")
-            val healthEntities = participantsList.mapIndexed { idx, p ->
-                val condition = when {
-                    idx % 37 == 0 -> "Critical"
-                    idx % 23 == 0 -> "Requires Attention"
-                    idx % 11 == 0 -> "Needs Rest"
-                    idx % 7 == 0 -> "Mild Symptoms"
-                    else -> "Normal"
+            val hasLegacyDummyRoster = count > 0 && dao.getParticipantByCampCode("LSC-2026-001") != null
+            if (count == 0 || hasLegacyDummyRoster) {
+                if (hasLegacyDummyRoster) {
+                    dao.clearLegacySeedTables()
                 }
-                val isCheckedIn = idx % 9 != 0
-                val hasAllergy = idx % 19 == 0 || idx % 41 == 0
-                val allergyDesc = if (hasAllergy) {
-                    when (idx % 4) {
-                        0 -> "ধুলোবালি ও কোল্ড অ্যালার্জি (Dust & Cold)"
-                        1 -> "চিংড়ি ও সামুদ্রিক মাছ অ্যালার্জি (Prawns)"
-                        2 -> "পেনিসিলিন অ্যালার্জি (Penicillin)"
-                        else -> "পরাগরেণু ও সাইনাস (Pollen / Sinus)"
+                val pList = SeedData.generateParticipants()
+                val p1 = pList.firstOrNull()
+                val p2 = pList.getOrNull(125) ?: p1
+                val p3 = pList.getOrNull(370) ?: p1
+                val p4 = pList.getOrNull(460) ?: p1
+
+                val healthSamples = listOfNotNull(
+                    p1?.let {
+                        HealthRecordEntity(
+                            participantId = it.id,
+                            campCode = it.campCode,
+                            participantName = it.nameBn,
+                            groupName = it.groupNameBn,
+                            checkupType = "GENERAL",
+                            doctorName = "ডা. ওরাকাতুল জান্নাত",
+                            vitals = "BP: 110/70, Temp: 98.4°F, Pulse: 78",
+                            diagnosis = "শারীরিক গঠন স্বাভাবিক ও প্রাণবন্ত। কোনো জটিলতা নেই।",
+                            adviceAndMeds = "পর্যাপ্ত পানি পান ও হাইড্রেটেড থাকার পরামর্শ।",
+                            heightCm = "148.0",
+                            weightKg = "41.5",
+                            photoDocumented = true
+                        )
+                    },
+                    p2?.let {
+                        HealthRecordEntity(
+                            participantId = it.id,
+                            campCode = it.campCode,
+                            participantName = it.nameBn,
+                            groupName = it.groupNameBn,
+                            checkupType = "DENTAL",
+                            doctorName = "ভ্রাম্যমাণ ডেন্টাল বাস বিশেষজ্ঞ টিম",
+                            vitals = "দাঁতের মাড়ি স্বাভাবিক",
+                            diagnosis = "প্রাথমিক ক্যারিজ শনাক্ত — স্কেলিং ও পেস্ট পরামর্শ",
+                            adviceAndMeds = "প্রতিদিন দুইবার ফ্লোরাইড পেস্ট দিয়ে ব্রাশ করার নির্দেশ ও লিফলেট প্রদান।",
+                            dentalBusReferred = true,
+                            photoDocumented = true
+                        )
+                    },
+                    p3?.let {
+                        HealthRecordEntity(
+                            participantId = it.id,
+                            campCode = it.campCode,
+                            participantName = it.nameBn,
+                            groupName = it.groupNameBn,
+                            checkupType = "EYE",
+                            doctorName = "চক্ষু বিশেষজ্ঞ টিম (স্টেশন-৬ আই ক্যাম্প)",
+                            vitals = "দৃষ্টিশক্তি: 6/6 (উভয় চোখ)",
+                            diagnosis = "সামান্য চোখের শুষ্কতা (Dry Eyes)",
+                            adviceAndMeds = "লুব্রিকেটিং আই ড্রপ দিনে ২ বার।",
+                            visionNotes = "6/6 Normal",
+                            photoDocumented = true
+                        )
+                    },
+                    p4?.let {
+                        HealthRecordEntity(
+                            participantId = it.id,
+                            campCode = it.campCode,
+                            participantName = it.nameBn,
+                            groupName = it.groupNameBn,
+                            checkupType = "EMERGENCY",
+                            doctorName = "ডা. ওরাকাতুল জান্নাত",
+                            vitals = "BP: 100/65, Temp: 98.8°F, Pulse: 86",
+                            diagnosis = "সকালের ঠান্ডায় মৃদু শ্বাসকষ্ট (Mild Seasonal Asthma)",
+                            adviceAndMeds = "ইনহেলার ২ চাপ দেওয়া হয়েছে ও পর্যবেক্ষণে রাখা হয়েছে।",
+                            isEmergencyFlag = true,
+                            priority = "HIGH",
+                            status = "PENDING",
+                            followUpDate = "২৪ অক্টোবর সকাল ০৯:০০"
+                        )
                     }
-                } else ""
-                val hasMed = idx % 17 == 0 || idx % 29 == 0
-                val medDesc = if (hasMed) {
-                    when (idx % 3) {
-                        0 -> "সালবুটামল ইনহেলার (Salbutamol Inhaler twice daily)"
-                        1 -> "লুব্রিকেটিং চোখের ড্রপ (Eye drops)"
-                        else -> "এন্টিহিস্টামিন ও প্যারাসিটামল (Antihistamine)"
+                )
+
+                val scoreSamples = listOfNotNull(
+                    p1?.let {
+                        CompetitionScoreEntity(
+                            competitionId = 1,
+                            participantId = it.id,
+                            campCode = it.campCode,
+                            participantName = it.nameBn,
+                            groupName = it.groupNameBn,
+                            subgroup = it.subgroup,
+                            accuracyScore = 39.0,
+                            presentationScore = 29.0,
+                            disciplineScore = 28.0,
+                            totalScore = 96.0,
+                            remarks = "🥇 ১ম স্থান (${it.subgroup}) — বিশুদ্ধ তাজবীদ ও সুন্দর তিলাওয়াত",
+                            rank = 1,
+                            isAwardEligible = true,
+                            isPrizeHandedOver = true
+                        )
+                    },
+                    p3?.let {
+                        CompetitionScoreEntity(
+                            competitionId = 1,
+                            participantId = it.id,
+                            campCode = it.campCode,
+                            participantName = it.nameBn,
+                            groupName = it.groupNameBn,
+                            subgroup = it.subgroup,
+                            accuracyScore = 38.0,
+                            presentationScore = 28.5,
+                            disciplineScore = 28.0,
+                            totalScore = 94.5,
+                            remarks = "🥇 ১ম স্থান (${it.subgroup}) — মাখরাজ স্পষ্ট ও সাবলীল উপস্থাপনা",
+                            rank = 1,
+                            isAwardEligible = true,
+                            isPrizeHandedOver = true
+                        )
+                    },
+                    p2?.let {
+                        CompetitionScoreEntity(
+                            competitionId = 2,
+                            participantId = it.id,
+                            campCode = it.campCode,
+                            participantName = it.nameBn,
+                            groupName = it.groupNameBn,
+                            subgroup = it.subgroup,
+                            accuracyScore = 37.0,
+                            presentationScore = 27.5,
+                            disciplineScore = 28.0,
+                            totalScore = 92.5,
+                            remarks = "🥈 ২য় স্থান (${it.subgroup}) — হাদিসের অর্থ নির্ভুল",
+                            rank = 2,
+                            isAwardEligible = true,
+                            isPrizeHandedOver = false
+                        )
                     }
-                } else ""
-                ParticipantHealthStatusEntity(
-                    participantId = p.id.takeIf { it > 0 } ?: (idx + 1).toLong(),
-                    campCode = p.campCode,
-                    participantName = p.nameBn,
-                    medicationNeeds = medDesc,
-                    allergies = allergyDesc,
-                    dailyCheckInLogs = if (isCheckedIn) "2026-10-13 07:30 - সকালের চেক-ইন সম্পন্ন (অবস্থা: $condition)" else "",
-                    hasMedicationNeeds = hasMed,
-                    hasAllergies = hasAllergy,
-                    isDailyCheckedIn = isCheckedIn,
-                    lastCheckInDate = if (isCheckedIn) "2026-10-13" else "",
-                    lastCheckInTime = if (isCheckedIn) System.currentTimeMillis() - (idx * 120000L) else 0L,
-                    vitalsSummary = "BP: ${110 + (idx % 15)}/${70 + (idx % 10)}, SpO2: ${98 + (idx % 3)}%",
-                    healthCondition = condition,
-                    bloodGroup = bloodGroups[idx % bloodGroups.size],
-                    emergencyContactName = p.guardianName.ifBlank { "অভিভাবক" },
-                    emergencyContactPhone = p.guardianPhone.ifBlank { "01711-000000" }
+                )
+
+                dao.seedDatabase(
+                    groups = SeedData.groups,
+                    stations = SeedData.stations,
+                    participants = pList,
+                    schedules = SeedData.scheduleEvents,
+                    attendanceEvents = SeedData.attendanceEvents,
+                    competitions = SeedData.competitions,
+                    inventoryItems = SeedData.inventoryItems,
+                    bulletins = SeedData.bulletins,
+                    healthRecords = healthSamples,
+                    competitionScores = scoreSamples,
+                    judges = SeedData.judges,
+                    rooms = SeedData.rooms,
+                    vehicles = SeedData.travelVehicles,
+                    dutyRosters = SeedData.dutyRosters,
+                    kitDistributions = SeedData.generateKitDistributions(pList),
+                    goalMetrics = SeedData.campGoals,
+                    users = SeedData.staffAccounts,
+                    volunteerShifts = SeedData.volunteerShifts
                 )
             }
-            healthDao.insertHealthStatuses(healthEntities)
-        }
-        }
 
-        // Seed sample meal claims removed for production readiness.
+            if (healthDao != null && healthDao.getHealthStatusCount() == 0) {
+                val participantsList = dao.getAllParticipantsList().ifEmpty { SeedData.generateParticipants() }
+                val bloodGroups = listOf("A+", "B+", "O+", "AB+", "A-", "B-", "O-")
+                val healthEntities = participantsList.mapIndexed { idx, p ->
+                    val condition = when {
+                        idx % 67 == 0 -> "Requires Attention"
+                        idx % 31 == 0 -> "Needs Rest"
+                        idx % 19 == 0 -> "Mild Symptoms"
+                        else -> "Normal"
+                    }
+                    val isCheckedIn = idx % 12 != 0
+                    val hasAllergy = idx % 29 == 0 || idx % 43 == 0
+                    val allergyDesc = if (hasAllergy) {
+                        when (idx % 3) {
+                            0 -> "ধুলোবালি ও কোল্ড অ্যালার্জি (Dust & Cold)"
+                            1 -> "চিংড়ি ও সামুদ্রিক মাছ অ্যালার্জি (Prawns)"
+                            else -> "পরাগরেণু ও সাইনাস (Pollen / Sinus)"
+                        }
+                    } else ""
+                    val hasMed = idx % 37 == 0
+                    val medDesc = if (hasMed) "সালবুটামল ইনহেলার / এন্টিহিস্টামিন" else ""
+                    ParticipantHealthStatusEntity(
+                        participantId = p.id.takeIf { it > 0 } ?: (idx + 1).toLong(),
+                        campCode = p.campCode,
+                        participantName = p.nameBn,
+                        medicationNeeds = medDesc,
+                        allergies = allergyDesc,
+                        dailyCheckInLogs = if (isCheckedIn) "2026-10-22 09:30 - ক্যাম্প মেডিকেল চেক-ইন সম্পন্ন (অবস্থা: $condition)" else "",
+                        hasMedicationNeeds = hasMed,
+                        hasAllergies = hasAllergy,
+                        isDailyCheckedIn = isCheckedIn,
+                        lastCheckInDate = if (isCheckedIn) "2026-10-22" else "",
+                        lastCheckInTime = if (isCheckedIn) System.currentTimeMillis() - (idx * 60000L) else 0L,
+                        vitalsSummary = "BP: ${105 + (idx % 12)}/${68 + (idx % 10)}, SpO2: ${98 + (idx % 2)}%",
+                        healthCondition = condition,
+                        bloodGroup = bloodGroups[idx % bloodGroups.size],
+                        emergencyContactName = p.guardianName.ifBlank { "সাব-গ্রুপ ইনচার্জ" },
+                        emergencyContactPhone = p.guardianPhone.ifBlank { "01711-260100" }
+                    )
+                }
+                healthDao.insertHealthStatuses(healthEntities)
+            }
+        }
     }
 
     // Participant Health Status
@@ -1034,7 +1271,6 @@ class CampRepository(
         val healthCount = pendingItems.count { it.itemType == CachedSyncItemEntity.TYPE_HEALTH_LOG || it.itemType == CachedSyncItemEntity.TYPE_HEALTH_CHECKUP }
         val totalCount = pendingItems.size.coerceAtLeast(unsyncedAttendance.size)
 
-        // Delegate actual network push to DataSyncManager before marking local items synced
         val syncManager = com.example.data.sync.DataSyncManager.getInstance(this@CampRepository, dao)
         val (syncedIncidents, syncedHealth) = syncManager.processPendingOfflineQueue()
 

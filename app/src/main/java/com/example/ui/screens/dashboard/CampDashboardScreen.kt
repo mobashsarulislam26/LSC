@@ -1,11 +1,10 @@
 package com.example.ui.screens.dashboard
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -54,7 +53,8 @@ fun CampDashboardScreen(
     competitionScores: List<CompetitionScoreEntity> = emptyList(),
     attendanceRecords: List<AttendanceRecordEntity> = emptyList(),
     mealDistributions: List<MealDistributionEntity> = emptyList(),
-    rooms: List<RoomEntity> = emptyList()
+    rooms: List<RoomEntity> = emptyList(),
+    onUpdateRoomInspection: ((RoomEntity, Int, String) -> Unit)? = null
 ) {
     val currentSession = scheduleEvents.find { it.isCurrent } ?: scheduleEvents.firstOrNull()
 
@@ -119,12 +119,12 @@ fun CampDashboardScreen(
 
                             Text(
                                 text = if (language == CampLanguage.BANGLA)
-                                    "আজকের কার্যক্রম: দিন $activeDayBn | ৪-৫ দিনব্যাপী আবাসিক ক্যাম্প সুন্দর ও সুশৃঙ্খলভাবে পরিচালিত হচ্ছে।"
+                                    "নিজকে গড়ো, গড়তে শেখাও • দিন $activeDayBn | ৫ দিনব্যাপী আবাসিক ক্যাম্প (২২–২৬ অক্টোবর ২০২৬) • রাঙামাটি রিসোর্ট"
                                 else
-                                    "Day $activeDay Active | 4-Day residential camp operations running smoothly with $participantCount participants.",
-                                color = Color.White.copy(alpha = 0.88f),
-                                fontSize = 12.sp,
-                                lineHeight = 17.sp
+                                    "Day $activeDay Active | 5-Day Residential Camp (22–26 Oct 2026) • $participantCount Participants",
+                                color = Color.White.copy(alpha = 0.9f),
+                                fontSize = 11.sp,
+                                lineHeight = 16.sp
                             )
                         }
                         Spacer(modifier = Modifier.width(8.dp))
@@ -140,6 +140,16 @@ fun CampDashboardScreen(
                     }
                 }
             }
+        }
+
+        // Role-Specific 1-Tap Action Cockpit Card (Zero-Friction Workflow)
+        item {
+            RoleQuickCockpitCard(
+                language = language,
+                currentRole = currentRole,
+                onNavigateToTab = onNavigateToTab,
+                onOpenScanner = onOpenScanner
+            )
         }
 
         // Counselor Quick Alert Hub & High-Priority Health Alerts
@@ -160,7 +170,7 @@ fun CampDashboardScreen(
         item {
             DashboardSectionHeader(
                 title = if (language == CampLanguage.BANGLA) "সার্বক্ষণিক ক্যাম্প স্ট্যাটাস (Live KPIs)" else "Live Operations Overview",
-                subtitle = if (language == CampLanguage.BANGLA) "অংশগ্রহণকারী, উপস্থিতি, স্টেশন ও স্কোর সামারি" else "Real-time headcount, attendance & station metrics",
+                subtitle = if (language == CampLanguage.BANGLA) "৬০৯ জন অংশগ্রহণকারী, ৬টি স্টেশন ও ২১টি প্রতিযোগিতার সামারি" else "Real-time headcount, attendance & station metrics",
                 icon = Icons.Default.Speed
             )
         }
@@ -193,7 +203,7 @@ fun CampDashboardScreen(
                 KpiCard(
                     title = if (language == CampLanguage.BANGLA) "মোট অংশগ্রহণকারী" else "Total Registered",
                     value = "$participantCount",
-                    sub = if (language == CampLanguage.BANGLA) "${groups.size}টি গ্রুপে বিভক্ত" else "${groups.size} Active Groups",
+                    sub = if (language == CampLanguage.BANGLA) "${groups.size}টি মূল গ্রুপ ও ২৪ সাব-গ্রুপ" else "${groups.size} Active Groups",
                     icon = Icons.Default.Groups,
                     color = Color(0xFF1D4ED8),
                     modifier = Modifier.weight(1f).clickable { onNavigateToTab(1) }
@@ -211,9 +221,9 @@ fun CampDashboardScreen(
 
         item {
             val currentSessionTitle = if (language == CampLanguage.BANGLA) {
-                currentSession?.titleBn?.take(10) ?: "সেশন ১"
+                currentSession?.titleBn?.take(12) ?: "সেশন ১"
             } else {
-                currentSession?.titleEn?.take(10) ?: "Session 1"
+                currentSession?.titleEn?.take(12) ?: "Session 1"
             }
             val totalScores = competitionScores.size
             val totalScoresBn = totalScores.toString().map {
@@ -231,15 +241,15 @@ fun CampDashboardScreen(
                 KpiCard(
                     title = if (language == CampLanguage.BANGLA) "স্টেশন রোটেশন" else "Active Station",
                     value = currentSessionTitle,
-                    sub = if (language == CampLanguage.BANGLA) "${stations.size}টি স্টেশনে চলমান" else "${stations.size} Active Stations",
+                    sub = if (language == CampLanguage.BANGLA) "${stations.size}টি স্টেশন × ৪৫ মি." else "${stations.size} Active Stations",
                     icon = Icons.Default.SyncAlt,
                     color = LscGoldSecondary,
                     modifier = Modifier.weight(1f).clickable { onNavigateToTab(3) }
                 )
                 KpiCard(
-                    title = if (language == CampLanguage.BANGLA) "প্রতিযোগিতা রেকর্ড" else "Score Records",
+                    title = if (language == CampLanguage.BANGLA) "৮৩৫টি পুরস্কার ও স্কোর" else "Score Records",
                     value = if (language == CampLanguage.BANGLA) totalScoresBn else "$totalScores",
-                    sub = if (language == CampLanguage.BANGLA) "ইভেন্ট পয়েন্ট এন্ট্রি" else "Scored Entries",
+                    sub = if (language == CampLanguage.BANGLA) "২১টি প্রতিযোগিতা এন্ট্রি" else "Scored Entries",
                     icon = Icons.Default.EmojiEvents,
                     color = Color(0xFF9333EA),
                     modifier = Modifier.weight(1f).clickable { onNavigateToTab(4) }
@@ -247,12 +257,12 @@ fun CampDashboardScreen(
             }
         }
 
-        // LSC 2026 Core Modules Quick Navigation (From Rationale Document)
+        // LSC 2026 Core Modules Quick Navigation
         item {
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
@@ -272,7 +282,7 @@ fun CampDashboardScreen(
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = if (language == CampLanguage.BANGLA) "ক্যাম্প ২০২৬ কাঠামো ও দিকনির্দেশনা" else "LSC 2026 Camp Blueprint",
+                                text = if (language == CampLanguage.BANGLA) "ক্যাম্প ২০২৬ অফিশিয়াল রূপরেখা ও বিভাগসমূহ" else "LSC 2026 Camp Blueprint",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp,
                                 color = LscSlateDark
@@ -283,7 +293,7 @@ fun CampDashboardScreen(
                             shape = RoundedCornerShape(6.dp)
                         ) {
                             Text(
-                                text = "LSC 2026",
+                                text = "WAMY 2026",
                                 color = LscEmeraldPrimary,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
@@ -310,13 +320,13 @@ fun CampDashboardScreen(
                                 Icon(Icons.Default.CorporateFare, contentDescription = null, tint = Color(0xFF15803D), modifier = Modifier.size(20.dp))
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = if (language == CampLanguage.BANGLA) "১২টি বিভাগ ও এসওপি" else "12 Depts & SOPs",
+                                    text = if (language == CampLanguage.BANGLA) "১৩টি বিভাগ ও ১৯ কমিটি" else "13 Depts & 19 Committees",
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF166534)
                                 )
                                 Text(
-                                    text = if (language == CampLanguage.BANGLA) "দায়িত্ব ও চেকলিস্ট" else "Duties & Checklists",
+                                    text = if (language == CampLanguage.BANGLA) "দায়িত্বশীল ও ১১৪ সেশন এসওপি" else "Duties & 114 Sessions",
                                     fontSize = 9.sp,
                                     color = Color(0xFF15803D)
                                 )
@@ -341,7 +351,7 @@ fun CampDashboardScreen(
                                     color = Color(0xFF3730A3)
                                 )
                                 Text(
-                                    text = if (language == CampLanguage.BANGLA) "মেন্টর ও রুম ডিরেক্টরি" else "Mentor & Room Directory",
+                                    text = if (language == CampLanguage.BANGLA) "ইনচার্জ ও ৭১টি রিসোর্ট রুম" else "In-charges & 71 Rooms",
                                     fontSize = 9.sp,
                                     color = Color(0xFF4338CA)
                                 )
@@ -367,13 +377,13 @@ fun CampDashboardScreen(
                                 Icon(Icons.Default.DirectionsBus, contentDescription = null, tint = Color(0xFFD97706), modifier = Modifier.size(20.dp))
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = if (language == CampLanguage.BANGLA) "শিক্ষা সফর ও বাস" else "Study Tour Fleet",
+                                    text = if (language == CampLanguage.BANGLA) "ঢাকা ট্যুর, মেট্রোরেল ও নন্দন" else "Dhaka, Metro & Nandan",
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF92400E)
                                 )
                                 Text(
-                                    text = if (language == CampLanguage.BANGLA) "হেডকাউন্ট ও বহর" else "Headcount & Buses",
+                                    text = if (language == CampLanguage.BANGLA) "জিরো-লস্ট-চাইল্ড চেকপয়েন্ট" else "Zero-Lost-Child Roll-Call",
                                     fontSize = 9.sp,
                                     color = Color(0xFFB45309)
                                 )
@@ -392,13 +402,13 @@ fun CampDashboardScreen(
                                 Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = LscEmeraldPrimary, modifier = Modifier.size(20.dp))
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = if (language == CampLanguage.BANGLA) "রূপরেখা ও ফলাফল" else "Rationale & Outcomes",
+                                    text = if (language == CampLanguage.BANGLA) "পটভূমি ও প্রত্যাশিত ফলাফল" else "Rationale & Outcomes",
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF1E293B)
                                 )
                                 Text(
-                                    text = if (language == CampLanguage.BANGLA) "৫ স্তম্ভ ও লক্ষ্যমাত্রা (পৃ. ৩৪)" else "5 Pillars & KPIs (p. 34)",
+                                    text = if (language == CampLanguage.BANGLA) "নিজকে গড়ো, গড়তে শেখাও" else "WAMY OSP Vision",
                                     fontSize = 9.sp,
                                     color = Color.Gray
                                 )
@@ -418,7 +428,7 @@ fun CampDashboardScreen(
             )
         }
 
-        // Station Check-In Summary View (pulling live check-in counts from Room database)
+        // Station Check-In Summary View
         item {
             StationCheckInSummaryCard(
                 stations = stations,
@@ -483,7 +493,7 @@ fun CampDashboardScreen(
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -558,7 +568,6 @@ fun CampDashboardScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Quick visual highlights preview
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -623,7 +632,7 @@ fun CampDashboardScreen(
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -717,13 +726,13 @@ fun CampDashboardScreen(
         // Section Header: Schedule, Competition Leaderboard & Dormitory Matrix
         item {
             DashboardSectionHeader(
-                title = if (language == CampLanguage.BANGLA) "দৈনিক রুটিন, লিডারবোর্ড ও আবাসন গ্রিড" else "Schedule, Standings & Dormitory Matrix",
-                subtitle = if (language == CampLanguage.BANGLA) "চলমান সেশন, দলের পয়েন্ট তালিকা এবং রিসোর্ট বেড অকুপেন্সি" else "Active sessions, team competition standings & resort bed layout",
+                title = if (language == CampLanguage.BANGLA) "দৈনিক রুটিন, লিডারবোর্ড ও ৭১ কটেজ গ্রিড" else "Schedule, Standings & Dormitory Matrix",
+                subtitle = if (language == CampLanguage.BANGLA) "চলমান সেশন, দলের পয়েন্ট তালিকা এবং প্লাটিনাম-গোল্ডেন-রজনীগন্ধা বেড বিন্যাস" else "Active sessions, team competition standings & resort bed layout",
                 icon = Icons.Default.EventNote
             )
         }
 
-        // Daily Schedule Section (Highlights current camp activities & upcoming session timings based on participant's assigned station)
+        // Daily Schedule Section
         item {
             DailyScheduleSection(
                 language = language,
@@ -749,13 +758,14 @@ fun CampDashboardScreen(
             )
         }
 
-        // Digital Room & Bed Occupancy Matrix (Rangamati Resort Layout)
+        // Digital Room & Bed Occupancy Matrix (Rangamati Waterfront Resort 71 Rooms)
         item {
             VisualRoomOccupancyMatrixCard(
                 rooms = rooms,
                 participants = participants,
                 language = language,
-                onNavigateToRooms = { onNavigateToTab(10) }
+                onNavigateToRooms = { onNavigateToTab(10) },
+                onUpdateRoomInspection = onUpdateRoomInspection
             )
         }
 
@@ -764,7 +774,7 @@ fun CampDashboardScreen(
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -821,9 +831,9 @@ fun CampDashboardScreen(
                                     )
                                     Text(
                                         text = if (language == CampLanguage.BANGLA)
-                                            "${grp.memberCount} সদস্য • লিডার: ${grp.leaderName.take(20)}..."
+                                            "${grp.memberCount} সদস্য • লিডার: ${grp.leaderName}"
                                         else
-                                            "${grp.memberCount} Members • Leader: ${grp.leaderName.take(20)}...",
+                                            "${grp.memberCount} Members • Leader: ${grp.leaderName}",
                                         fontSize = 10.sp,
                                         color = Color.Gray
                                     )
@@ -842,12 +852,12 @@ fun CampDashboardScreen(
             }
         }
 
-        // Station Competition Milestones Progress Tracker Card
+        // Station Competition & 18-Star Seal Milestones Card
         item {
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFFFAF5FF)),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE9D5FF)),
+                border = BorderStroke(1.dp, Color(0xFFE9D5FF)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -880,32 +890,19 @@ fun CampDashboardScreen(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
                                         text = if (language == CampLanguage.BANGLA)
-                                            "স্টেশন প্রতিযোগিতা মাইলস্টোন"
+                                            "৬ স্টেশন × ৩ দিন = ১৮ ★ স্টার সিল ও মাইলস্টোন"
                                         else
-                                            "Station Competition Milestones",
+                                            "6 Stations × 3 Days = 18 ★ Star Seals",
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 14.sp,
+                                        fontSize = 13.sp,
                                         color = LscSlateDark
                                     )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Surface(
-                                        color = Color(0xFFF3E8FF),
-                                        shape = RoundedCornerShape(4.dp)
-                                    ) {
-                                        Text(
-                                            text = if (language == CampLanguage.BANGLA) "৬টি স্টেশন" else "6 Stations",
-                                            fontSize = 9.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color(0xFF7C3AED),
-                                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
-                                        )
-                                    }
                                 }
                                 Text(
                                     text = if (language == CampLanguage.BANGLA)
-                                        "বিভিন্ন স্টেশনে অর্জিত চ্যালেঞ্জ ও স্কোরের অগ্রগতি"
+                                        "প্রতিটি স্টেশনে উপস্থিতিতে ★ সিল ও সনদপত্র যোগ্যতা"
                                     else
-                                        "Track milestones completed at assigned stations",
+                                        "Star seals earned across all 6 official skill stations",
                                     fontSize = 11.sp,
                                     color = Color.Gray
                                 )
@@ -920,59 +917,25 @@ fun CampDashboardScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Progress Bar
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = if (language == CampLanguage.BANGLA) "সামগ্রিক অগ্রগতি: ৪/৬ সম্পন্ন" else "Overall Progress: 4/6 Completed",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF6B21A8)
-                        )
-                        Text(
-                            text = if (language == CampLanguage.BANGLA) "৬৭%" else "67%",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF7C3AED)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    LinearProgressIndicator(
-                        progress = { 4f / 6f },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(8.dp)
-                            .clip(RoundedCornerShape(4.dp)),
-                        color = Color(0xFF7C3AED),
-                        trackColor = Color(0xFFE9D5FF)
-                    )
-
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    // 6 Station Milestone Badges Row
+                    // 6 Official 2026 Station Badges Row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         listOf(
-                            Triple("S1", if (language == CampLanguage.BANGLA) "হাদিস" else "Hadith", true),
-                            Triple("S2", if (language == CampLanguage.BANGLA) "লাইফ স্কিল" else "Life Skill", true),
-                            Triple("S3", if (language == CampLanguage.BANGLA) "কুইজ" else "Quiz", false),
-                            Triple("S4", if (language == CampLanguage.BANGLA) "সালাত" else "Salat", true),
-                            Triple("S5", if (language == CampLanguage.BANGLA) "ক্যালিগ্রাফি" else "Calligraphy", false),
-                            Triple("S6", if (language == CampLanguage.BANGLA) "ফিটনেস" else "Fitness", true)
-                        ).forEach { (stn, _, isDone) ->
+                            Triple("S1", "সাহিত্য", true),
+                            Triple("S2", "ক্রাফট", true),
+                            Triple("S3", "শিশুতোষ", true),
+                            Triple("S4", "সালাত", true),
+                            Triple("S5", "ক্যারিয়ার", true),
+                            Triple("S6", "মেডিকেল", true)
+                        ).forEach { (stn, label, isDone) ->
                             Surface(
                                 color = if (isDone) Color(0xFFDCFCE7) else Color(0xFFF1F5F9),
                                 shape = RoundedCornerShape(8.dp),
-                                border = androidx.compose.foundation.BorderStroke(
+                                border = BorderStroke(
                                     1.dp,
                                     if (isDone) Color(0xFF86EFAC) else Color(0xFFE2E8F0)
                                 ),
@@ -989,9 +952,10 @@ fun CampDashboardScreen(
                                         color = if (isDone) Color(0xFF15803D) else Color(0xFF64748B)
                                     )
                                     Text(
-                                        text = if (isDone) "✓" else "⏳",
-                                        fontSize = 9.sp,
-                                        color = if (isDone) Color(0xFF15803D) else Color(0xFF94A3B8)
+                                        text = label,
+                                        fontSize = 8.sp,
+                                        color = Color(0xFF15803D),
+                                        maxLines = 1
                                     )
                                 }
                             }
@@ -1005,12 +969,12 @@ fun CampDashboardScreen(
                         modifier = Modifier.fillMaxWidth().testTag("open_milestones_tracker_btn"),
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF7C3AED)),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFDDD6FE))
+                        border = BorderStroke(1.dp, Color(0xFFDDD6FE))
                     ) {
                         Icon(Icons.Default.MilitaryTech, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = if (language == CampLanguage.BANGLA) "মাইলস্টোন ট্র্যাকার খুলুন" else "Open Milestone Progress Tracker",
+                            text = if (language == CampLanguage.BANGLA) "১৮ ★ স্টার সিল ও প্রতিযোগিতা খুলুন" else "Open 18-Star Seal & Competitions",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -1026,7 +990,7 @@ fun CampDashboardScreen(
                 Card(
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = Color(0xFFF0FDF4)),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFBBF7D0)),
+                    border = BorderStroke(1.dp, Color(0xFFBBF7D0)),
                     modifier = Modifier.fillMaxWidth().clickable { onNavigateToTab(7) }
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -1040,7 +1004,7 @@ fun CampDashboardScreen(
                                 shape = RoundedCornerShape(6.dp)
                             ) {
                                 Text(
-                                    text = if (language == CampLanguage.BANGLA) "আজকের বুলেটিন" else "Daily Bulletin",
+                                    text = if (language == CampLanguage.BANGLA) "ক্যাম্প বুলেটিন ও দেয়ালিকা" else "Daily Bulletin",
                                     color = Color.White,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
@@ -1063,6 +1027,138 @@ fun CampDashboardScreen(
                             color = Color.DarkGray,
                             maxLines = 2
                         )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Tailored 1-Tap Command Cockpit Card rendered at the top of the Dashboard
+ * so every user role can start their primary job in 1 tap without hunting menus.
+ */
+@Composable
+private fun RoleQuickCockpitCard(
+    language: CampLanguage,
+    currentRole: UserRole,
+    onNavigateToTab: (Int) -> Unit,
+    onOpenScanner: () -> Unit
+) {
+    val isBangla = language == CampLanguage.BANGLA
+
+    data class QuickActionSpec(val labelBn: String, val labelEn: String, val onClick: () -> Unit, val primary: Boolean = false)
+
+    val (cockpitTitleBn, cockpitSubtitleBn, actions) = when (currentRole) {
+        UserRole.STATION_MANAGER, UserRole.STATION_MODERATOR -> Triple(
+            "⚡ স্টেশন ম্যানেজার ও মডারেটর কুইক ককপিট",
+            "৬ স্টেশন লাইভ রোটেশন বেল, ১-ট্যাপ সাব-গ্রুপ হাজিরা ও ★ সিল",
+            listOf(
+                QuickActionSpec("⚡ লাইভ স্টেশন কনসোল", "Live Console", { onNavigateToTab(3) }, primary = true),
+                QuickActionSpec("📷 র‍্যাপিড QR গান", "Rapid QR Gun", onOpenScanner),
+                QuickActionSpec("🏆 স্টেশন পুরস্কার", "Prizes", { onNavigateToTab(4) })
+            )
+        )
+        UserRole.GROUP_LEADER, UserRole.MENTOR -> Triple(
+            "⚡ গ্রুপ লিডার ও সাব-গ্রুপ ইনচার্জ ককপিট",
+            "৫ সেকেন্ডে সাব-গ্রুপ হাজিরা, কটেজ পরিদর্শন ও শিক্ষা সফর রোল-কল",
+            listOf(
+                QuickActionSpec("✓ ১-ট্যাপ হাজিরা", "1-Tap Roll-Call", { onNavigateToTab(2) }, primary = true),
+                QuickActionSpec("🏠 ২৪ সাব-গ্রুপ ও রুম", "24 Subgroups", { onNavigateToTab(10) }),
+                QuickActionSpec("🚌 সফর চেকপয়েন্ট", "Tour Roll-Call", { onNavigateToTab(11) })
+            )
+        )
+        UserRole.COMPETITION_JUDGE -> Triple(
+            "⚡ প্রতিযোগিতা বিচারক ককপিট (৮৩৫টি পুরস্কার)",
+            "৩-ট্যাপ ১ম/২য়/৩য় বিজয়ী নির্বাচন ও সেশনেই পুরস্কার প্রদান নিশ্চিতকরণ",
+            listOf(
+                QuickActionSpec("🥇 ৩-ট্যাপ পডিয়াম স্কোর", "3-Tap Podium", { onNavigateToTab(4) }, primary = true),
+                QuickActionSpec("🎁 পুরস্কার স্টক", "Prize Stock", { onNavigateToTab(6) })
+            )
+        )
+        UserRole.MEDICAL_TEAM -> Triple(
+            "⚡ স্টেশন-৬ মেডিকেল ও ডেন্টাল বাস ককপিট",
+            "উচ্চতা-ওজন এন্ট্রি, ভ্রাম্যমাণ ডেন্টাল বাস রেফারেল ও আই ক্যাম্প ভিশন স্ক্রিনিং",
+            listOf(
+                QuickActionSpec("🩺 স্টেশন-৬ চেকআপ", "Station-6 Checkup", { onNavigateToTab(14) }, primary = true),
+                QuickActionSpec("📷 আইডি স্ক্যান", "Scan ID", onOpenScanner)
+            )
+        )
+        UserRole.INVENTORY_OFFICER -> Triple(
+            "⚡ ৩০টি উপহার, মায়েদের চাদর ও ডাইনিং ককপিট",
+            "শিক্ষার্থী কিট বিতরণ, মায়েদের চাদর ট্র্যাকার ও ৮৩৫ পুরস্কার ইনভেন্টরি",
+            listOf(
+                QuickActionSpec("🎁 উপহার ও চাদর বিতরণ", "Gifts & Chador", { onNavigateToTab(6) }, primary = true),
+                QuickActionSpec("🍽 খাবার স্ক্যান", "Meal Scan", onOpenScanner)
+            )
+        )
+        else -> Triple(
+            "⚡ ক্যাম্প কমান্ড কুইক অ্যাকশন (১-ট্যাপ)",
+            "স্টেশন লাইভ কনসোল, ১-ট্যাপ সাব-গ্রুপ হাজিরা ও র‍্যাপিড কিউআর গান",
+            listOf(
+                QuickActionSpec("⚡ স্টেশন কনসোল", "Station Console", { onNavigateToTab(3) }, primary = true),
+                QuickActionSpec("✓ ব্যাচ হাজিরা", "Batch Roll-Call", { onNavigateToTab(2) }),
+                QuickActionSpec("📷 QR স্ক্যানার", "QR Scanner", onOpenScanner)
+            )
+        )
+    }
+
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("role_quick_cockpit_card")
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Text(
+                text = if (isBangla) cockpitTitleBn else "${currentRole.titleEn} Quick Cockpit",
+                color = LscGoldLight,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 13.sp
+            )
+            Text(
+                text = if (isBangla) cockpitSubtitleBn else "Execute daily operations in 1–2 taps",
+                color = Color(0xFFCBD5E1),
+                fontSize = 11.sp
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                actions.forEach { act ->
+                    if (act.primary) {
+                        Button(
+                            onClick = act.onClick,
+                            colors = ButtonDefaults.buttonColors(containerColor = LscEmeraldPrimary),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+                            modifier = Modifier.weight(1.2f)
+                        ) {
+                            Text(
+                                text = if (isBangla) act.labelBn else act.labelEn,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1
+                            )
+                        }
+                    } else {
+                        OutlinedButton(
+                            onClick = act.onClick,
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, Color(0xFF475569)),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = if (isBangla) act.labelBn else act.labelEn,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1
+                            )
+                        }
                     }
                 }
             }
@@ -1126,7 +1222,7 @@ fun KpiCard(
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = modifier
     ) {

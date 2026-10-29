@@ -85,14 +85,14 @@ fun CampLogoBadge(
         Spacer(modifier = Modifier.width(10.dp))
         Column {
             Text(
-                text = if (language == CampLanguage.BANGLA) "লাইফ স্কিল ক্যাম্পিং ২০২৬" else "Life Skills Camping 2026",
+                text = if (language == CampLanguage.BANGLA) "লাইফ স্কিলস ক্যাম্পিং ২০২৬" else "Life Skills Camping 2026",
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
             )
             Text(
-                text = if (language == CampLanguage.BANGLA) "নিজকে গড়ো গড়তে শেখাও • Build Thyself Help to Build" else "Build Thyself Help to Build • 2026",
+                text = if (language == CampLanguage.BANGLA) "নিজকে গড়ো, গড়তে শেখাও • Build Thyself Help to Build" else "Build Thyself Help to Build • WAMY BD",
                 style = MaterialTheme.typography.bodySmall.copy(
                     color = LscGoldLight,
                     fontSize = 11.sp
@@ -136,7 +136,7 @@ fun CampAboutDialog(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = if (language == CampLanguage.BANGLA) "আবাসিক জীবন দক্ষতা ক্যাম্প ২০২৬" else "Residential Life Skills Camp 2026",
+                    text = if (language == CampLanguage.BANGLA) "লাইফ স্কিলস ক্যাম্পিং ২০২৬ (WAMY বাংলাদেশ)" else "Life Skills Camping 2026 (WAMY Bangladesh)",
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
                         color = LscEmeraldPrimary
@@ -150,7 +150,7 @@ fun CampAboutDialog(
                     modifier = Modifier.padding(top = 6.dp)
                 ) {
                     Text(
-                        text = if (language == CampLanguage.BANGLA) "নিজকে গড়ো গড়তে শেখাও (Build Thyself Help to Build)" else "Build Thyself Help to Build",
+                        text = if (language == CampLanguage.BANGLA) "নিজকে গড়ো, গড়তে শেখাও (Build Thyself Help to Build)" else "Build Thyself Help to Build",
                         color = Color(0xFF92400E),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
@@ -173,22 +173,22 @@ fun CampAboutDialog(
                     InfoRow(
                         icon = Icons.Default.Event,
                         label = if (language == CampLanguage.BANGLA) "সময়কাল" else "Dates",
-                        value = "22-26 October 2026 (২২-২৬ অক্টোবর ২০২৬)"
+                        value = "22–26 October 2026 (৫ দিন • ২২–২৬ অক্টোবর ২০২৬)"
                     )
                     InfoRow(
                         icon = Icons.Default.Place,
                         label = if (language == CampLanguage.BANGLA) "স্থান" else "Location",
-                        value = "Rangamati Resort-Gazipur (রাঙ্গামাটি রিসোর্ট, গাজীপুর)"
+                        value = "রাঙ্গামাটি ওয়াটারফ্রন্ট রিসোর্ট, শফিপুর, গাজীপুর"
                     )
                     InfoRow(
                         icon = Icons.Default.Groups,
                         label = if (language == CampLanguage.BANGLA) "অংশগ্রহণকারী" else "Participants",
-                        value = if (language == CampLanguage.BANGLA) "৬০৩+ জন তরুণ (৬টি গ্রুপ)" else "603+ Campers (6 Teams)"
+                        value = if (language == CampLanguage.BANGLA) "৬০৯ জন এতিম শিক্ষার্থী (৬ গ্রুপ • ২৪ সাব-গ্রুপ)" else "609 Orphan Campers (6 Groups • 24 Subgroups)"
                     )
                     InfoRow(
                         icon = Icons.Default.FitnessCenter,
                         label = if (language == CampLanguage.BANGLA) "স্কিল স্টেশন" else "Stations",
-                        value = if (language == CampLanguage.BANGLA) "৬টি বিশেষায়িত প্রশিক্ষণ ও প্রতিযোগিতা স্টেশন" else "6 Rotation Stations"
+                        value = if (language == CampLanguage.BANGLA) "৬টি স্টেশন • ১৮-স্টার সিল ও ৮৩৫টি পুরস্কার" else "6 Rotation Stations • 18-Star Seal & 835 Prizes"
                     )
                 }
 

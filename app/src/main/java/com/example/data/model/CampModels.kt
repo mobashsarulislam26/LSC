@@ -7,13 +7,14 @@ import androidx.room.PrimaryKey
 enum class UserRole(val titleBn: String, val titleEn: String) {
     SUPER_ADMIN("সুপার অ্যাডমিন", "Super Admin"),
     CAMP_CHIEF("ক্যাম্প চিফ", "Camp Chief"),
+    STATION_MANAGER("স্টেশন ম্যানেজার", "Station Manager"),
     GROUP_LEADER("গ্রুপ লিডার", "Group Leader"),
-    MENTOR("সাব-গ্রুপ মেন্টর", "Sub-group Mentor"),
+    MENTOR("সাব-গ্রুপ ইনচার্জ", "Sub-group In-charge"),
     STATION_MODERATOR("স্টেশন মডারেটর", "Station Moderator"),
     COMPETITION_JUDGE("বিচারক", "Competition Judge"),
     MEDICAL_TEAM("মেডিকেল টিম", "Medical Team"),
-    INVENTORY_OFFICER("ইনভেন্টরি অফিসার", "Inventory Officer"),
-    BULLETIN_EDITOR("বুলেটিন এডিটর", "Bulletin Editor"),
+    INVENTORY_OFFICER("উপহার ও পুরস্কার অফিসার", "Gifts & Inventory Officer"),
+    BULLETIN_EDITOR("বুলেটিন ও মিডিয়া এডিটর", "Bulletin & Media Editor"),
     VOLUNTEER("চেক-ইন ভলান্টিয়ার", "Check-in Volunteer"),
     PARTICIPANT("অংশগ্রহণকারী", "Participant")
 }
@@ -32,21 +33,21 @@ enum class CampLanguage {
 )
 data class ParticipantEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val campCode: String, // e.g. "LSC-2026-001"
-    val fileNo: String,   // e.g. "F-1001"
+    val campCode: String, // e.g. "Bukhari-1-1"
+    val fileNo: String,   // e.g. "EDAS-1258"
     val nameBn: String,
     val nameEn: String,
     val districtBn: String,
     val districtEn: String,
     val gender: String, // "Male" or "Female"
     val age: Int,
-    val groupId: String, // "bukhari", "sumaiya", etc.
+    val groupId: String, // "bukhari", "shafeyi", "salahuddin", "sumaiya", "umm_ayman", "umm_saad"
     val groupNameBn: String,
     val groupNameEn: String,
-    val subgroup: String, // e.g. "Bukhari-1"
-    val roomNo: String,   // e.g. "A-101"
-    val bedNo: String,    // e.g. "Bed-02"
-    val mealPref: String, // "Regular", "No Spicy", "Allergy"
+    val subgroup: String, // e.g. "Bukhari-01"
+    val roomNo: String,   // e.g. "P1-Down-A"
+    val bedNo: String,    // e.g. "Bed-01"
+    val mealPref: String, // "নিয়মিত", "ঝাল কম", "Allergy"
     val guardianName: String,
     val guardianPhone: String,
     val isCheckedIn: Boolean = true,
@@ -54,7 +55,10 @@ data class ParticipantEntity(
     val medicalFlag: String? = null, // "Asthma", "Dust Allergy", null
     val totalScore: Double = 0.0,
     val attendancePercentage: Float = 95.0f,
-    val photoAvatarSeed: Int = 1
+    val photoAvatarSeed: Int = 1,
+    val classLevel: String = "৪র্থ শ্রেণি",
+    val organization: String = "WAMY-OSP",
+    val completedStationSeals: String = "" // Comma-separated e.g. "S1D2,S2D2,S3D2..." (18 official star seals)
 )
 
 typealias Participant = ParticipantEntity
@@ -107,22 +111,26 @@ data class StationEntity(
     val location: String,
     val objectiveBn: String,
     val iconKey: String,
-    val materialsNeeded: String = "বোর্ড, মার্কার, হ্যান্ডআউট, উপকরণ কিট"
+    val materialsNeeded: String = "বোর্ড, মার্কার, হ্যান্ডআউট, উপকরণ কিট",
+    val day2TopicBn: String = "",
+    val day4TopicBn: String = "",
+    val day5TopicBn: String = "",
+    val subModerators: String = ""
 )
 
 @Entity(tableName = "schedule_events")
 data class ScheduleEventEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val dayNo: Int, // 1 to 5
-    val timeSlot: String, // "05:00 - 05:45"
+    val timeSlot: String, // "05:00 - 05:30"
     val titleBn: String,
     val titleEn: String,
-    val category: String, // "Jamaat", "Quran", "Station", "Meal", "Competition", "Halaqa", "Rest"
+    val category: String, // "Jamaat", "Quran", "Station", "Meal", "Competition", "Halaqa", "Physical", "Transport", "Rest"
     val stationId: Int? = null,
     val location: String = "Main Hall / Ground",
     val isCurrent: Boolean = false,
     val isCompleted: Boolean = false,
-    val rotationJson: String = "" // "bukhari:1,sumaiya:2,shafeyi:3,umm_ayman:4,salahuddin:5,umm_saad:6"
+    val rotationJson: String = "" // "bukhari:1,salahuddin:2,umm_ayman:3,sumaiya:4,umm_saad:5,shafeyi:6"
 )
 
 @Entity(tableName = "attendance_events")
@@ -132,7 +140,7 @@ data class AttendanceEventEntity(
     val titleEn: String,
     val dayNo: Int,
     val timeLabel: String,
-    val targetCount: Int = 603,
+    val targetCount: Int = 609,
     val presentCount: Int = 0,
     val lateCount: Int = 0,
     val absentCount: Int = 0,
@@ -150,7 +158,7 @@ data class AttendanceRecordEntity(
     val subgroup: String,
     val status: String, // "PRESENT", "LATE", "ABSENT", "EXCUSED", "MEDICAL"
     val scannedAt: Long = System.currentTimeMillis(),
-    val method: String = "QR_SCAN", // "QR_SCAN", "ROSTER_TAP", "MANUAL_OVERRIDE"
+    val method: String = "QR_SCAN", // "QR_SCAN", "ROSTER_TAP", "BATCH_SUBGROUP", "MANUAL_OVERRIDE"
     val overrideReason: String? = null,
     val isSynced: Boolean = true
 )
@@ -160,11 +168,14 @@ data class CompetitionEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val nameBn: String,
     val nameEn: String,
-    val category: String, // "Quran", "Hadith", "Quiz", "Arts", "Speech", "Sports"
+    val category: String, // "Quran", "Hadith", "Quiz", "Arts", "Speech", "Sports", "Team", "Parade", "Tour"
     val dayNo: Int,
     val maxScore: Int = 100,
     val judgeName: String,
-    val status: String = "LIVE" // "SCHEDULED", "LIVE", "FINALIZED"
+    val status: String = "LIVE", // "SCHEDULED", "LIVE", "FINALIZED"
+    val prizeCount: Int = 72,
+    val isTeamEvent: Boolean = false,
+    val selectionScope: String = "SUBGROUP_TOP3" // "SUBGROUP_TOP3", "GROUP_BEST", "PARADE", "TEAM", "OUTING"
 )
 
 @Entity(tableName = "judges")
@@ -172,8 +183,8 @@ data class JudgeEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val nameBn: String,
     val nameEn: String = "",
-    val designation: String = "", // e.g. "মুফাসসিরে কুরআন", "আন্তর্জাতিক ক্বারী", "অধ্যাপক ও গবেষক"
-    val assignedCategory: String = "সাধারণ", // "Quran", "Hadith", "Quiz", "Arts", "Speech", "Sports"
+    val designation: String = "",
+    val assignedCategory: String = "সাধারণ",
     val phone: String = "",
     val email: String = "",
     val notes: String = "",
@@ -195,7 +206,8 @@ data class CompetitionScoreEntity(
     val totalScore: Double,
     val remarks: String = "",
     val rank: Int = 0,
-    val isAwardEligible: Boolean = false
+    val isAwardEligible: Boolean = false,
+    val isPrizeHandedOver: Boolean = false
 )
 
 @Entity(tableName = "health_records")
@@ -207,7 +219,7 @@ data class HealthRecordEntity(
     val groupName: String,
     val checkupType: String, // "GENERAL", "DENTAL", "EYE", "EMERGENCY"
     val doctorName: String,
-    val vitals: String, // "BP: 105/70, Temp: 98.4°F, Pulse: 76"
+    val vitals: String,
     val diagnosis: String,
     val adviceAndMeds: String,
     val isEmergencyFlag: Boolean = false,
@@ -215,7 +227,12 @@ data class HealthRecordEntity(
     val status: String = "PENDING", // "PENDING", "ATTENDED", "RESOLVED"
     val followUpDate: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
-    val isSynced: Boolean = true
+    val isSynced: Boolean = true,
+    val heightCm: String = "",
+    val weightKg: String = "",
+    val dentalBusReferred: Boolean = false,
+    val visionNotes: String = "",
+    val photoDocumented: Boolean = false
 )
 
 @Entity(tableName = "inventory_items")
@@ -266,7 +283,7 @@ data class BulletinEntity(
 data class IncidentEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val title: String,
-    val category: String = "MEDICAL", // "LOST_AND_FOUND", "MEDICAL", "SAFETY", "INFRASTRUCTURE", "GENERAL"
+    val category: String = "MEDICAL", // "LOST_AND_FOUND", "MEDICAL", "SAFETY", "INFRASTRUCTURE", "EVALUATION_FEEDBACK", "GENERAL"
     val participantCampCode: String? = null,
     val participantName: String? = null,
     val severity: String = "MEDIUM", // "LOW", "MEDIUM", "HIGH", "CRITICAL"
@@ -298,43 +315,45 @@ data class MealDistributionEntity(
 @Entity(tableName = "camp_rooms")
 data class RoomEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val buildingName: String, // e.g. "তাজমহল হল", "শহীদ মিনার ভবন"
-    val roomNo: String,       // e.g. "১০১", "১০২"
+    val buildingName: String, // e.g. "Platinum-1", "Golden-2", "Rajonigandha / Silver"
+    val roomNo: String,       // e.g. "P1-Down-A", "Golden-2-A", "Rajo-101"
     val floor: String = "১ম তলা",
-    val capacity: Int,        // e.g. 12
+    val capacity: Int,
     val assignedCount: Int = 0,
-    val assignedGroupId: String = "bukhari", // "bukhari", "sumaiya", etc.
+    val assignedGroupId: String = "bukhari",
     val inChargeName: String = "",
     val inChargePhone: String = "",
-    val notes: String = ""
+    val notes: String = "",
+    val cleanlinessScore: Int = 0,
+    val lastInspectedAt: Long? = null
 )
 
 @Entity(tableName = "travel_vehicles")
 data class TravelVehicleEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val vehicleNo: String, // e.g. "বাস ১ (ঢাকা মেট্রো ব-১১-২৩৪৫)"
+    val vehicleNo: String,
     val driverName: String,
     val driverPhone: String,
     val inChargeName: String,
     val inChargePhone: String,
-    val capacity: Int = 40,
+    val capacity: Int = 42,
     val assignedGroupId: String = "bukhari",
     val departureHeadcount: Int = 0,
     val returnHeadcount: Int = 0,
     val status: String = "SCHEDULED", // "SCHEDULED", "BOARDING", "IN_TRANSIT", "RETURNED"
-    val destination: String = "ঐতিহাসিক সোনারগাঁ ও পানাম নগর"
+    val destination: String = "জাতীয় চিড়িয়াখানা, সংসদ ভবন, সামরিক জাদুঘর ও মেট্রোরেল"
 )
 
 @Entity(tableName = "duty_rosters")
 data class DutyRosterEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val committeeKey: String, // "MANAGEMENT", "DISCIPLINE", "DINING", "ACCOUNTS", "EVALUATION", "MEDIA", "HEALTH", "TRANSPORT"
+    val committeeKey: String,
     val committeeNameBn: String,
     val taskTitle: String,
     val assignedPersonName: String,
     val assignedPersonPhone: String = "",
-    val shiftTime: String = "সকাল ০৭:০০ - দুপুর ০১:০০",
-    val location: String = "ক্যাম্প গ্রাউন্ড",
+    val shiftTime: String = "সকাল ০৭:০০ - দুপুর ০১:৩০",
+    val location: String = "রাঙামাটি ওয়াটারফ্রন্ট রিসোর্ট",
     val status: String = "PENDING", // "PENDING", "IN_PROGRESS", "COMPLETED"
     val notes: String = ""
 )
@@ -352,7 +371,11 @@ data class KitDistributionEntity(
     val idBadgeStatus: String = "DISTRIBUTED",
     val notebookStatus: String = "DISTRIBUTED",
     val receivedAt: Long? = null,
-    val deliveredBy: String = "লজিস্টিকস টিম"
+    val deliveredBy: String = "উপহার ও সম্মাননা কমিটি",
+    val clothingSize: String = "M",
+    val shoeSize: String = "36",
+    val motherChadorStatus: String = "DISTRIBUTED", // "ALLOCATED", "DISTRIBUTED", "CONFIRMED"
+    val distributedItemsCount: Int = 30
 )
 
 @Entity(tableName = "camp_goal_metrics")
@@ -362,14 +385,14 @@ data class CampGoalMetricEntity(
     val targetValue: Double,
     val currentValue: Double,
     val unit: String = "%",
-    val category: String = "হাজিরা ও অংশগ্রহণ" // "হাজিরা", "সময়নিষ্ঠতা", "স্বাস্থ্য", "ফিডব্যাক"
+    val category: String = "হাজিরা ও অংশগ্রহণ"
 )
 
 @Entity(tableName = "user_accounts")
 data class UserAccountEntity(
     @PrimaryKey val email: String,
     val fullName: String,
-    val role: String, // "SUPER_ADMIN", "CAMP_CHIEF", "REGISTRATION", "MEDICAL", "JUDGE", "LOGISTICS", "GROUP_LEADER"
+    val role: String, // "SUPER_ADMIN", "CAMP_CHIEF", "STATION_MANAGER", "REGISTRATION", "MEDICAL", "JUDGE", "LOGISTICS", "GROUP_LEADER", "MENTOR", "STATION_MODERATOR", "BULLETIN_EDITOR"
     val passwordHash: String,
     val phone: String = "",
     val isActive: Boolean = true,
@@ -401,12 +424,13 @@ fun UserAccountEntity.toUserRole(): UserRole {
     return when (role.trim().uppercase()) {
         "SUPER_ADMIN", "ADMIN" -> UserRole.SUPER_ADMIN
         "CAMP_CHIEF", "CHIEF" -> UserRole.CAMP_CHIEF
+        "STATION_MANAGER", "STATION_DIRECTOR" -> UserRole.STATION_MANAGER
         "REGISTRATION", "VOLUNTEER", "CHECK_IN_VOLUNTEER" -> UserRole.VOLUNTEER
         "MEDICAL", "MEDICAL_TEAM", "DOCTOR" -> UserRole.MEDICAL_TEAM
         "JUDGE", "COMPETITION_JUDGE" -> UserRole.COMPETITION_JUDGE
-        "LOGISTICS", "INVENTORY", "INVENTORY_OFFICER", "FOOD" -> UserRole.INVENTORY_OFFICER
+        "LOGISTICS", "INVENTORY", "INVENTORY_OFFICER", "FOOD", "GIFT" -> UserRole.INVENTORY_OFFICER
         "GROUP_LEADER", "LEADER" -> UserRole.GROUP_LEADER
-        "MENTOR", "SUBGROUP_MENTOR" -> UserRole.MENTOR
+        "MENTOR", "SUBGROUP_MENTOR", "SUBGROUP_INCHARGE" -> UserRole.MENTOR
         "STATION_MODERATOR", "MODERATOR" -> UserRole.STATION_MODERATOR
         "BULLETIN", "BULLETIN_EDITOR", "MEDIA" -> UserRole.BULLETIN_EDITOR
         "PARTICIPANT", "CAMPER" -> UserRole.PARTICIPANT
@@ -420,7 +444,7 @@ data class AuditLogEntity(
     val timestamp: Long = System.currentTimeMillis(),
     val adminId: String = "",
     val userEmail: String,
-    val actionType: String, // "USER_ROLE_UPDATE", "ROOM_ASSIGNMENT", "MEAL_SCHEDULE_EDIT", "STATION_UPDATE", etc.
+    val actionType: String,
     val targetEntity: String,
     val description: String,
     val modifiedRecordDetails: String = ""

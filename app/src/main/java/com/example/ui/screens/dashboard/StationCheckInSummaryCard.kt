@@ -78,17 +78,19 @@ fun deriveStationCheckInMetrics(
             (assignedGroup == "muslim" && gName.contains("মুসলিম")) ||
             (assignedGroup == "abu_dawood" && (gName.contains("আবু দাউদ") || gName.contains("আবুদাউদ"))) ||
             (assignedGroup == "tirmidhi" && (gName.contains("তিরমিযী") || gName.contains("তিরমিজি"))) ||
-            (assignedGroup == "salahuddin" && gName.contains("সালাহউদ্দীন")) ||
+            (assignedGroup == "salahuddin" && (gName.contains("সালাহউদ্দীন") || gName.contains("সালাহউদ্দিন") || gName.contains("আয়ুবী"))) ||
             (assignedGroup == "sumaiya" && (gName.contains("সুমাইয়া") || gName.contains("সুমাইয়া"))) ||
-            (assignedGroup == "shafeyi" && (gName.contains("শাফেয়ী") || gName.contains("শাফেয়ী"))) ||
-            (assignedGroup == "umm_ayman" && gName.contains("আয়মান")) ||
-            (assignedGroup == "umm_saad" && gName.contains("সা'দ"))
+            (assignedGroup == "shafeyi" && (gName.contains("শাফেয়ী") || gName.contains("শাফেয়ী") || gName.contains("শাফে’য়ী") || gName.contains("শাফে'য়ী"))) ||
+            (assignedGroup == "umm_ayman" && (gName.contains("আয়মান") || gName.contains("আইমান"))) ||
+            (assignedGroup == "umm_saad" && (gName.contains("সা'দ") || gName.contains("সা’দ")))
         }
 
         // Find attendance records matching this station or station rotation event
         val checkedInRecords = attendanceRecords.filter { record ->
             val isPresent = record.status == "PRESENT" || record.status == "LATE"
             val matchesStation = record.overrideReason?.contains("Station ${st.id}", ignoreCase = true) == true ||
+                                 record.overrideReason?.contains("স্টেশন-${st.id}", ignoreCase = true) == true ||
+                                 record.overrideReason?.contains("স্টেশন ${st.id}", ignoreCase = true) == true ||
                                  record.overrideReason?.contains(st.nameBn, ignoreCase = true) == true ||
                                  (currentSession != null && record.eventId == currentSession.id && groupMatches(record.groupName))
             isPresent && matchesStation

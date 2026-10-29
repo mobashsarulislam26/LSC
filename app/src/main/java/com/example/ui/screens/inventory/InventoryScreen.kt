@@ -1,13 +1,11 @@
 package com.example.ui.screens.inventory
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -16,7 +14,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -31,14 +28,29 @@ import com.example.ui.theme.*
 fun InventoryScreen(
     language: CampLanguage,
     inventoryItems: List<InventoryItemEntity>,
+    participants: List<ParticipantEntity> = emptyList(),
+    kitDistributions: List<KitDistributionEntity> = emptyList(),
+    onUpdateKitDistribution: (KitDistributionEntity) -> Unit = {},
     onIssueItem: (itemId: Long, qty: Int, recipient: String, officer: String) -> Unit
 ) {
+    val isBangla = language == CampLanguage.BANGLA
+    var activeSubTab by remember { mutableStateOf("STOCK") } // "STOCK" or "KIT_CHADOR"
     var selectedCategory by remember { mutableStateOf("ALL") }
     var showIssueDialog by remember { mutableStateOf<InventoryItemEntity?>(null) }
 
     val totalOpening = inventoryItems.sumOf { it.openingQty }
     val totalIssued = inventoryItems.sumOf { it.issuedQty }
     val totalBalance = inventoryItems.sumOf { it.balanceQty }
+
+    val kitByParticipant = remember(kitDistributions) {
+        kitDistributions.associateBy { it.participantId }
+    }
+    val kitReceivedCount = remember(kitDistributions) {
+        kitDistributions.count { it.kitBagStatus != "ALLOCATED" || it.giftPackStatus != "ALLOCATED" }
+    }
+    val chadorReceivedCount = remember(kitDistributions) {
+        kitDistributions.count { it.motherChadorStatus != "ALLOCATED" }
+    }
 
     Column(
         modifier = Modifier
@@ -47,117 +59,173 @@ fun InventoryScreen(
     ) {
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Inventory Stock Summary Card (PRD: 799 units across 28 items)
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
-            modifier = Modifier.fillMaxWidth().testTag("inventory_summary_card")
-        ) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = if (language == CampLanguage.BANGLA) "উপহার ও পুরস্কার ইনভেন্টরি লেজার" else "Awards & Gifts Inventory Ledger",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            color = LscSlateDark
-                        )
-                        Text(
-                            text = if (language == CampLanguage.BANGLA) "মোট ২৮ ক্যাটাগরির ক্যাম্প পণ্য ও মেডেল" else "28 Distinct Master Items Configured",
-                            fontSize = 11.sp,
-                            color = Color.Gray
-                        )
-                    }
-
-                    Surface(
-                        color = LscGoldLight,
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text(
-                            text = "৭৯৯ ইউনিট স্টক",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp,
-                            color = LscGoldDark,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    InventoryStatPill(
-                        label = if (language == CampLanguage.BANGLA) "প্রারম্ভিক স্টক" else "Opening",
-                        qty = totalOpening,
-                        color = Color(0xFF1D4ED8),
-                        modifier = Modifier.weight(1f)
-                    )
-                    InventoryStatPill(
-                        label = if (language == CampLanguage.BANGLA) "বিতরণকৃত" else "Issued",
-                        qty = totalIssued,
-                        color = Color(0xFF10B981),
-                        modifier = Modifier.weight(1f)
-                    )
-                    InventoryStatPill(
-                        label = if (language == CampLanguage.BANGLA) "বর্তমান ব্যালেন্স" else "Balance",
-                        qty = totalBalance,
-                        color = LscGoldSecondary,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Category Filter Row
-        LazyRow(
+        // Sub-Tab Switcher: Stock Ledger vs Student Kit & Mother's Chador Distribution
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            val categories = listOf("ALL", "AWARD", "GIFT", "STATIONERY", "KIT", "HEALTH")
-            items(categories) { cat ->
-                FilterChip(
-                    selected = selectedCategory == cat,
-                    onClick = { selectedCategory = cat },
-                    label = { Text(cat, fontSize = 11.sp) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = LscEmeraldPrimary,
-                        selectedLabelColor = Color.White
+            FilterChip(
+                selected = activeSubTab == "STOCK",
+                onClick = { activeSubTab = "STOCK" },
+                label = {
+                    Text(
+                        text = if (isBangla) "📦 ৩০ উপহার ও ৮৩৫ পুরস্কার স্টক" else "📦 Stock & 835 Awards",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
                     )
-                )
-            }
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = LscEmeraldPrimary,
+                    selectedLabelColor = Color.White
+                ),
+                modifier = Modifier.weight(1f)
+            )
+            FilterChip(
+                selected = activeSubTab == "KIT_CHADOR",
+                onClick = { activeSubTab = "KIT_CHADOR" },
+                label = {
+                    Text(
+                        text = if (isBangla) "🧣 কিট ও মায়েদের চাদর (${chadorReceivedCount})" else "🧣 Kit & Mother's Chador",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = Color(0xFFD97706),
+                    selectedLabelColor = Color.White
+                ),
+                modifier = Modifier.weight(1f)
+            )
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        val filteredItems = if (selectedCategory == "ALL") {
-            inventoryItems
-        } else {
-            inventoryItems.filter { it.category == selectedCategory }
-        }
+        if (activeSubTab == "STOCK") {
+            // Inventory Stock Summary Card (Official 2026: 30 Student Gifts + 835 Competition Prizes)
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                modifier = Modifier.fillMaxWidth().testTag("inventory_summary_card")
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (isBangla) "উপহার (৩০টি) ও পুরস্কার (৮৩৫টি) ইনভেন্টরি লেজার" else "30 Gifts & 835 Awards Inventory Ledger",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.5.sp,
+                                color = LscSlateDark
+                            )
+                            Text(
+                                text = if (isBangla)
+                                    "মোট ${inventoryItems.size} ক্যাটাগরির অফিশিয়াল উপহার, পোশাক, বই ও পুরস্কার"
+                                else
+                                    "${inventoryItems.size} Official Gift & Award Categories",
+                                fontSize = 11.sp,
+                                color = Color.Gray
+                            )
+                        }
 
-        // Inventory Items List
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 96.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(filteredItems, key = { it.id }) { item ->
-                InventoryItemRow(
-                    item = item,
-                    language = language,
-                    onIssue = { showIssueDialog = item }
-                )
+                        Surface(
+                            color = LscGoldLight,
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = "$totalOpening ইউনিট স্টক",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp,
+                                color = LscGoldDark,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        InventoryStatPill(
+                            label = if (isBangla) "প্রারম্ভিক স্টক" else "Opening",
+                            qty = totalOpening,
+                            color = Color(0xFF1D4ED8),
+                            modifier = Modifier.weight(1f)
+                        )
+                        InventoryStatPill(
+                            label = if (isBangla) "বিতরণকৃত" else "Issued",
+                            qty = totalIssued,
+                            color = Color(0xFF10B981),
+                            modifier = Modifier.weight(1f)
+                        )
+                        InventoryStatPill(
+                            label = if (isBangla) "বর্তমান ব্যালেন্স" else "Balance",
+                            qty = totalBalance,
+                            color = LscGoldSecondary,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
             }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            val categories = remember(inventoryItems) {
+                listOf("ALL") + inventoryItems.map { it.category }.distinct()
+            }
+
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                items(categories) { cat ->
+                    FilterChip(
+                        selected = selectedCategory == cat,
+                        onClick = { selectedCategory = cat },
+                        label = { Text(cat, fontSize = 11.sp) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = LscEmeraldPrimary,
+                            selectedLabelColor = Color.White
+                        )
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            val filteredItems = if (selectedCategory == "ALL") {
+                inventoryItems
+            } else {
+                inventoryItems.filter { it.category.equals(selectedCategory, ignoreCase = true) }
+            }
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 96.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(filteredItems, key = { it.id }) { item ->
+                    InventoryItemRow(
+                        item = item,
+                        language = language,
+                        onIssue = { showIssueDialog = item }
+                    )
+                }
+            }
+        } else {
+            StudentKitAndChadorSection(
+                isBangla = isBangla,
+                participants = participants,
+                kitByParticipant = kitByParticipant,
+                kitReceivedCount = kitReceivedCount,
+                chadorReceivedCount = chadorReceivedCount,
+                onUpdateKitDistribution = onUpdateKitDistribution
+            )
         }
     }
 
@@ -175,11 +243,261 @@ fun InventoryScreen(
 }
 
 @Composable
+private fun StudentKitAndChadorSection(
+    isBangla: Boolean,
+    participants: List<ParticipantEntity>,
+    kitByParticipant: Map<Long, KitDistributionEntity>,
+    kitReceivedCount: Int,
+    chadorReceivedCount: Int,
+    onUpdateKitDistribution: (KitDistributionEntity) -> Unit
+) {
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedSubgroup by remember { mutableStateOf("ALL") }
+
+    val subgroups = remember(participants) {
+        participants.map { it.subgroup }.filter { it.isNotBlank() }.distinct()
+    }
+
+    val filtered = remember(participants, searchQuery, selectedSubgroup) {
+        val q = searchQuery.trim()
+        participants.filter { p ->
+            val matchSub = selectedSubgroup == "ALL" || p.subgroup.equals(selectedSubgroup, ignoreCase = true)
+            val matchQ = q.isBlank() ||
+                    p.nameBn.contains(q, ignoreCase = true) ||
+                    p.nameEn.contains(q, ignoreCase = true) ||
+                    p.campCode.contains(q, ignoreCase = true) ||
+                    p.fileNo.contains(q, ignoreCase = true)
+            matchSub && matchQ
+        }.take(100)
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        Card(
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFBEB)),
+            border = BorderStroke(1.dp, Color(0xFFFDE68A)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (isBangla) "🎁 ৩০টি শিক্ষার্থী উপহার কিট ও মায়েদের চাদর" else "🎁 30-Item Kit & Mother's Chador",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = Color(0xFF92400E)
+                    )
+                    Text(
+                        text = if (isBangla)
+                            "ছাত্র: পোলো ও ট্রাউজার | ছাত্রী: স্কার্ট ও খিমার | সকল মায়ের জন্য সম্মাননা চাদর"
+                        else
+                            "Boys: Polo & Trouser | Girls: Skirt & Khimar | Mother's Chador",
+                        fontSize = 10.sp,
+                        color = Color(0xFFB45309)
+                    )
+                }
+
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "কিট: $kitReceivedCount/${participants.size}",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = LscEmeraldPrimary
+                    )
+                    Text(
+                        text = "চাদর: $chadorReceivedCount/${participants.size}",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFD97706)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            item {
+                FilterChip(
+                    selected = selectedSubgroup == "ALL",
+                    onClick = { selectedSubgroup = "ALL" },
+                    label = { Text(if (isBangla) "সকল সাব-গ্রুপ" else "All", fontSize = 10.sp) }
+                )
+            }
+            items(subgroups) { sg ->
+                FilterChip(
+                    selected = selectedSubgroup == sg,
+                    onClick = { selectedSubgroup = sg },
+                    label = { Text(sg, fontSize = 10.sp) }
+                )
+            }
+        }
+
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            placeholder = { Text(if (isBangla) "শিক্ষার্থীর নাম, ক্যাম্প কোড বা ফাইল নং..." else "Search name or camp code...", fontSize = 11.sp) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 96.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(filtered, key = { it.id }) { p ->
+                val isGirl = p.gender.equals("Female", ignoreCase = true)
+                val existing = kitByParticipant[p.id] ?: KitDistributionEntity(
+                    participantId = p.id,
+                    campCode = p.campCode,
+                    participantName = p.nameBn,
+                    groupName = p.groupNameBn,
+                    tShirtSize = "M",
+                    clothingSize = "M",
+                    kitBagStatus = "ALLOCATED",
+                    giftPackStatus = "ALLOCATED",
+                    motherChadorStatus = "ALLOCATED"
+                )
+                val kitDelivered = existing.kitBagStatus != "ALLOCATED"
+                val chadorDelivered = existing.motherChadorStatus != "ALLOCATED"
+
+                Card(
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "${p.nameBn} (${p.campCode})",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    color = LscSlateDark
+                                )
+                                Text(
+                                    text = "${p.subgroup} • ${if (isGirl) "ছাত্রী কিট (স্কার্ট-খিমার)" else "ছাত্র কিট (পোলো-ট্রাউজার)"}",
+                                    fontSize = 11.sp,
+                                    color = Color.Gray
+                                )
+                            }
+
+                            // 1-Tap Size Cycling
+                            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                                listOf("S", "M", "L", "XL").forEach { sz ->
+                                    val isSz = existing.tShirtSize == sz
+                                    Surface(
+                                        color = if (isSz) Color(0xFF1D4ED8) else Color(0xFFF1F5F9),
+                                        shape = RoundedCornerShape(4.dp),
+                                        modifier = Modifier.clickable {
+                                            onUpdateKitDistribution(existing.copy(tShirtSize = sz, clothingSize = sz))
+                                        }
+                                    ) {
+                                        Text(
+                                            text = sz,
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isSz) Color.White else LscSlateDark,
+                                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Surface(
+                                color = if (kitDelivered) Color(0xFFDCFCE7) else Color(0xFFF1F5F9),
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (kitDelivered) Color(0xFF86EFAC) else Color(0xFFCBD5E1)
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable {
+                                        val nextStatus = if (kitDelivered) "ALLOCATED" else "DISTRIBUTED"
+                                        onUpdateKitDistribution(
+                                            existing.copy(
+                                                kitBagStatus = nextStatus,
+                                                giftPackStatus = nextStatus,
+                                                receivedAt = System.currentTimeMillis()
+                                            )
+                                        )
+                                    }
+                            ) {
+                                Text(
+                                    text = if (kitDelivered) "✓ শিক্ষার্থী কিট প্রদান সম্পন্ন" else "○ শিক্ষার্থী কিট দিন",
+                                    fontSize = 10.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (kitDelivered) Color(0xFF15803D) else LscSlateDark,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                                )
+                            }
+
+                            Surface(
+                                color = if (chadorDelivered) Color(0xFFFEF3C7) else Color(0xFFF1F5F9),
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (chadorDelivered) Color(0xFFF59E0B) else Color(0xFFCBD5E1)
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable {
+                                        val nextStatus = if (chadorDelivered) "ALLOCATED" else "DISTRIBUTED"
+                                        onUpdateKitDistribution(
+                                            existing.copy(
+                                                motherChadorStatus = nextStatus,
+                                                receivedAt = System.currentTimeMillis()
+                                            )
+                                        )
+                                    }
+                            ) {
+                                Text(
+                                    text = if (chadorDelivered) "🧣 মায়ের চাদর প্রদান ✓" else "🧣 মায়ের চাদর দিন",
+                                    fontSize = 10.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (chadorDelivered) Color(0xFF92400E) else LscSlateDark,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun InventoryStatPill(label: String, qty: Int, color: Color, modifier: Modifier = Modifier) {
     Surface(
         color = color.copy(alpha = 0.08f),
         shape = RoundedCornerShape(8.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.2f)),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.2f)),
         modifier = modifier
     ) {
         Column(
@@ -201,7 +519,7 @@ fun InventoryItemRow(
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
         modifier = Modifier.fillMaxWidth().testTag("inventory_item_${item.id}")
     ) {
         Row(
@@ -272,7 +590,7 @@ fun IssueItemDialog(
 ) {
     var qtyText by remember { mutableStateOf("1") }
     var recipient by remember { mutableStateOf("") }
-    var officer by remember { mutableStateOf("ইনভেন্টরি অফিসার") }
+    var officer by remember { mutableStateOf("সফিউল্লাহ (উপহার ও পুরস্কার বিভাগ)") }
     var errorText by remember { mutableStateOf<String?>(null) }
 
     Dialog(onDismissRequest = onDismiss) {
@@ -317,8 +635,8 @@ fun IssueItemDialog(
                         recipient = it
                         errorText = null
                     },
-                    label = { Text("গ্রহীতার নাম / ক্যাম্প আইডি / স্টেশন") },
-                    placeholder = { Text("যেমন: ১ম স্থান LSC-2026-001") },
+                    label = { Text("গ্রহীতার নাম / ক্যাম্প আইডি / সাব-গ্রুপ") },
+                    placeholder = { Text("যেমন: ১ম স্থান Bukhari-1-1") },
                     isError = errorText != null,
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
